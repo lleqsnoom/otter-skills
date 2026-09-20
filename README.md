@@ -18,8 +18,12 @@ npm test                     # the app's own tests
 npm run typecheck
 ```
 
-Installed as a package (`npx @lleqsnoom/otter-pm` or `otter-pm`), the same server is the command's whole job: it
-builds the app if `dist/` is missing and then serves it, so the bin and `npm run serve` are one path.
+Installed as a package (`otter-pm` once `@lleqsnoom/otter-pm` is published), the same server is the command's whole job:
+it builds the app if `dist/` is missing and then serves it, so the bin and `npm run serve` are one path. The package is
+not on npm yet, so there is nothing to `npx` today.
+
+To keep the board running on a machine — started with your session, opening from the app launcher as a window or a
+tab — see [`docs/install.md`](docs/install.md).
 
 `npm run dev` and `npm run serve` print the address and stay in the foreground; ctrl-c stops them. Both start
 their port search at `--port` (or `$PORT`), and **a dev server already running does not block a new one** — the
