@@ -206,7 +206,13 @@ code { background: var(--muted); padding: .05em .3em; border-radius: calc(var(--
 .lane { background: var(--muted); }
 .lane[data-over="true"] { background: color-mix(in srgb, var(--muted) 88%, var(--foreground));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent); }
-.lane .card { box-shadow: 0 1px 1px color-mix(in srgb, var(--foreground) 7%, transparent); }
+.lane .card { box-shadow: 0 1px 1px color-mix(in srgb, var(--foreground) 7%, transparent);
+  /* A lane of ten thousand cards is a page of ten thousand cards, and a card nobody can see costs nothing to draw
+     if the browser is told it may skip it: containment lets the rendering work happen as the card comes into view,
+     and `auto` remembers the size a card had the last time it was drawn instead of guessing at it. The cards stay in
+     the document, so the tab order and find-in-page still read the whole lane. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 148px; }
 .lane .card:hover, .lane .card:focus-visible { box-shadow: 0 2px 6px color-mix(in srgb, var(--foreground) 16%, transparent); }
 .drop-slot { border: 1px dashed color-mix(in srgb, var(--foreground) 24%, transparent);
   border-radius: var(--radius); background: color-mix(in srgb, var(--foreground) 4%, transparent); }
@@ -221,3 +227,8 @@ code { background: var(--muted); padding: .05em .3em; border-radius: calc(var(--
     border-bottom: 1px solid var(--border); grid-column: 1 !important; grid-row: 1 !important; }
   .main { grid-column: 1 !important; grid-row: 2 !important; }
 }
+/* A lane that draws a window replaces its own rows as the reader scrolls, and scroll anchoring would "correct" the
+   scroll position for every row that changed size under the viewport — which, during a drag scrolled from the edge,
+   turned into a jump of sixty times the distance asked for. The lane is not an anchor: the rows a reader is looking at
+   are the ones it draws, and they do not move. */
+.lane { overflow-anchor: none; }

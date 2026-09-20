@@ -24,6 +24,8 @@ export function Card(props: {
   onDragEnd?: (event: DragEvent) => void;
   label?: string;
   class?: string;
+  /** A lane orders its own rows, so a card on one carries the `order` of its row. */
+  style?: JSX.CSSProperties;
   title?: string;
   children: JSX.Element;
 }) {
@@ -38,6 +40,7 @@ export function Card(props: {
       onDragEnd={props.onDragEnd}
       aria-label={props.label}
       title={props.title}
+      style={props.style}
       class={cn(
         // `card` is the hook the board's own stylesheet and the tests reach for: a card on a lane carries an
         // elevation, and there is nowhere else to hang a rule that every card in every lane gets.

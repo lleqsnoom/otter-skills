@@ -1,14 +1,16 @@
 import type { APIRoute } from 'astro';
 
-import { writeMove } from '../../server/board.mjs';
-import { getSnapshot, invalidateSnapshot } from '../../server/snapshot.mjs';
+import { readBoard, writeMove } from '../../server/board.mjs';
+import { invalidateSnapshot } from '../../server/snapshot.mjs';
 
 /**
  * The one write in this app: the column a reader dragged a card to, and the place in it the card was let go.
  *
  * It writes a local preference, never a repository — what a document says about itself is still what the card
- * shows, and a moved card says so. The answer is the fresh snapshot, so the next render and the file cannot
- * disagree about where the card is.
+ * shows, and a moved card says so. The answer is the board as the file now reads rather than a fresh snapshot: a
+ * snapshot re-reads every root to hand back the ten projects a drop never touched, and the client replaces only its
+ * moves and its orders. The snapshot is invalidated instead, so the next screen that asks for one gets the new board
+ * and this drop pays for nothing else.
  *
  * The place travels as the whole lane, in the order it should read from now on. What a drop decides is where one
  * card sits among the others, and a lane is the smallest thing that can say that without every other card in it
@@ -48,8 +50,8 @@ export const POST: APIRoute = async ({ request }) => {
   if (!written.ok) return json(written, 400);
 
   invalidateSnapshot();
-  const snapshot = getSnapshot({ force: true });
-  return json({ ok: true, file: written.file, board: snapshot.board, orders: snapshot.orders });
+  const { moves, orders } = readBoard();
+  return json({ ok: true, file: written.file, board: moves, orders });
 };
 
 function json(payload: unknown, status = 200) {

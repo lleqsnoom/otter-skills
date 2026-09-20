@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 
 import { landingBoundary, leftLane, liveItems, orderKey, orderedLane, placeAtPointer } from '../lib/board.mjs';
 import {
@@ -18,15 +18,6 @@ import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
 import { Card, CardHead, Chip, ProgressBar, StatusBadge } from './Card';
 
-/**
- * The place a card would land: a dashed slot the size of the card in hand. It is `aria-hidden`, because where a card
- * goes is a question the keyboard already answers with `Alt + ←/→`, and it is a slot rather than a card because
- * nothing has been decided until the hand lets go.
- */
-function DropSlot(props: { height: number }) {
-  return <div class="drop-slot" style={{ height: `${props.height}px` }} aria-hidden="true" />;
-}
-
 /** Where an item's own page is: a collection opens as a group, a document as a file. */
 export function routeFor(item: WorkItem) {
   return item.kind === 'group'
@@ -40,6 +31,8 @@ export function WorkCard(props: {
   column?: BoardColumn;
   moved?: boolean;
   dragging?: boolean;
+  /** Where the card sits in its lane's grid: the lane's odd rows are the cards, its even ones the slot. */
+  order?: number;
   onDragStart?: (item: WorkItem, height: number) => void;
   onDragEnd?: () => void;
   onKeyMove?: (item: WorkItem, direction: -1 | 1) => void;
@@ -61,6 +54,7 @@ export function WorkCard(props: {
         props.onKeyMove ? 'Drag to a column and a place in it, or Alt + ← / → to file it' : undefined
       }
       class={cn(props.dragging && 'opacity-40 shadow-none rotate-[-1.2deg]')}
+      style={props.order === undefined ? undefined : { order: props.order }}
       draggable={Boolean(props.onDragStart)}
       onDragStart={(event) => {
         // Firefox will not start a drag without data on the transfer, even though the board keeps the item itself.
@@ -130,11 +124,33 @@ export function WorkCard(props: {
 const LANE_PAGE = 12;
 
 /**
+ * How many cards a lane draws while one of its cards is being carried.
+ *
+ * A lane at rest folds to `LANE_PAGE`; a drag used to unfold the whole lane, which is right for the twenty-card lane
+ * this was written on and a two-second freeze for a ten-thousand-card one, because the cost is cards x pointer moves
+ * and the pointer only ever moves over the cards in front of the reader. So during a drag a lane draws the rows
+ * around the viewport and lets two spacers stand in for the rest: the lane keeps its height, and a place the reader
+ * drops at is still a place in the lane.
+ */
+const WINDOW = 30;
+/** The rows drawn beyond the viewport, so a place just off screen is still a place the pointer can reach. */
+const OVERSCAN = 2;
+/** How close to the edge of the window a card in hand asks for the page to move, and how fast it moves at the edge. */
+const EDGE = 90;
+/** The page's speed at the edge of the window, in pixels per second: slowest just inside it, fastest against it. */
+const EDGE_MIN_SPEED = 260;
+const EDGE_SPEED = 2400;
+
+/**
  * One lane: its heading, the cards it holds in the order the reader left them, and the place a drop would land.
  *
  * It owns no state of its own — what is being dragged, which lane the pointer is over, and where in that lane the
  * card would land belong to the board, because they are facts about the drag rather than about a lane. What it does
  * own is the two readings a lane alone can take: where in itself the pointer is, and whether a leave is leaving.
+ *
+ * Everything it reads during a drag is read once, not once per card: the lane's list is a memo, the card in hand is
+ * one index for the lane, and the place it would land is one `order` between the cards rather than a slot opened in
+ * each of them.
  */
 function Lane(props: {
   column: BoardColumn;
@@ -145,6 +161,7 @@ function Lane(props: {
   showProject?: boolean;
   carried: { item: WorkItem; height: number } | null;
   over: { column: BoardColumn; index: number } | null;
+  pointerY: number | null;
   expanded: boolean;
   onDragOver: (column: BoardColumn, index: number) => void;
   onDragLeave: (column: BoardColumn) => void;
@@ -154,18 +171,101 @@ function Lane(props: {
   onKeyMove?: (item: WorkItem, direction: -1 | 1) => void;
   onToggleFold: (column: BoardColumn) => void;
 }) {
-  // A lane being dragged over shows everything: the card you are carrying must be droppable where you mean it.
-  const shown = () => (props.expanded || props.carried !== null ? props.items : props.items.slice(0, LANE_PAGE));
-  const folded = () => props.items.length - shown().length;
-  const highlighted = () => props.over?.column === props.column && props.carried !== null;
-  const carriedAt = () => (props.carried ? props.items.findIndex((item) => item.key === props.carried?.item.key) : -1);
+  // `props.items` is a getter that filters and sorts the project's whole list on every read, and a drag used to read
+  // it once per card: the memo is what makes a lane one reading per change instead of one per question asked of it.
+  const items = createMemo(() => props.items);
+  // The row the lane is drawing from while a card is carried: the rows around the viewport, which is where a pointer
+  // can be. Everything above and below is a spacer, and the row it stands for is the row the lane last measured.
+  const [windowStart, setWindowStart] = createSignal(0);
+  const [row, setRow] = createSignal(0);
+  let laneRef: HTMLElement | undefined;
+  const rowHeight = () => row() || props.carried?.height || 0;
 
-  const indexAtPointer = (event: DragEvent) => {
-    const cards = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('.card')].filter(
-      (_, rendered) => rendered !== carriedAt(),
-    );
-    return placeAtPointer(cards.map((card) => card.getBoundingClientRect()), event.clientY);
+  onMount(() => {
+    const card = laneRef?.querySelector<HTMLElement>('.card');
+    if (!card || !laneRef) return;
+    setRow(card.getBoundingClientRect().height + (Number.parseFloat(getComputedStyle(laneRef).rowGap) || 0));
+  });
+
+  // The window follows the viewport, not the pointer: a pointer that moved without the page moving has not changed
+  // which rows are in front of the reader, and re-anchoring on it would redraw the lane under the pointer it is
+  // measuring. Scrolling (including the browser's own autoscroll at the edge of a drag) is what moves the window.
+  createEffect(() => {
+    if (props.carried === null) {
+      setWindowStart(0);
+      return;
+    }
+    const lane = laneRef;
+    const height = rowHeight();
+    if (!lane || !height) return;
+    const follow = () => {
+      const top = lane.getBoundingClientRect().top + window.scrollY;
+      const wanted = Math.floor(Math.max(0, window.scrollY - top) / height) - OVERSCAN;
+      setWindowStart(Math.max(0, Math.min(wanted, Math.max(0, items().length - WINDOW))));
+    };
+    follow();
+    window.addEventListener('scroll', follow, { passive: true });
+    onCleanup(() => window.removeEventListener('scroll', follow));
+  });
+
+  // A lane being dragged over draws the rows around the viewport; a lane at rest draws its fold, or everything when
+  // the reader asked for that. Either way the card in hand is drawn where it came from, so it can be put back.
+  const shown = createMemo(() => {
+    if (props.carried !== null) return items().slice(windowStart(), windowStart() + WINDOW);
+    return props.expanded ? items() : items().slice(0, LANE_PAGE);
+  });
+  // Only the rows a lane is not drawing are hidden: folded-away cards are the reader's own fold, and a drag draws the
+  // window instead of the whole lane.
+  const hidden = () => {
+    if (props.carried === null) return 0;
+    // The card in hand is drawn out of place (see `drawn`), so it is not one of the rows the spacer below stands for.
+    return Math.max(0, items().length - windowStart() - shown().length - (offWindow() ? 1 : 0));
   };
+  const folded = () => (props.carried !== null ? 0 : items().length - shown().length);
+  const highlighted = () => props.over?.column === props.column && props.carried !== null;
+  // The card in hand, where this lane keeps it (-1 when it came from another), read once for the lane rather than
+  // once for every card that asks for a place.
+  const carriedAt = createMemo(() => (props.carried ? items().findIndex((item) => item.key === props.carried?.item.key) : -1));
+  /** Whether the card in hand sits outside the drawn window — the reader has scrolled away from where they picked it up. */
+  const offWindow = () => carriedAt() >= 0 && (carriedAt() < windowStart() || carriedAt() >= windowStart() + WINDOW);
+
+  // A drag lives in the element that started it: the browser aborts the whole gesture the moment that element leaves
+  // the document. Windowing would take the card in hand away as soon as the reader scrolled past it, which is exactly
+  // what a drag to the far end of a long lane does — so it is drawn again at the end of the list, below the window
+  // and off screen, where it can be neither seen nor dropped on. Keeping the item in the list keeps its own node, so
+  // the gesture survives.
+  const drawn = createMemo(() => {
+    const list = shown();
+    if (!offWindow()) return list;
+    const item = items()[carriedAt()];
+    return item ? [...list, item] : list;
+  });
+
+  // A place measured among the rows on screen is a place in the lane once the rows the lane is not drawing are
+  // counted — and the card in hand is not one of those rows when it came from above the window.
+  const windowOffset = () => windowStart() - (carriedAt() >= 0 && carriedAt() < windowStart() ? 1 : 0);
+
+  // The drawn window moved under the pointer — the page scrolled, or the edge of it did it for the reader — so the
+  // place the slot promises is re-read from where the pointer is. Without this the slot says where the card would
+  // have landed before the page moved, and the drop lands somewhere else.
+  createEffect(() => {
+    windowStart();
+    const y = props.pointerY;
+    if (y === null || props.carried === null || props.over?.column !== props.column) return;
+    props.onDragOver(props.column, placeAt(y));
+  });
+
+  // Where a pointer at this height would put the card, among the cards this lane is drawing: the card in hand is not
+  // one of them, wherever the window has put it, because it is already out of the lane the reader is aiming into and
+  // it is the one card whose box is not where it reads.
+  const placeAt = (clientY: number) => {
+    const cards = [...(laneRef?.querySelectorAll<HTMLElement>('.card') ?? [])].filter(
+      (card) => !card.classList.contains('opacity-40'),
+    );
+    return placeAtPointer(cards.map((card) => card.getBoundingClientRect()), clientY) + windowOffset();
+  };
+
+  const indexAtPointer = (event: DragEvent) => placeAt(event.clientY);
 
   const leaveLane = (event: DragEvent) => {
     const lane = event.currentTarget as HTMLElement;
@@ -178,11 +278,17 @@ function Lane(props: {
   // The slot opens on a boundary between two cards, and the card in hand is still drawn where it came from — the one
   // thing the place measured above does not count, so `landingBoundary` is where the two meet.
   const landing = () => (props.over?.column === props.column ? props.over.index : -1);
-  const slotBoundary = () => landingBoundary(landing(), carriedAt());
-  const slotAt = (rendered: number) => props.carried !== null && slotBoundary() === rendered;
+  const slotBoundary = () => (props.carried ? landingBoundary(landing(), carriedAt()) : -1);
+
+  // The lane is a grid and the cards hold its odd rows, so the slot is one `order` that moves: `For`'s index is
+  // stable, and only the slot's own row changes as the pointer moves. The row is the row of the drawn window, which
+  // is what a card's own `order` counts in, rather than the row of the whole lane.
+  const slotOrder = () => (slotBoundary() - windowStart()) * 2;
+  const tailOrder = () => shown().length * 2 + 2;
 
   return (
     <section
+      ref={laneRef}
       class="lane grid content-start gap-2 rounded-lg p-2 transition-[background-color,box-shadow] motion-reduce:transition-none"
       data-over={highlighted() ? 'true' : undefined}
       aria-label={`${COLUMN_LABELS[props.column]} column`}
@@ -211,39 +317,54 @@ function Lane(props: {
       </header>
 
       <div class="grid content-start gap-2">
-        <For each={shown()}>
+        {/* The rows the lane is not drawing, standing in for themselves: the grid only has to know how tall they are,
+            and the place a drop lands is counted past them rather than among them. */}
+        <Show when={windowStart() > 0}>
+          <div aria-hidden="true" style={{ order: 0, height: `${windowStart() * rowHeight()}px` }} />
+        </Show>
+        {/* The size of the card in hand, and `aria-hidden` because where a card goes is a question the keyboard
+            already answers with `Alt + ←/→`. */}
+        <div
+          class="drop-slot"
+          aria-hidden="true"
+          style={{
+            display: slotBoundary() < 0 ? 'none' : undefined,
+            order: slotOrder(),
+            height: `${props.carried?.height ?? 0}px`,
+          }}
+        />
+        <For each={drawn()}>
           {(item, rendered) => (
-            <>
-              <Show when={slotAt(rendered())}>
-                <DropSlot height={props.carried?.height ?? 0} />
-              </Show>
-              <WorkCard
-                item={item}
-                showProject={props.showProject}
-                moved={isMoved(item, props.board)}
-                dragging={props.carried?.item.key === item.key}
-                onDragStart={props.onDragStart}
-                onDragEnd={props.onDragEnd}
-                onKeyMove={props.onKeyMove}
-              />
-            </>
+            <WorkCard
+              item={item}
+              order={rendered() * 2 + 1}
+              showProject={props.showProject}
+              moved={isMoved(item, props.board)}
+              dragging={props.carried?.item.key === item.key}
+              onDragStart={props.onDragStart}
+              onDragEnd={props.onDragEnd}
+              onKeyMove={props.onKeyMove}
+            />
           )}
         </For>
-        <Show when={slotAt(shown().length)}>
-          <DropSlot height={props.carried?.height ?? 0} />
+        <Show when={hidden() > 0}>
+          <div aria-hidden="true" style={{ order: tailOrder(), height: `${hidden() * rowHeight()}px` }} />
         </Show>
         <Show when={folded() > 0}>
           <Button
             size="chip"
             variant="quiet"
             class="justify-self-start"
+            style={{ order: tailOrder() }}
             onClick={() => props.onToggleFold(props.column)}
           >
             {props.expanded ? `fold the last ${folded()}` : `+ ${folded()} more`}
           </Button>
         </Show>
         <Show when={!props.items.length && !props.carried}>
-          <p class="m-0 text-chrome text-muted-foreground italic">nothing here</p>
+          <p class="m-0 text-chrome text-muted-foreground italic" style={{ order: tailOrder() }}>
+            nothing here
+          </p>
         </Show>
       </div>
     </section>
@@ -281,6 +402,44 @@ export function Board(props: {
   const [carried, setCarried] = createSignal<{ item: WorkItem; height: number } | null>(null);
   const [over, setOver] = createSignal<{ column: BoardColumn; index: number } | null>(null);
   const [expanded, setExpanded] = createSignal<BoardColumn[]>([]);
+  const [pointerY, setPointerY] = createSignal<number | null>(null);
+
+  // Dragging to the edge of the window scrolls the page, because a pointer cannot leave the window and the rows past
+  // the fold are the whole point of a long lane. The scrolling is this app's own: a pointer held still fires no more
+  // events, and whether a browser scrolls its page under a drag is not a thing a page can rely on — so the loop below
+  // runs on its own, off the last reading of where the pointer is, until the pointer moves somewhere else.
+  createEffect(() => {
+    if (!carried()) {
+      setPointerY(null);
+      return;
+    }
+    const track = (event: DragEvent) => setPointerY(event.clientY);
+    window.addEventListener('dragover', track, { passive: true });
+    onCleanup(() => window.removeEventListener('dragover', track));
+  });
+
+  createEffect(() => {
+    const y = pointerY();
+    if (!carried() || y === null) return;
+    const up = y < EDGE;
+    const down = y > window.innerHeight - EDGE;
+    if (!up && !down) return;
+    let frame = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      // The closer to the edge, the faster: a reader who meant "a little further" holds a little way in, and one who
+      // meant "the end of this lane" holds it against the edge. The rate is per second and not per frame, because a
+      // frame is not a fixed amount of time — the same hold has to move the page the same distance either way.
+      const dt = Math.min(now - last, 50);
+      last = now;
+      const reach = Math.min((up ? y : window.innerHeight - y) / (EDGE / 2), 1);
+      const speed = EDGE_MIN_SPEED + reach * reach * (EDGE_SPEED - EDGE_MIN_SPEED);
+      window.scrollBy(0, ((up ? -speed : speed) * dt) / 1000);
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    onCleanup(() => cancelAnimationFrame(frame));
+  });
 
   // A board draws what the reader has not archived, and its lane counts agree with it: a lane that says `12` while
   // showing nine cards is the kind of number a reader stops trusting.
@@ -302,6 +461,7 @@ export function Board(props: {
     const item = carried()?.item;
     setOver(null);
     setCarried(null);
+    setPointerY(null);
     if (!item || !props.onMove) return;
     // The lane as the drop leaves it: the card taken out of the list it was measured against, and put back where
     // the slot was drawn. What is stored is the whole lane, because that is the only thing that says a place.
@@ -335,14 +495,20 @@ export function Board(props: {
             showProject={props.showProject}
             carried={carried()}
             over={over()}
+            pointerY={pointerY()}
             expanded={expanded().includes(column)}
-            onDragOver={(dragged: BoardColumn, index: number) => setOver({ column: dragged, index })}
+            onDragOver={(dragged: BoardColumn, index: number) =>
+              // A place that did not move is not news: keeping the same value is what stops a pointer inside one gap
+              // from re-drawing the lane on every pixel it crosses.
+              setOver((current) => (current?.column === dragged && current.index === index ? current : { column: dragged, index }))
+            }
             onDragLeave={(leaving) => setOver((current) => (current?.column === leaving ? null : current))}
             onDrop={drop}
             onDragStart={props.onMove ? (item, height) => setCarried({ item, height }) : undefined}
             onDragEnd={() => {
               setCarried(null);
               setOver(null);
+              setPointerY(null);
             }}
             onKeyMove={props.onMove ? keyMove : undefined}
             onToggleFold={toggleFold}
