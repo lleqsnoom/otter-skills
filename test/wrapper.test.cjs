@@ -66,18 +66,19 @@ function freePort() {
   });
 }
 
-/** How a process running `entry` was started, read from `/proc` — the only view of a supervisor's arguments. */
-function serverArgv(entry) {
-  const argvOf = (pid) => {
-    try {
-      return fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0');
-    } catch {
-      return null;
-    }
-  };
-
-  const pids = fs.readdirSync('/proc').filter((name) => /^\d+$/.test(name));
-  return pids.map(argvOf).find((argv) => argv?.includes(entry)) ?? null;
+/**
+ * How the process *this test started* was launched, read from `/proc/${pid}/task/${pid}/children`.
+ *
+ * Scanning every process for the entry path looks equivalent and is not: a second board may be running on the
+ * machine — `npm start` does exactly that, and passes no `--config` — and the scan would find it first.
+ */
+function childArgv(launcherPid) {
+  try {
+    const children = fs.readFileSync(`/proc/${launcherPid}/task/${launcherPid}/children`, 'utf8').trim().split(/\s+/);
+    return fs.readFileSync(`/proc/${children[0]}/cmdline`, 'utf8').split('\0');
+  } catch {
+    return null;
+  }
 }
 
 test('the wrapper runs the launcher from the checkout it is pointed at, from any directory', async () => {
@@ -134,8 +135,7 @@ test('the server is started with the checkout config named explicitly', async (t
   await waitFor(() => publishedUrl(stateHome));
 
   const config = path.join(ROOT, 'otter-pm.config.json');
-  const entry = path.join(ROOT, 'dist', 'server', 'entry.mjs');
-  const argv = await waitFor(() => serverArgv(entry));
+  const argv = await waitFor(() => childArgv(child.pid));
 
   assert.ok(argv.includes('--config'), `the server is told which config to use (got ${argv.join(' ')})`);
   assert.ok(argv.includes(config), 'and it is the checkout’s own config, not whatever cwd held');
