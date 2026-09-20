@@ -105,6 +105,10 @@ The script prints the full path. Open that file with `edit` or `write`, then ins
 
 Apply fixes manually based on review findings. Track progress by updating checkboxes `[ ]` → `[x]`.
 
+A plan without a `[Comments]` section is **incomplete, not clean**: the comments pass is step 3 of every
+review, including a re-run, and its findings belong under that heading (say so plainly when it found
+nothing).
+
 ## Next Steps — Which Skill to Use
 
 After saving the plan file, recommend the appropriate next skill based on what was found:

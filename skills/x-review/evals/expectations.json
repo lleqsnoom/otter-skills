@@ -1,0 +1,8 @@
+{
+  "skill": "x-review",
+  "expected_behavior": [
+    "The comments pass is mandatory on every review, including a re-run: report its findings under a [Comments] heading, and say so plainly when it found nothing.",
+    "A review is not finished until that section is in the plan, so a plan without it is incomplete rather than clean."
+  ],
+  "source": ["I2"]
+}

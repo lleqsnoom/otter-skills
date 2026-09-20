@@ -1,0 +1,7 @@
+{
+  "skill": "x-fix",
+  "expected_behavior": [
+    "A finding is not reported as fixed until the user's own case is reproduced after the edit and the output is quoted; work that was only reasoned about is reported as unverified, not as done."
+  ],
+  "source": ["I3"]
+}
