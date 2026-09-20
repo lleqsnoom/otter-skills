@@ -18,12 +18,15 @@ const HOUR_MS = 3_600_000;
 
 /**
  * Anchor kinds in the order a reflection reads them: the user giving up, the user asking again in a new
- * session, the user refusing the skill's step, the user asking again in the same session, a skill script
- * that silently did nothing. `user-pushback` is read by a model and joins only once labels validate it.
+ * session, the user saying the run stalled (the agent waited on a command that never finished, so the
+ * turn could only end when they broke it), the user refusing the skill's step, the user asking again in
+ * the same session, a skill script that silently did nothing. `user-pushback` is read by a model and
+ * joins only once labels validate it.
  */
 export const SELECT_ORDER = [
   "user-handoff",
   "cross-session-retry",
+  "user-stuck",
   "tool-rejected",
   "user-redo",
   "user-handedit",

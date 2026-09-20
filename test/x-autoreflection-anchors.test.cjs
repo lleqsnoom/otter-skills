@@ -78,6 +78,20 @@ describe("x-autoreflection anchors — which sessions a reflection reads", async
     ]);
   });
 
+  it("reads a stalled run before the session where the user refused a step", () => {
+    const sessions = [
+      entry("rejected", { signals: [anchorSignal("tool-rejected", "x-analyze")] }),
+      entry("stalled", { signals: [anchorSignal("user-stuck", null)] }),
+      entry("redone", { signals: [anchorSignal("user-redo", "x-plan")] }),
+    ];
+    const picked = anchors.selectSessions(sessions, { cap: 4 });
+    assert.deepEqual(picked.select.map((choice) => [choice.session, choice.reason]), [
+      ["stalled", "user-stuck"],
+      ["rejected", "tool-rejected"],
+      ["redone", "user-redo"],
+    ]);
+  });
+
   it("reads one session per owning skill, and names the rest as recurring", () => {
     const sessions = [
       entry("s1", { modified: "2026-09-18T10:00:00Z", signals: [anchorSignal("user-redo", "x-research")] }),

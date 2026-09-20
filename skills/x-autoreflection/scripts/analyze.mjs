@@ -31,6 +31,8 @@ export const CLASS_BY_KIND = {
   "user-pushback": "missing-expectation",
   "tool-rejected": "ritual-cost",
   "skill-script-silent": "silent-success",
+  "user-stuck": "missing-gate",
+  "blocking-wait": "missing-gate",
   // skill-unused and expected-exit have no per-file class: the first is a portfolio
   // decision, the second is not a gap at all.
 };
@@ -47,9 +49,18 @@ export const CHANGE_HINT = {
   "user-pushback": "quote the pushback, find the skill line that should have prevented it, or add the missing expected behaviour",
   "tool-rejected": "make the step the user refused conditional on the situation that needs it",
   "skill-script-silent": "make the script print a result line on success, and compare real paths in its main guard",
+  "user-stuck": "bound the command the run waited on: give it a timeout, or run it in the background and never wait on a job that has no end",
+  "blocking-wait": "bound the command the run waited on: give it a timeout, or run it in the background and never wait on a job that has no end",
 };
 
 export const SEVERITY_WEIGHT = { high: 3, medium: 2, low: 1 };
+
+/**
+ * The two signals one stalled run leaves: the user saying it hung, and the wait that was still
+ * running when it returned. They are one defect seen twice, so they rank together and ahead of a
+ * failed step: a failed step cost a retry, a stalled run cost the user's intervention.
+ */
+export const STALL_KINDS = new Set(["user-stuck", "blocking-wait"]);
 const MAX_EVIDENCE = 5;
 const DELETE_MIN_RECURRENCE = 2;
 
@@ -186,9 +197,11 @@ export function aggregate(scans, { hours = 24 } = {}) {
     }
   }
 
-  // Rank findings: recurrence first, then severity, then count — "most important" first.
+  // Rank findings: a stalled run first (the user had to break it), then recurrence, severity and
+  // count — "most important" first.
   findings.sort(
     (a, b) =>
+      Number(STALL_KINDS.has(b.kind)) - Number(STALL_KINDS.has(a.kind)) ||
       b.recurrence - a.recurrence ||
       SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity] ||
       b.count - a.count ||
@@ -219,6 +232,7 @@ export function aggregate(scans, { hours = 24 } = {}) {
     notes: [
       "recurrence counts distinct sessions, not signals: the same gap in three sessions is a defect, in one a hypothesis.",
       "severity is mechanical and inherited from the scanner; a finding names a suspect skill, not a verdict.",
+      "a stalled run (user-stuck, blocking-wait) is listed before any other finding: the user had to break it, which no failed step costs.",
     ],
   };
 }

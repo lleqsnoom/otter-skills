@@ -194,6 +194,34 @@ describe("x-autoreflection analyze report writing", async () => {
     assert.ok(md.includes("F1"));
     assert.ok(md.includes("doc-command-drift"));
   });
+
+  it("classes a stalled run as a missing bound, with the change that answers it", () => {
+    const report = aggregate([scan("s1", [signal("blocking-wait", { severity: "high", summary: "the agent waited on a command that was still running 1x" })])], { hours: 24 });
+    const finding = report.findings.find((entry) => entry.kind === "blocking-wait");
+    assert.equal(finding.class, "missing-gate");
+    assert.match(finding.change, /timeout/);
+    assert.match(finding.change, /background/);
+  });
+
+  it("lists a stalled run before a friction finding that recurs in more sessions", () => {
+    const scans = [
+      scan("s1", [signal("blocking-wait", { severity: "high" }), signal("tool-failure", { suspect: "x-epic" })], { loaded: ["x-epic"], used: ["x-epic"] }),
+      scan("s2", [signal("tool-failure", { suspect: "x-epic" })], { loaded: ["x-epic"], used: ["x-epic"] }),
+      scan("s3", [signal("tool-failure", { suspect: "x-epic" })], { loaded: ["x-epic"], used: ["x-epic"] }),
+    ];
+    const report = aggregate(scans, { hours: 24 });
+    assert.equal(report.findings[0].kind, "blocking-wait", "the stalled run is read first");
+    assert.equal(report.findings[1].recurrence, 3, "the friction finding still recurs in more sessions");
+    assert.ok(report.notes.some((note) => /stalled run/.test(note)), "the ranking says why");
+  });
+
+  it("keeps the user's stall complaint unranked against a skill, so it survives with no owner", () => {
+    const report = aggregate([scan("s1", [signal("user-stuck", { severity: "high", summary: "the user said the run had stalled" })])], { hours: 24 });
+    const finding = report.findings.find((entry) => entry.kind === "user-stuck");
+    assert.equal(finding.skill, null);
+    assert.equal(finding.recurrence, 1);
+    assert.equal(finding.class, "missing-gate");
+  });
 });
 
 describe("x-autoreflection check-analysis", async () => {

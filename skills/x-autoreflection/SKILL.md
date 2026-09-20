@@ -26,6 +26,12 @@ instead: the user asked for the work again, handed it to another agent, refused 
 skill script "succeeded" without printing anything. `scan-session.mjs` extracts both, so two agents
 reading the same sessions start from the same evidence.
 
+A **stalled run** is the one defect that shows in both, and it is read first: the agent waited on a
+command that was never going to finish (a dev server, a watcher), the wait came back still running, and
+the turn could only end when the user broke it ("you are stuck on one step for 20 minutes", "running the
+app with no time limit", "add some timeout"). `blocking-wait` is that wait; `user-stuck` is the user
+saying it. Neither needs the other, and either one is a finding that outranks a failed step.
+
 ## When to use
 
 - **A period** — "analyze the last day/week of sessions", "what has been failing across my skills",

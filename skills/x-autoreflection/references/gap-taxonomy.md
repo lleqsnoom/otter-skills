@@ -3,8 +3,10 @@
 `scan-session.mjs` reports two families of signal. **Friction** is a step that failed, repeated or
 was corrected. **Quality anchors** are what a clean-but-weak session leaves instead: the user asking
 for the work again, giving up on the agent, refusing a skill's step, or a skill script that "succeeded"
-without saying anything. This file says what kind of defect each signal tends to be and where the fix
-usually goes. It is a starting point, not an oracle: open the file before you name it.
+without saying anything. A **stalled run** is the one defect that shows in both: the wait that came back
+still running is the friction, the user's "it hung, it has no time limit" is the anchor, and each one
+alone already names the defect. This file says what kind of defect each signal tends to be and where the
+fix usually goes. It is a starting point, not an oracle: open the file before you name it.
 
 ## Friction signals
 
@@ -16,6 +18,7 @@ usually goes. It is a starting point, not an oracle: open the file before you na
 | `user-correction` | the user started a message with "no", "wrong", "actually" | the skill let the agent proceed on a wrong assumption | the missing question or the missing default in the `SKILL.md` |
 | `user-reprompt` | the user answered with a bare "continue" or "go on" | the skill defines a stopping point the agent does not recognise as finished, or the agent stalled mid-task | the `Completion:` lines of the step the agent stopped at |
 | `prose-question` | the agent ended a turn with a question in plain text | the skill never said to render a panel, or said it too weakly | the asking section of the `SKILL.md`; if the host has panels, point at `references/questions.md` |
+| `blocking-wait` | the host parked a command ("moved to background") and the agent then waited on it, and the wait came back while the job was still running | the run has no bound: a dev server, a bundler or a watcher never returns on its own, so the turn can only end when the user breaks it | the command block of the `SKILL.md` that starts the long-running process: give it a timeout, or run it in the background and never wait on it |
 | `skill-unused` | a skill was loaded and neither the agent nor the user used it afterwards (a name in a directory listing or an injected skill body does not count) | the description over-triggers: it promises what the session did not need | the frontmatter `description`, then run `x-skill-lint` |
 
 ## Quality anchors
@@ -29,6 +32,7 @@ before it — not every skill the session touched.
 | `user-handoff` | the user gave up on this agent ("make it a prompt for another agent", "I'll do it myself") | the strongest sign of a below-expectation result | read the turns before it; the expectation or the report rule that was missing |
 | `cross-session-retry` | a later session, in any CLI, opened with most of this session's request (≥50% overlap, within 48 h) — computed across sessions by `anchors.mjs`, not by the scan | this session's answer did not satisfy; the user tried again elsewhere | the earlier session's owner: what the retry got that the first attempt did not |
 | `tool-rejected` | the host's own notice that the user refused a tool call ("The user doesn't want to proceed with this tool use") | a skill step asked for something the situation did not need — a confirmation on a fully specified request, a panel mid-flow | make that step conditional |
+| `user-stuck` | the user said the agent's own run had stalled ("you are stuck on one step for 20 minutes", "running the app with no time limit", "add some timeout", "stuck in a loop") | the agent waited on something that was never going to finish, and only the user could end the turn | the `SKILL.md` step that starts the long-running process: bound it (`timeout`), or run it in the background and read its output without waiting |
 | `skill-script-silent` | a skill's own script exited 0 and printed nothing, its output not redirected | `main()` never ran (a symlinked install defeats the ESM main guard) or an old copy is installed | the script: print a result line on success, compare real paths in the main guard |
 | `interrupt` | the user stopped a turn (Crush `finish: canceled`, Claude Code "[Request interrupted by user…]") | only that the user stopped the agent — not why | nowhere by itself; read the next user turn, which is usually a redo or a correction |
 | `user-pushback` | a small model read a user turn as pushback on the reply before it (`classify-turns.mjs`), including the narrowing forms — "you missed…", "but what about…" | the reply was wrong, incomplete, too long, or not what was asked | as `user-redo`; stays "unvalidated", and out of the reading order, until the review's labels confirm it |
