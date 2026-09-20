@@ -1,0 +1,89 @@
+{
+  "note": "Labelled stall corpus: sessions where the agent waited on a command that never finished, and sessions where it did not. Positives were verified by hand (the user's own words and, where expect lists blocking-wait, a wait tool result that still says the job is running). Negatives were screened mechanically: no wait on a still-running job, no complaint about a stalled run. Read with tools/measure-stalls.mjs.",
+  "positives": [
+    {
+      "id": "d290ab66-ec98-41f9-bf12-14c81c703dda",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/xskills",
+      "expect": ["user-stuck", "blocking-wait"],
+      "quote": "AGAIN you are doingg the same thing - running the app with no time limit and getting stuck for HOUR!!!"
+    },
+    {
+      "id": "0a52dbdd-540f-4470-b1d3-456a1f43c679",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/wycieczkomat/wycieczkomat",
+      "expect": ["user-stuck", "blocking-wait"],
+      "quote": "you sucked at process spawn, always make sure to add some timeout to not stuck, continue"
+    },
+    {
+      "id": "ddf37c4f-0668-4532-b0a6-f2cf8f71cf4b",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/wycieczkomat/wycieczkomat",
+      "expect": ["user-stuck", "blocking-wait"],
+      "quote": "server never stops running so wehen you run it like that you will stuck"
+    },
+    {
+      "id": "8d01f974-e59a-4b22-9fb3-322c43c67d78",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/xskills",
+      "expect": ["user-stuck", "blocking-wait"],
+      "quote": "when you run app to check something set some short execution time, you can always make it longer. But very ofter app just keeps [running]"
+    },
+    {
+      "id": "49c9820d-41b8-4908-a673-ca9c06363bef",
+      "host": "crush",
+      "project": "/home/tkwiatek",
+      "expect": ["user-stuck"],
+      "quote": "Why so long? Youre stuck. all we need is to inject into the game and test if the scripts work"
+    },
+    {
+      "id": "87cdfe20-f7ce-425f-9b0a-37dbbe880912",
+      "host": "crush",
+      "project": "/home/tkwiatek",
+      "expect": ["user-stuck"],
+      "quote": "You are stuck on one step for 20 minutes. Continue"
+    },
+    {
+      "id": "a39a0aee5732bc76",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-pm",
+      "expect": ["blocking-wait"],
+      "quote": "bash `npm run dev` -> \"Background shell started with ID: 030\" -> job_output {\"wait\":true} -> \"Status: running\""
+    }
+  ],
+  "negatives": [
+    {
+      "id": "5fc630b09e305e27",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-pm",
+      "note": "a short session with real tool calls, no wait and no complaint"
+    },
+    {
+      "id": "9e378a422f11f75b",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-pm",
+      "note": "54 tool calls, no wait and no complaint"
+    },
+    {
+      "id": "1a4bafd5-ebae-40e0-af60-a3f4f01f86e6",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/Synetic-Studio/Synetic_Studio",
+      "note": "hard negative: \"So it is stuck at what\" is about an ACM certificate, not about the agent's own run"
+    },
+    {
+      "id": "4e5e4963-c1bc-4091-9231-1d4fb87761cd",
+      "host": "claude",
+      "note": "an x-autoreflection session: no wait, no complaint"
+    },
+    {
+      "id": "d933acca-1527-4ef9-bf18-5bc798ada05b",
+      "host": "claude",
+      "note": "an x-review session: no wait, no complaint"
+    },
+    {
+      "id": "5fe2b092-3d07-4371-841e-f1cd75bd4418",
+      "host": "claude",
+      "note": "an x-research session: no wait, no complaint"
+    }
+  ]
+}
