@@ -558,11 +558,16 @@ test('a card can be sorted inside a lane, and the place survives the drop', () =
   const types = source(path.join('lib', 'types.ts'));
 
   assert.match(board, /orderedLane\(/, 'a lane is drawn in the order the reader left it');
-  assert.match(board, /placeAtPointer\(cards\.map\(\(card\) => card\.getBoundingClientRect\(\)\), event\.clientY\)/, 'a lane hands the pointer and the cards it can see to the rule, which is where the measuring lives');
+  assert.match(board, /placeAtPointer\(cards\.map\(\(card\) => card\.getBoundingClientRect\(\)\), clientY\)/, 'a lane hands a pointer height and the cards it can see to the rule, which is where the measuring lives');
   assert.match(board, /props\.onMove\(item, column, \{ column, paths \}\)/, 'a drop hands over the whole lane, because a place only means something against the cards around it');
   assert.match(board, /props\.onMove\(item, next, null\)/, 'a keyboard move names a lane and no place, so it writes no order and cannot freeze a lane nobody sorted by hand');
-  assert.match(board, /const slotAt = \(rendered: number\) => props\.carried !== null && slotBoundary\(\) === rendered/, 'the place opens as a slot, drawn on the boundary the place maps to rather than on the card it was measured from');
-  assert.match(board, /<DropSlot height=\{props\.carried\?\.height \?\? 0\} \/>/, 'and the slot is the size of the card in hand, which is the shape the place will take');
+  assert.match(board, /const items = createMemo\(\(\) => props\.items\)/, 'a lane reads its own list once per change, not once per read: that list is a filter and a sort of the whole project');
+  assert.match(board, /const carriedAt = createMemo\(/, 'and the card in hand is one index for the lane, because a reading taken per card rebuilt the lane on every pointer move');
+  assert.match(board, /const slotBoundary = \(\) => \(props\.carried \? landingBoundary\(landing\(\), carriedAt\(\)\) : -1\)/, 'the place a drop lands is one boundary between two cards, measured once for the lane');
+  assert.match(board, /order: slotOrder\(\)/, 'and it is drawn by moving one `order`, so a pointer move writes one number instead of opening a slot in every card');
+  assert.match(board, /order=\{rendered\(\) \* 2 \+ 1\}/, 'a card holds an odd row, which is what leaves the even ones for the slot');
+  assert.match(board, /height: `\$\{props\.carried\?\.height \?\? 0\}px`/, 'and the slot is the size of the card in hand, which is the shape the place will take');
+  assert.match(board, /current\?\.column === dragged && current\.index === index \? current : \{ column: dragged, index \}/, 'a place that did not move is not news, so the same gap crossed twice is not drawn twice');
   // The flicker this board had: `dragleave` fires on every boundary crossed *inside* a lane too — card to card, and
   // card to the slot that has just opened under the pointer — and clearing the drop on each of those un-mounted the
   // slot and let the cards under it jump, forty times down one lane. Only a leave that arrives outside counts.
@@ -572,7 +577,8 @@ test('a card can be sorted inside a lane, and the place survives the drop', () =
   assert.match(view, /column === own \? null : column, order/, 'putting a card back where its data has it clears the move and keeps the place — the column was never the decision');
   assert.match(api, /order: BoardOrder \| null = null/, 'the client sends the place with the filing, in one write');
   assert.match(app, /orders: answer\.orders/, 'and replaces the orders with the ones the server answered, so the screen and the file cannot disagree');
-  assert.match(route, /orders: snapshot\.orders/);
+  assert.match(route, /const \{ moves, orders \} = readBoard\(\)/, 'the answer is the board as the file now reads, not a re-scan of every root the drop never touched');
+  assert.doesNotMatch(route, /getSnapshot/, 'so a drop pays for its own write and for nothing else');
   assert.match(types, /BoardOrders = Record<string, string\[\]>/, 'the stored order is a lane of paths, keyed by the lane');
 
   // The board's own look, which is the one thing a reader never sees asserted anywhere else: a lane is a surface
@@ -813,6 +819,7 @@ test('an item is archived and brought back from the page it is read on', () => {
   const types = source(path.join('lib', 'types.ts'));
 
   assert.match(route, /export const POST/, 'the write is its own route, beside the one that reads an artifact');
+  assert.match(route, /deletions: readBoard\(\)\.deleted/, 'and the answer is the board as the file now reads, not a re-scan of every root the archive never touched');
   assert.match(api, /export function deleteItem\(project: string, path: string, deleted: boolean\)/, 'the client names the direction');
   assert.match(app, /const remove = async \(item: WorkItem, deleted: boolean\)/, 'one handler for both directions, like a card’s filing');
   assert.match(app, /mutate\(\(current\) => \(current \? \{ \.\.\.current, deletions: answer\.deletions \} : current\)\)/, 'and only the reader’s decisions change in the snapshot, not a re-scan');

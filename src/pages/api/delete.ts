@@ -1,12 +1,13 @@
 import type { APIRoute } from 'astro';
 
-import { writeDeletion } from '../../server/board.mjs';
-import { getSnapshot, invalidateSnapshot } from '../../server/snapshot.mjs';
+import { readBoard, writeDeletion } from '../../server/board.mjs';
+import { invalidateSnapshot } from '../../server/snapshot.mjs';
 
 /**
  * Archiving an item, or bringing it back — the second write this app makes, and a local preference like the
  * first: the artifact keeps saying whatever it says, and the board stops drawing it. `deleted: false` unarchives it.
- * The answer is the fresh snapshot's deletions, so the screen and the file cannot disagree.
+ * The answer is the board as the file now reads, so the screen and the file cannot disagree — the same reason the
+ * move write answers with its own file rather than with a scan of every root.
  */
 export const POST: APIRoute = async ({ request }) => {
   let body: { project?: string; path?: string; deleted?: boolean };
@@ -24,7 +25,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (!written.ok) return json(written, 400);
 
   invalidateSnapshot();
-  return json({ ok: true, file: written.file, deletions: getSnapshot({ force: true }).deletions });
+  return json({ ok: true, file: written.file, deletions: readBoard().deleted });
 };
 
 function json(payload: unknown, status = 200) {
