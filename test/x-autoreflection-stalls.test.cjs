@@ -92,6 +92,22 @@ describe("x-autoreflection stall signals", async () => {
     assert.ok(stuck.evidence.length >= 1, "the complaint itself is the evidence");
   });
 
+  it("stays quiet when the only user turn is the classifier's own prompt", () => {
+    const session = transcript([
+      {
+        role: "user",
+        parts: [
+          text(
+            "You label user messages sent to an AI coding agent. For each numbered message, answer D if the message pushes back on the agent's previous output: says it is wrong, stuck, broken, or that you should set some short execution time."
+          ),
+        ],
+      },
+      { role: "assistant", parts: [text("D")] },
+    ]);
+    const scan = mod.scanSession(normalized(session), { skillNames: [] });
+    assert.equal(scan.signals.some((signal) => signal.kind === "user-stuck"), false, "a prompt the tool fed a model is not the user");
+  });
+
   it("reads a wait on a job that was still running as the blocked pattern", () => {
     const scan = mod.scanSession(normalized(stalledSession("ok, carry on")), { skillNames: [] });
     const wait = scan.signals.find((signal) => signal.kind === "blocking-wait");

@@ -34,7 +34,7 @@ const SILENT_OUTPUT_RE = /^(no output|exit(?:=| code )?0)?$/i;
 const EXIT_MARKER_RE = /^(?:Exit code|exit status) [1-9]\d*\s*$/m;
 const SKILL_BODY_RE = /^Base directory for this skill:\s*\S*\/skills\/([A-Za-z0-9._:-]+)/;
 const INJECTED_RE =
-  /^(Base directory for this skill:|<local-command|<command-name>|<command-message>|Caveat:|<system-reminder>|<environment_context>|<user_instructions>|<task-notification>|\[Request interrupted|\[Your previous response|\(Re-invocation of)/;
+  /^(Base directory for this skill:|<local-command|<command-name>|<command-message>|Caveat:|<system-reminder>|<environment_context>|<user_instructions>|<task-notification>|\[Request interrupted|\[Your previous response|\(Re-invocation of|You label user messages)/;
 
 /** The model classes (`classify-turns.mjs`) that say the reply before the turn fell short. */
 export const NEGATIVE_CLASSES = new Set(["pushback", "redo", "handoff", "verify-ask"]);
