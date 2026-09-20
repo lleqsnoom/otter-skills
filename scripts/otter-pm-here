@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Run the version of Otter PM that is in this directory: the branch you are standing on, a worktree, a dirty tree.
+#
+# `oc-otter-pm` runs one checkout — whatever `OTTER_PM_ROOT` says, defaulting to the installed one. This is its
+# counterpart for the other direction: the checkout comes from where you are, so `git switch` or `cd` into a
+# worktree is the whole "change version" step. Two things it does that `serve` alone cannot:
+#
+#   - it finds the repository root when you are in a subdirectory (git toplevel, else the working directory);
+#   - it rebuilds when the sources are newer than `dist/`, which is exactly the state after `git switch`. `serve`
+#     only builds when `dist/server/entry.mjs` is missing, so a switched branch would otherwise serve the old build.
+#
+# Usage: otter-pm-here [serve|open|port] [--port <n>] [--browser] [--dry-run]
+set -euo pipefail
+
+usage() {
+  cat <<'TEXT'
+otter-pm-here — run the Otter PM in this directory.
+
+Usage:
+  otter-pm-here use                    make this checkout the one the machine runs
+  otter-pm-here serve [--port <n>]     serve it here, in the foreground
+  otter-pm-here open [--browser]       open the board in a window or a tab
+  otter-pm-here port                   print the URL it is serving on
+
+The checkout is the git root of the working directory, or the working directory itself when it is not a
+repository. Everything else is passed to that checkout's scripts/launch.mjs unchanged.
+
+`use` is the switching command: it rebuilds what is stale, writes the pointer that `oc-otter-pm` reads
+(`$XDG_STATE_HOME/otter-pm/root`), and restarts the service — so the running board, the app launcher and
+`oc-otter-pm` all end up on this checkout. `--build` forces the rebuild even when dist/ looks current.
+TEXT
+}
+
+[ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ] && { usage; exit 0; }
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+LAUNCH="$ROOT/scripts/launch.mjs"
+ENTRY="$ROOT/dist/server/entry.mjs"
+
+if [ ! -f "$LAUNCH" ]; then
+  echo "otter-pm-here: no checkout here — $LAUNCH is missing (stand in a clone, or use oc-otter-pm)" >&2
+  exit 1
+fi
+
+echo "otter-pm-here: $ROOT ($(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'no git'))"
+
+if [ ! -d "$ROOT/node_modules/astro" ]; then
+  echo "otter-pm-here: installing dependencies (node_modules/astro is missing)"
+  ( cd "$ROOT" && npm install )
+fi
+
+sources_newer_than_build() {
+  [ -f "$ENTRY" ] || return 0
+  find "$ROOT/src" "$ROOT/scripts" "$ROOT/public" "$ROOT/package.json" "$ROOT/astro.config.mjs" \
+    -newer "$ENTRY" -print -quit 2>/dev/null | grep -q .
+}
+
+if [ "${1:-}" = "use" ] && [ "${2:-}" != "--help" ]; then
+  FORCE_BUILD=false
+  for arg in "$@"; do [ "$arg" = "--build" ] && FORCE_BUILD=true; done
+
+  if [ "$FORCE_BUILD" = true ] || sources_newer_than_build; then
+    echo "otter-pm-here: building $ROOT (sources are newer than dist/)"
+    ( cd "$ROOT" && npm run build )
+  fi
+
+  POINTER_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/otter-pm"
+  mkdir -p "$POINTER_DIR"
+  printf '%s\n' "$ROOT" > "$POINTER_DIR/root"
+  echo "otter-pm-here: the machine now runs $ROOT"
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user restart oc-otter-pm ||
+      echo "otter-pm-here: oc-otter-pm.service did not restart (start it with: systemctl --user start oc-otter-pm)" >&2
+  else
+    echo "otter-pm-here: no systemctl here — serve it by hand with: otter-pm-here serve" >&2
+  fi
+  exit 0
+fi
+
+if [ "${1:-}" != "use" ] && [ "${1:-}" != "--help" ] && [ "${1:-}" != "-h" ] && sources_newer_than_build; then
+  echo "otter-pm-here: building $ROOT (sources are newer than dist/)"
+  ( cd "$ROOT" && npm run build )
+fi
+
+exec node "$LAUNCH" "$@"

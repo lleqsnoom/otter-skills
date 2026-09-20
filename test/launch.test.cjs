@@ -57,6 +57,7 @@ function run(args, stateHome, { entry = LAUNCH, ...options } = {}) {
     env: { ...process.env, XDG_STATE_HOME: stateHome },
     stdio: ['ignore', 'pipe', 'pipe'],
     ...options,
+    detached: true,
   });
 }
 
@@ -64,6 +65,15 @@ function run(args, stateHome, { entry = LAUNCH, ...options } = {}) {
  * A front door that records what it was asked to open. A stub rather than the real one, because these tests run
  * with no display: what is under test is which URL the launcher hands over, not that Chromium can draw a window.
  */
+/** Stop the launcher *and* the server it started: they share a process group, and only the group is complete. */
+function stop(child) {
+  try {
+    process.kill(-child.pid, 'SIGTERM');
+  } catch {
+    child.kill('SIGTERM');
+  }
+}
+
 function stubFrontDoor(name) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-door-'));
   const record = path.join(dir, `${name}.args`);
@@ -294,7 +304,7 @@ test('serve builds the app when the build output is missing', async (t) => {
   const port = await freePort();
 
   const child = run(['serve', '--port', String(port)], stateHome);
-  t.after(() => child.kill('SIGTERM'));
+  t.after(() => stop(child));
   let log = '';
   child.stdout.on('data', (chunk) => (log += chunk));
   child.stderr.on('data', (chunk) => (log += chunk));
@@ -470,3 +480,17 @@ function childPid(launcherPid) {
     return null;
   }
 }
+
+test('a launcher that is told to hang up takes its server with it', async () => {
+  const stateHome = tempStateHome();
+  const port = await freePort();
+  const child = run(['serve', '--port', String(port)], stateHome);
+  const url = await waitFor(() => readPublished(stateHome));
+  await waitFor(async () => (await statusOf(url)) === 200);
+
+  process.kill(child.pid, 'SIGHUP');
+
+  await waitFor(async () => (await statusOf(url)) === null, 5000);
+  assert.equal(await statusOf(url), null, 'the port is free: the server did not outlive the launcher');
+  await waitFor(() => (readPublished(stateHome) === null ? true : false), 5000);
+});

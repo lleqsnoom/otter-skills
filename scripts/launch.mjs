@@ -119,7 +119,10 @@ function start(port, host, env) {
 
 /** The server is this process's child, so ctrl-c reaches it; when it ends, what it published stops being true. */
 function handOff(server, env) {
-  for (const signal of ['SIGINT', 'SIGTERM']) {
+  // SIGHUP is the one a closing terminal or a dropped remote session sends, and nothing forwards it by default:
+  // without it the launcher dies and its server keeps the port, so the next start takes a second port and the
+  // published URL points at a process nobody is watching.
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
     process.on(signal, () => server.kill(signal));
   }
   server.on('exit', (code, signal) => {

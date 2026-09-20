@@ -113,6 +113,28 @@ sleep 5
 systemctl --user is-active oc-otter-pm               # active again
 ```
 
+## Switching the machine to another checkout
+
+The checkout the machine runs is not hard-coded: `oc-otter-pm` resolves it from `OTTER_PM_ROOT`, then from a
+pointer file, then from its built-in default. The pointer is one line — the path of the checkout to run:
+
+```bash
+install -Dm 0755 scripts/oc-otter-pm-here ~/.local/bin/otter-pm-here   # once
+cd ~/code/otter-pm-some-branch
+otter-pm-here use
+```
+
+Expected: `otter-pm-here: building <path> (sources are newer than dist/)` when the build is stale, then
+`otter-pm-here: the machine now runs <path>`. The service restarts itself, so the running board, the app launcher
+and `oc-otter-pm port` all point at that checkout — no unit edit, and nothing to remember. `OTTER_PM_ROOT` in the
+unit's environment still overrides the pointer, and deleting `$XDG_STATE_HOME/otter-pm/root` returns the machine to
+the default.
+
+**One checkout per machine at a time.** The pointer is read by the service and by the launchers, so pointing it
+elsewhere replaces the running version rather than adding a second one. To run two side by side, serve the second by
+hand with its own state directory: `otter-pm-here serve --port 4700` (with `XDG_STATE_HOME` set to somewhere else
+if you do not want it to become the published URL).
+
 ## Updating
 
 ```bash
