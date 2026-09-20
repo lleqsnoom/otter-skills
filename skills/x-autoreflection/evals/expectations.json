@@ -1,0 +1,7 @@
+{
+  "skill": "x-autoreflection",
+  "expected_behavior": [
+    "A window run ends with a line in the SKILL.md it was aimed at; a report of better detectors, plans or metrics with no instruction change is not an improvement."
+  ],
+  "source": ["R04/S1"]
+}

@@ -65,7 +65,7 @@ Look at *why* the step failed or fell short, then pick the smallest durable fix:
 | The user had to repeat an instruction | `stopping-point` | the `SKILL.md` ends without saying what "done" is |
 | Two skills conflict on the same file or flag | `contract-drift` | reconcile the copies; if it is a helper, use `npm run sync:run-folders` |
 | A rule the skill states was not applied, and nothing failed | `rule-not-applied` | move the rule into the step it governs, or make it a script check; note it when it fails on one model only |
-| The answer was valid but not what the user expected | `missing-expectation` | add one expected behaviour, in the user's words, to the skill's `evals/expectations.json` |
+| The answer was valid but not what the user expected | `missing-expectation` | the `SKILL.md` line that states the expectation, plus one expected behaviour in the user's words in the skill's `evals/expectations.json` |
 | The report claimed more than the session did | `unbacked-report` | the report lists the command or source behind each completion claim, and what was not done |
 | The work stopped at the first draft of a research-type task | `depth-floor` | a minimum of cited evidence per criterion or loop; no self-typed coverage |
 | A skill step cost the user more than it returned | `ritual-cost` | make the step conditional on the situation that needs it |

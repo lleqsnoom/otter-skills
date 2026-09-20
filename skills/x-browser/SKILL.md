@@ -63,6 +63,10 @@ node -e "fetch('http://localhost:5173').then(r=>console.log('up',r.status)).catc
 
 Pick the command from `package.json` (`dev`, `start`, or `serve`) and run it in the background before continuing.
 
+A server for this project may already be up on another port (`detect-url.mjs` lists the candidates). If one
+is answering, use that port and do not start a second instance. Never run the dev server in the foreground,
+and never wait on one you started: park it in the background and read its output instead.
+
 ### 3. Launch the browser
 
 ```bash

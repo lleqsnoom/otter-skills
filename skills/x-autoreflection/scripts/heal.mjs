@@ -151,12 +151,18 @@ export function improvementFor(finding) {
 /**
  * A plan skeleton: one item per finding, carrying the issue and the rate it should move, with the edit
  * fields left for the agent to fill after reading the target. The skill's own usage scores ride along,
- * so the panel can show what the numbers were before the fix.
+ * so the panel can show what the numbers were before the fix. A quality item also carries `skill_md` —
+ * the `SKILL.md` line the fix changes — because a rule the user had to state twice is cured in the
+ * instruction that should have carried it, not only in the expectation the judge reads.
  */
 export function mintPlan(analysis, { analysisPath = null, date = new Date() } = {}) {
   const scores = new Map((analysis.skills ?? []).map((row) => [row.name, row]));
   const items = (analysis.findings ?? []).map((finding) => {
     const row = scores.get(finding.skill) ?? null;
+    // A per-skill finding already carries the `SKILL.md` line it changes, quoted from the file and
+    // checked against it, so the delta is prefilled: the agent reviews it against the file instead of
+    // re-deriving it. `skill_new` means the file has no line for it, so the edit is an addition.
+    const fromFile = finding.skill_line !== undefined;
     return {
       id: finding.id,
       skill: finding.skill ?? null,
@@ -168,11 +174,11 @@ export function mintPlan(analysis, { analysisPath = null, date = new Date() } = 
       scores: row ? { sessions: row.sessions ?? 0, loaded: row.loaded ?? 0, used: row.used ?? 0, unused: row.unused ?? 0, high: row.high ?? 0, medium: row.medium ?? 0, low: row.low ?? 0 } : null,
       improvement: improvementFor(finding),
       target: finding.skill ? `skills/${finding.skill}/SKILL.md` : "",
-      find: "",
-      replace: "",
+      find: fromFile && !finding.skill_new ? finding.skill_line : "",
+      replace: fromFile ? String(finding.change ?? "") : "",
       check: "",
       auto: false,
-      ...(QUALITY_CLASSES.has(finding.class) ? { watch: "" } : {}),
+      ...(QUALITY_CLASSES.has(finding.class) ? { watch: "", skill_md: "", global: false } : {}),
       change: finding.change ?? "",
       evidence: finding.evidence ?? [],
     };

@@ -74,20 +74,29 @@ For a window that is too slow to re-traverse, `--max <n>` caps the sessions scan
 ### 2. Run the model pass over the window
 
 No script can find the issues worth fixing: nobody knows in advance what a user will have to correct, so
-a lexicon only finds the phrasings someone listed. A model reads the window's real turns and names the
-themes instead, and `hunt-issues.mjs` does what the model cannot do for itself — it assembles the
-material from the transcripts and checks the answer back against them.
+a lexicon only finds the phrasings someone listed. A model reads the window's real turns instead, and
+`hunt-issues.mjs` does what the model cannot do for itself — it assembles the material from the
+transcripts and checks the answer back against them. Two passes, and both are worth running: the
+**session pass** asks what recurs across the window, and the **per-skill pass** — the one the healing
+stage feeds on — puts one used skill's own `SKILL.md` in the model's hands beside the turns where that
+skill was in play, and asks which line should say something else.
 
 ```bash
-node <skill>/scripts/hunt-issues.mjs --build --hours 240 --out <run folder>   # writes E00-issues-prompt*.md
+node <skill>/scripts/hunt-issues.mjs --build --hours 240 --out <run folder>   # writes E00-issues-prompt*.md and E00-skill-<name>-prompt.md
 <model> < <run folder>/E00-issues-prompt-01.md > answers.md                   # any model; the host chooses
+<model> < <run folder>/E00-skill-x-review-prompt.md > answers-x-review.md     # one per skill the window used
 node <skill>/scripts/hunt-issues.mjs --read answers.md --dir <run folder>     # verifies, writes E00-issues.json
-node <skill>/scripts/improve.mjs 240h --issues <run folder>/E00-issues.json   # merges it into the report
+node <skill>/scripts/hunt-issues.mjs --read answers-x-review.md --dir <run folder> --by-skill   # writes E00-skill-issues.json
+node <skill>/scripts/improve.mjs 240h --issues <run folder>/E00-issues.json,<run folder>/E00-skill-issues.json
 ```
 
 Each claim is dropped unless its quote is really in the turn it cites and the theme spans at least two
-sessions; a dropped claim is reported with the rule it broke. `references/issue-hunt.md` has the rules the
-model follows and the bar its answers must clear.
+sessions; a dropped claim is reported with the rule it broke. The per-skill pass adds two rules of its
+own: every ref has to come from a session where that skill was in play, and the line the fix changes has
+to be in that skill's `SKILL.md` — quoted verbatim, or declared new because the file has nothing for it.
+An accepted per-skill finding therefore arrives as a delta on a file, with the quoted line prefilled into
+the plan's `find`. `references/issue-hunt.md` has the rules the model follows and the bar its answers must
+clear.
 
 ### 3. Read the report
 
@@ -113,14 +122,18 @@ mint a plan, do not touch a skill file.
 The plan already exists (unless `--no-plan` was used — then run
 `node <skill>/scripts/heal.mjs --mint "<run folder>/E<nn>-analysis.json"`). It carries one item per
 finding, with `issue`, `severity`, `recurrence`, `count`, `scores`, the `improvement` rate and the
-`change` hint filled, and `target`, `find`, `replace`, `check`, `auto`, `watch` left for you.
+`change` hint filled, and `target`, `find`, `replace`, `check`, `auto`, `watch`, `skill_md` left for you.
 
 Work down the findings in rank order (recurrence first). For each, **open the target file** and fill the
 item: the smallest `find`/`replace` that answers it, a `check` that exits 0 once the fix is in, and
-`auto: true` only for the four mechanical classes. The rules — the auto whitelist, the six quality
-classes that always name a `watch`, `expectations.json`, why a measure is never edited with what it
-measures — are in `references/window-report.md`. A finding you drop after reading its file is **deleted
-from the plan**, not left empty.
+`auto: true` only for the four mechanical classes. **A quality finding gets the instruction it was
+missing**: `skill_md` names the `SKILL.md` line (or the reference file) the fix changes, and the same
+behaviour goes to `evals/expectations.json` as its copy — a plan that writes only the expectation leaves
+the instruction that failed untouched, and `check-heal.mjs` refuses it. A finding no skill owns sets
+`global: true` and targets the user's own preferences file. The rules — the auto whitelist, the six
+quality classes that always name a `watch`, `expectations.json`, why a measure is never edited with what
+measures it — are in `references/window-report.md`. A finding you drop after reading its file is
+**deleted from the plan**, not left empty.
 
 ### 6. Gate the plan
 
@@ -129,8 +142,8 @@ node <skill>/scripts/check-heal.mjs --file "<run folder>/E<nn>-heal.json"
 ```
 
 Exit **0** clean, **1** when an item lacks a target, an issue, a rate or (for `auto`) a find or a check,
-names a class outside the auto whitelist, or edits a measure beside the skill it measures; **2** on a
-usage error. Fix each violation and re-run.
+names a class outside the auto whitelist, gives a quality fix no `watch` or no `SKILL.md` line, or edits a
+measure beside the skill it measures; **2** on a usage error. Fix each violation and re-run.
 
 ### 7. Offer the fixes, one selectable option each
 
@@ -140,7 +153,7 @@ lines the user is deciding on:
 | Line | What the user reads |
 |------|---------------------|
 | **Issue** | the finding: `kind` and `summary`, its `severity`, `recurrence` × `count`, the owning skill, and the session/message the evidence came from |
-| **Fix** | `target`, then `find` → `replace`, and the `check` that proves it landed |
+| **Fix** | `target`, then `find` → `replace`, and the `check` that proves it landed; for a quality fix, the `skill_md` line it adds and the expectation it writes beside it |
 | **Expected improvement** | the `improvement` rate, plus the skill's `scores` as they stand now (`sessions`, `loaded`, `used`, `unused`, `high/medium/low`) |
 
 Include the `auto` items as selectable options. Quality items are listed too, marked as proposals the
@@ -193,7 +206,8 @@ are the summary, not the method.
 | `reflection_checked` | `check-reflection.mjs` exits 0 | the exit code |
 | `route_chosen` | the user picked which proposals to pursue | *contract* — recorded in `Routes` |
 | `report_shaped` | every finding cites a session and a message, and every portfolio item is shaped | `check-analysis.mjs` (`no-evidence`, `portfolio-action`) |
-| `plan_shaped` | every item names its target, its issue and its rate; every `auto` item a find and a check | `check-heal.mjs` (`item-issue`, `item-improvement`, `item-find`, `item-check`) |
+| `skill_delta` | every per-skill proposal quotes a line really in that skill's `SKILL.md` (or declares it new) and cites only sessions where the skill was in play | `hunt-issues.mjs --read --by-skill` (`the quoted line is not in`, `was not in play`) |
+| `plan_shaped` | every item names its target, its issue and its rate; every `auto` item a find and a check; every quality item a `watch` and the `SKILL.md` line it changes | `check-heal.mjs` (`item-issue`, `item-improvement`, `item-find`, `item-check`, `item-skill-md`) |
 | `measure_separated` | no detector, gate or taxonomy is edited in the same plan as a skill it measures | `check-heal.mjs` (`measure-and-measured`, `auto-measure`) |
 | `heal_chosen` | the user picked the fixes, and only those were applied | `heal.mjs --apply` takes the ids, the ledger records them |
 | `proof_or_revert` | every applied edit passed its check or was reverted | `heal.mjs` reverts on a failed check |
@@ -229,6 +243,10 @@ options from the artifacts — the report's rankings and the plan's items — no
 11. **A regression is a model change until proven otherwise.** Check the model mix under a skill before
     aiming a fix at the skill.
 12. **One artifact, two files.** The report's markdown is rendered from its JSON; never edit it by hand.
+13. **The instruction is the deliverable.** A window that ends with better detectors, reports or plans and
+    no new `SKILL.md` line has improved nothing the agent reads: every accepted finding lands a line in
+    the file it was aimed at, and the panel names that file. A whole window without one is a finding about
+    this skill.
 
 ## Anti-patterns
 
@@ -254,7 +272,7 @@ options from the artifacts — the report's rankings and the plan's items — no
 - `scripts/check-analysis.mjs` — fail while a finding lacks evidence or a portfolio item is unshaped.
 - `scripts/heal.mjs` — mint a plan from the report, then apply the picked ids with a revert-on-failure ledger.
 - `scripts/check-heal.mjs` — fail while an item is unshaped, names a non-auto class, or edits a measure beside what it measures.
-- `scripts/hunt-issues.mjs` — the model pass: assemble the window's turns into a prompt, then verify the issues a model names back against the transcripts.
+- `scripts/hunt-issues.mjs` — the two model passes: assemble the window's turns (and one file-in-hand prompt per used skill), then verify the answers against the transcripts, each skill's `SKILL.md`, and the sessions it was used in.
 - `scripts/read-session.mjs` — lists and exports a session transcript as normalized JSON.
 - `scripts/scan-session.mjs` — extracts friction signals, quality anchors, suspect skills, and run folders.
 - `scripts/reactions.mjs` — the quality anchors: redo, handoff, rejected tool call, interrupt, silent skill script, and the owner of each moment.

@@ -2,7 +2,8 @@
   "skill": "x-review",
   "expected_behavior": [
     "The comments pass is mandatory on every review, including a re-run: report its findings under a [Comments] heading, and say so plainly when it found nothing.",
-    "A review is not finished until that section is in the plan, so a plan without it is incomplete rather than clean."
+    "A review is not finished until that section is in the plan, so a plan without it is incomplete rather than clean.",
+    "A re-run reviews the whole change set: each earlier finding comes back as resolved or still open, and pre-existing findings are listed apart from the ones this branch introduced."
   ],
-  "source": ["I2"]
+  "source": ["I2", "R04/S2"]
 }

@@ -155,3 +155,138 @@ describe("x-autoreflection hunt-issues", async () => {
     }
   });
 });
+
+describe("x-autoreflection hunt-issues — the per-skill SKILL.md pass", async () => {
+  const hunt = await import(HUNT);
+  const read = await import(READ);
+
+  const SKILL_FILE = path.join(__dirname, "..", "skills", "x-ui", "SKILL.md");
+  const SKILL_TEXT = fs.readFileSync(SKILL_FILE, "utf8");
+  /** A real line of the file, so the test cannot pass on a quote that is not there. */
+  const REAL_LINE = SKILL_TEXT.split("\n").find((line) => line.includes("Pre-Flight"));
+  const OTHER_SKILL_FILE = path.join(__dirname, "..", "skills", "x-browser", "SKILL.md");
+
+  function session(id, { skills = ["x-ui"], reaction = "this is not what I asked for" } = {}) {
+    return read.normalizeSession({
+      meta: { id, uuid: id, title: "t", created: "2026-01-01T00:00:00Z", modified: "2026-01-01T01:00:00Z", skills: skills.map((name) => ({ name, loaded_at: "t0" })) },
+      messages: [
+        { role: "user", parts: [text("Build me a settings screen with three panels please")] },
+        { role: "assistant", parts: [text("Done: I built the screen and asked you to confirm it.")] },
+        { role: "user", parts: [text(reaction)] },
+      ],
+    });
+  }
+
+  const issue = (extra = {}) => ({
+    skill: "x-ui",
+    issue: "the agent asked me to confirm a fully specified request",
+    line: REAL_LINE,
+    refs: ["crush:s1#2", "crush:s2#2"],
+    evidence: [
+      { ref: "crush:s1#2", quote: "this is not what I asked for" },
+      { ref: "crush:s2#2", quote: "this is not what I asked for" },
+    ],
+    instead: "build it and report what changed",
+    severity: "high",
+    ...extra,
+  });
+
+  const window = () => [hunt.digest(session("s1")), hunt.digest(session("s2")), hunt.digest(session("s3", { skills: ["x-plan"], reaction: "no, wrong screen" }))];
+
+  it("groups the window by skill, with the sessions each skill was in play for", () => {
+    const usage = hunt.usageBySkill(window());
+    assert.deepEqual([...usage.keys()].sort(), ["x-plan", "x-ui"]);
+    assert.deepEqual([...usage.get("x-ui").sessions].sort(), ["crush:s1", "crush:s2"]);
+    assert.equal(usage.get("x-ui").turns.length, 2);
+    assert.equal(usage.get("x-plan").turns.length, 1);
+  });
+
+  it("leaves a turn with no owner out of every prompt, instead of handing it to each loaded skill", () => {
+    const wide = hunt.digest(session("s9", { skills: ["x-ui", "x-plan", "x-review"] }));
+    assert.equal(wide.turns[0].owner, null);
+    assert.equal(hunt.usageBySkill([wide]).size, 0, "with several skills loaded and nothing to say which step spoke, no file gets that turn");
+  });
+
+  it("gives the turn to the only skill a session loaded", () => {
+    const narrow = hunt.digest(session("s8"));
+    assert.equal(narrow.turns[0].owner, "x-ui");
+  });
+
+  it("also gives a turn to a skill the user named in it, whatever the timeline says", () => {
+    const named = hunt.digest(session("s7", { skills: ["x-ui", "x-plan", "x-review"], reaction: "run x-review again on this branch" }));
+    assert.equal(named.turns[0].owner, null);
+    const usage = hunt.usageBySkill([named]);
+    assert.deepEqual([...usage.keys()], ["x-review"], "the user naming the skill says which file the complaint is for");
+  });
+
+  it("writes one prompt per used skill, carrying the file and the refs to cite", () => {
+    const prompts = hunt.skillPrompts(window());
+    assert.deepEqual(prompts.map((entry) => entry.skill), ["x-ui"], "x-plan shows up once, which is not a pattern");
+    assert.match(prompts[0].prompt, /the file under review — skills\/x-ui\/SKILL\.md/);
+    assert.match(prompts[0].prompt, /# X-UI/, "the file's own text is in the prompt");
+    assert.match(prompts[0].prompt, /\[crush:s1#2\]/);
+    assert.match(prompts[0].prompt, /I SAID: this is not what I asked for/);
+  });
+
+  it("keeps a proposal that quotes a line really in the file and cites its own sessions", () => {
+    const { kept, dropped } = hunt.verifySkillIssues([issue()], window(), { knownSkills: ["x-ui", "x-plan"] });
+    assert.equal(dropped.length, 0);
+    assert.equal(kept.length, 1);
+    assert.equal(kept[0].line, REAL_LINE);
+    const finding = hunt.toFinding(kept[0], { id: "S1" });
+    assert.equal(finding.skill, "x-ui");
+    assert.equal(finding.skill_line, REAL_LINE);
+    assert.equal(finding.skill_new, false);
+    assert.equal(finding.change, "build it and report what changed");
+  });
+
+  it("drops a line the file does not contain, and a proposal with no line at all", () => {
+    const { kept, dropped } = hunt.verifySkillIssues(
+      [issue({ line: "## A section this file does not have" }), issue({ line: "" })],
+      window(),
+      { knownSkills: ["x-ui"] }
+    );
+    assert.equal(kept.length, 0);
+    assert.match(dropped[0].why, /the quoted line is not in/);
+    assert.match(dropped[1].why, /no SKILL.md line quoted/);
+  });
+
+  it("lets a proposal add a line the file has nothing for", () => {
+    const { kept } = hunt.verifySkillIssues([issue({ line: "", new: true })], window(), { knownSkills: ["x-ui"] });
+    assert.equal(kept.length, 1);
+    assert.equal(hunt.toFinding(kept[0], { id: "S1" }).skill_new, true);
+  });
+
+  it("drops a ref from a session the skill was not used in, a skill the window never used, and a one-session theme", () => {
+    const { kept, dropped } = hunt.verifySkillIssues(
+      [
+        issue({ refs: ["crush:s1#2", "crush:s3#2"], evidence: [{ ref: "crush:s3#2", quote: "no, wrong screen" }] }),
+        issue({ skill: "x-browser" }),
+        issue({ refs: ["crush:s1#2"], evidence: [{ ref: "crush:s1#2", quote: "this is not what I asked for" }] }),
+        issue({ instead: "" }),
+      ],
+      window(),
+      { knownSkills: ["x-ui", "x-plan", "x-browser"] }
+    );
+    assert.equal(kept.length, 0);
+    assert.equal(dropped.length, 4);
+    assert.match(dropped[0].why, /was not in play/);
+    assert.match(dropped[1].why, /was not used in this window/);
+    assert.match(dropped[2].why, /1 session\(s\)/);
+    assert.match(dropped[3].why, /no instruction proposed/);
+  });
+
+  it("still refuses a quote that is not in the transcript", () => {
+    const { dropped } = hunt.verifySkillIssues(
+      [issue({ evidence: [{ ref: "crush:s1#2", quote: "a sentence nobody ever typed here" }] })],
+      window(),
+      { knownSkills: ["x-ui"] }
+    );
+    assert.match(dropped[0].why, /quote\(s\) unverified/);
+  });
+
+  it("keeps the per-skill file's own bar: the two skills it names exist on disk", () => {
+    assert.ok(fs.existsSync(SKILL_FILE));
+    assert.ok(fs.existsSync(OTHER_SKILL_FILE));
+  });
+});

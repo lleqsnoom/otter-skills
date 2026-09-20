@@ -7,6 +7,13 @@ import { SCHEMA, AUTO_CLASSES, QUALITY_CLASSES, measuresOf } from "./heal.mjs";
 const skillOf = (target) => String(target ?? "").match(/^skills\/(x-[a-z0-9-]+)\/(SKILL\.md|references\/)/)?.[1] ?? null;
 
 /**
+ * The documents a quality fix changes: the skill's `SKILL.md`, or one of its reference files. A rule the
+ * user had to state twice is cured in the instruction that should have carried it — the expectation in
+ * `evals/expectations.json` is the copy the judge reads, not a substitute for the line itself.
+ */
+const SKILL_DOC_RE = /^skills\/x-[a-z0-9-]+\/(SKILL\.md|references\/[A-Za-z0-9._-]+\.md)$/;
+
+/**
  * Plan-level: a detector or gate is never edited in the same plan as a skill it measures. The shared
  * detectors measure every skill; a skill's own `check-*` measures that skill.
  */
@@ -45,6 +52,12 @@ export function lintHeal(plan) {
     if (!String(item.improvement ?? "").trim()) violations.push({ rule: "item-improvement", item: id, detail: "a proposal names the rate it should move" });
     if (QUALITY_CLASSES.has(item.class) && !String(item.watch ?? "").trim()) {
       violations.push({ rule: "item-watch", item: id, detail: "a quality fix names the rate it should move: skill, model, anchor, window" });
+    }
+    // A quality fix has to land in an instruction someone reads. The target may be the expectation file
+    // as long as the SKILL.md line rides along in `skill_md`; a finding with no owning skill says so with
+    // `global: true` and names the preferences file, because that is the only instruction it has.
+    if (QUALITY_CLASSES.has(item.class) && !SKILL_DOC_RE.test(String(item.skill_md ?? "")) && !SKILL_DOC_RE.test(String(item.target ?? "")) && item.global !== true) {
+      violations.push({ rule: "item-skill-md", item: id, detail: "a quality fix names the SKILL.md line it changes, in target or skill_md (or sets global: true for the user's own preferences)" });
     }
     if (item.target && item.check && String(item.check).includes(item.target)) {
       violations.push({ rule: "check-edits-itself", item: id, detail: `${item.target} is edited by the item and run by its own check` });

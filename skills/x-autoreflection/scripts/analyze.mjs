@@ -478,7 +478,7 @@ function usage() {
     "  --hours <n>      How far back to look (default: 24)",
     "  --host <ids>     Comma-separated hosts to read (default: every detected host)",
     "  --scans <dir>    Skip traversal and aggregate the *-signals.json files already in <dir>",
-    "  --issues <file>  E00-issues.json from hunt-issues.mjs: the model's reading of the window",
+    "  --issues <file>  E00-issues.json from hunt-issues.mjs: the model's reading of the window (comma-separate the session pass and the per-skill pass)",
     "  --max <n>        Cap on sessions scanned (default: 60)",
     "  --skills-dir <d> Folder holding skill directories (default: skills/, then .agents/skills/)",
     "  --slug <s>       Run-folder slug (default: autoreflection)",
@@ -530,7 +530,10 @@ function main() {
     }
 
     const anchors = anchorsFor(scans);
-    const modelIssues = typeof args.issues === "string" ? (JSON.parse(fs.readFileSync(path.resolve(args.issues), "utf8")).findings ?? []) : [];
+    // Both passes write one file each, and they mix here: `--issues a.json,b.json`. The session pass
+    // names the theme, the per-skill pass names the SKILL.md line it changes.
+    const issueFiles = typeof args.issues === "string" ? args.issues.split(",").map((name) => name.trim()).filter(Boolean) : [];
+    const modelIssues = issueFiles.flatMap((name) => JSON.parse(fs.readFileSync(path.resolve(name), "utf8")).findings ?? []);
     const report = withAnchors(aggregate(scans, { hours, issues: modelIssues }), anchors);
     if (modelIssues.length) {
       report.notes.push(

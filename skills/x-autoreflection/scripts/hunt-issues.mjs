@@ -21,7 +21,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { hostById } from "./hosts/index.mjs";
 import { hostContext, listHostSessions, normalizeSession, parseArgs, selectedHosts } from "./read-session.mjs";
-import { requestOf, userTurns } from "./reactions.mjs";
+import { ownerAt, ownerTimeline, requestOf, userTurns } from "./reactions.mjs";
 import { skillNamesOnDisk } from "./scan-session.mjs";
 
 export const SCHEMA = "x-autoreflection-issues/1";
@@ -83,6 +83,12 @@ function textOf(message) {
 export function digest(session) {
   const messages = session.messages ?? [];
   const request = requestOf(messages);
+  const loaded = (session.skills ?? []).map((skill) => skill.name);
+  // A turn belongs to the skill whose step produced the reply the user reacted to, not to every skill the
+  // session happened to load — the same attribution the scanner uses, so a per-skill prompt carries that
+  // skill's turns instead of every turn of a session it merely appeared in.
+  const timeline = ownerTimeline(messages, (names) => names.filter((name) => /^x-[a-z0-9-]+$/.test(name)));
+  const fallback = loaded.length === 1 ? loaded[0] : null;
   const turns = userTurns(messages)
     .filter((turn) => turn.index > (request?.message ?? -1) && turn.text.split(/\s+/).filter(Boolean).length >= MIN_WORDS)
     .filter((turn) => !INJECTED.test(turn.text))
@@ -91,11 +97,12 @@ export function digest(session) {
       message: turn.index,
       user: turn.text.slice(0, TURN_CHARS),
       before: replyBefore(messages, turn.index),
+      owner: ownerAt(timeline, turn.index, fallback),
     }));
   return {
     key: `${session.source?.host ?? "?"}:${session.source?.id ?? session.source?.uuid ?? "?"}`,
     model: session.model ?? null,
-    skills: session.skills?.map((skill) => skill.name) ?? [],
+    skills: loaded,
     request: request?.text ?? null,
     turns,
   };
@@ -123,6 +130,82 @@ export function chunk(digests, size = SESSIONS_PER_CHUNK) {
   const chunks = [];
   for (let i = 0; i < withTurns.length; i += size) chunks.push(withTurns.slice(i, i + size));
   return chunks.length ? chunks : [[]];
+}
+
+/**
+ * The window inverted, and the pass the skill exists for: improve the `SKILL.md` of the skills the window
+ * actually used. The session-first rubric asks what recurs; this one puts one skill's own instruction file
+ * in the model's hands beside the turns where that skill was in play, and asks which line should say
+ * something else. That makes the fix a delta on a file instead of a theme nobody owns, and `--read`
+ * checks it the same way: the quoted line must really be in that `SKILL.md`, and every ref must come from
+ * a session where the skill was used.
+ */
+export const SKILL_RUBRIC = [
+  "You are improving ONE skill's instruction file, using transcripts of an AI coding agent that followed it.",
+  "The file is given in full below, then every turn of the sessions where this skill was in play: what the agent had just said, and what the human said in reply.",
+  "Your job is the file. Find the places where the human had to correct, restate or work around the agent's behaviour — the turns where the file should have said something it does not — and propose the line that would have prevented it.",
+  `A proposal needs at least ${MIN_SESSIONS} different sessions. One bad afternoon is not a rule.`,
+  "Prefer the smallest change: an existing line rewritten, or one line added where the file already has a section for it.",
+  "Quote the line you are changing EXACTLY as it appears in the file, or set \"new\": true when the file has no line for it at all.",
+  "Ignore anything that is not this skill's business: one-off tasks, environment failures, the user's own typos, and answers that were merely long.",
+  "Answer as JSON lines and nothing else, one object per line:",
+  '{"skill":"x-review","issue":"the complaint in one sentence","line":"the exact line from the file","new":false,"refs":["crush:abc123#12","claude:def456#3"],"evidence":[{"ref":"crush:abc123#12","quote":"..."}],"instead":"the instruction to write in its place","severity":"high"}',
+].join("\n");
+
+/**
+ * Which skills the window used, and the turns each one was in charge of. A turn belongs to the skill in
+ * charge of it, and to any skill the user named in it — "run x-review again" is direct evidence about
+ * which file the complaint is for. A turn with no owner (a session with several skills loaded and nothing
+ * to say which step produced the reply) belongs to no prompt: it would otherwise appear under every skill
+ * the session touched, and each file would be read against turns that have nothing to do with it.
+ */
+export function usageBySkill(digests) {
+  const usage = new Map();
+  for (const entry of digests) {
+    for (const turn of entry.turns ?? []) {
+      const owners = new Set([turn.owner, ...String(turn.user ?? "").match(/\bx-[a-z0-9-]+\b/g) ?? []].filter(Boolean));
+      for (const owner of owners) {
+        if (!usage.has(owner)) usage.set(owner, { skill: owner, sessions: new Set(), turns: [] });
+        const bucket = usage.get(owner);
+        bucket.sessions.add(entry.key);
+        bucket.turns.push({ key: entry.key, message: turn.message, user: turn.user, before: turn.before });
+      }
+    }
+  }
+  return usage;
+}
+
+const skillFile = (name, skillsDir) => path.join(skillsDir, name, "SKILL.md");
+
+/** One skill's prompt: the file, then the turns, grouped by session. */
+export function buildSkillPrompt(usage, { skillsDir = "skills" } = {}) {
+  const file = skillFile(usage.skill, skillsDir);
+  const body = fs.existsSync(file) ? fs.readFileSync(file, "utf8").trim() : "(the file is missing)";
+  const blocks = [];
+  for (const turn of usage.turns) {
+    if (!blocks.length || blocks[blocks.length - 1].key !== turn.key) blocks.push({ key: turn.key, turns: [] });
+    blocks[blocks.length - 1].turns.push(turn);
+  }
+  const used = blocks
+    .map((block) =>
+      [
+        `### session ${block.key}`,
+        ...block.turns.map(
+          (turn) => `   [${turn.key}#${turn.message}] the agent had just said: "${turn.before.replace(/"/g, "'")}"\n      I SAID: ${turn.user}`
+        ),
+      ].join("\n")
+    )
+    .join("\n\n");
+  return `${SKILL_RUBRIC}\n\n## the file under review — ${file}\n\n\`\`\`markdown\n${body}\n\`\`\`\n\n## how it was used — ${usage.sessions.size} session(s) had ${usage.skill} in play\n\n${used}\n`;
+}
+
+/** The skills worth a prompt: used in at least two sessions, most-used first, and really on disk. */
+export function skillPrompts(digests, { skillsDir = "skills", limit = 12 } = {}) {
+  return [...usageBySkill(digests).values()]
+    .filter((usage) => usage.turns.length && usage.sessions.size >= MIN_SESSIONS && fs.existsSync(skillFile(usage.skill, skillsDir)))
+    .sort((a, b) => b.sessions.size - a.sessions.size || a.skill.localeCompare(b.skill))
+    .slice(0, limit)
+    .map((usage) => ({ skill: usage.skill, sessions: [...usage.sessions].sort(), prompt: buildSkillPrompt(usage, { skillsDir }) }));
 }
 
 /**
@@ -161,13 +244,17 @@ const normalize = (value) => String(value ?? "").toLowerCase().replace(/[^a-z0-9
  * comes back as `dropped` with the rule it broke, so the report can say what the model claimed and why
  * it did not count — the alternative is a confident report built on quotes nobody checked.
  */
-export function verifyIssues(issues, digests, { knownSkills = null, minSessions = MIN_SESSIONS } = {}) {
+/** Every turn of the window by its `session#message`, which is what an answer's refs are resolved against. */
+function turnIndex(digests) {
   const index = new Map();
   for (const entry of digests) {
-    for (const turn of entry.turns) {
-      index.set(`${entry.key}#${turn.message}`, { session: entry.key, ...turn });
-    }
+    for (const turn of entry.turns) index.set(`${entry.key}#${turn.message}`, { session: entry.key, ...turn });
   }
+  return index;
+}
+
+export function verifyIssues(issues, digests, { knownSkills = null, minSessions = MIN_SESSIONS } = {}) {
+  const index = turnIndex(digests);
   const kept = [];
   const dropped = [];
   for (const issue of issues) {
@@ -192,6 +279,50 @@ export function verifyIssues(issues, digests, { knownSkills = null, minSessions 
   return { kept, dropped };
 }
 
+/**
+ * The skill-first bar. Same rules as the session pass — the refs exist, the quotes are verbatim, two
+ * sessions show it — plus the two this pass is for: every ref comes from a session where the skill was
+ * actually in play, and the line the fix changes is really in that skill's `SKILL.md` (unless the answer
+ * says `new`, meaning the file has nothing for it). An accepted issue is therefore a delta on a file.
+ */
+export function verifySkillIssues(issues, digests, { skillsDir = "skills", knownSkills = null, minSessions = MIN_SESSIONS } = {}) {
+  const index = turnIndex(digests);
+  const usage = usageBySkill(digests);
+  const kept = [];
+  const dropped = [];
+  for (const issue of issues) {
+    const name = typeof issue.skill === "string" ? issue.skill.trim() : "";
+    const refs = [...new Set((issue.refs ?? []).map(String))];
+    const checks = (issue.evidence ?? []).map((item) => {
+      const turn = index.get(String(item?.ref ?? ""));
+      if (!turn) return { ref: String(item?.ref ?? ""), ok: false, why: "not a turn in this window" };
+      const quote = normalize(item?.quote);
+      const ok = quote.length >= 12 && normalize(`${turn.user} ${turn.before}`).includes(quote);
+      return { ref: String(item.ref), ok, why: ok ? null : "the quote is not in that turn" };
+    });
+    const badQuotes = checks.filter((check) => !check.ok);
+    const unknown = refs.filter((ref) => !index.has(ref));
+    const bucket = name ? usage.get(name) ?? null : null;
+    const sessions = [...new Set(refs.filter((ref) => index.has(ref)).map((ref) => index.get(ref).session))];
+    const offSkill = bucket ? sessions.filter((session) => !bucket.sessions.has(session)) : [];
+    const file = name ? skillFile(name, skillsDir) : null;
+    const body = file && fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+    const line = String(issue.line ?? "").trim();
+    if (!name) dropped.push({ issue: issue.issue, why: "no skill named" });
+    else if (knownSkills && !knownSkills.includes(name)) dropped.push({ issue: issue.issue, why: `unknown skill "${name}"` });
+    else if (!bucket) dropped.push({ issue: issue.issue, why: `${name} was not used in this window` });
+    else if (unknown.length) dropped.push({ issue: issue.issue, why: `ref not in the window: ${unknown.slice(0, 3).join(", ")}` });
+    else if (offSkill.length) dropped.push({ issue: issue.issue, why: `${offSkill.length} ref(s) come from a session where ${name} was not in play: ${offSkill.slice(0, 3).join(", ")}` });
+    else if (badQuotes.length) dropped.push({ issue: issue.issue, why: `${badQuotes.length} quote(s) unverified: ${badQuotes.map((check) => check.ref).join(", ")}` });
+    else if (sessions.length < minSessions) dropped.push({ issue: issue.issue, why: `only ${sessions.length} session(s) shows it` });
+    else if (issue.new !== true && (!line || !normalize(body).includes(normalize(line)))) {
+      dropped.push({ issue: issue.issue, why: line ? `the quoted line is not in ${file}` : "no SKILL.md line quoted" });
+    } else if (!String(issue.instead ?? "").trim()) dropped.push({ issue: issue.issue, why: "no instruction proposed in its place" });
+    else kept.push({ ...issue, skill: name, line, refs, sessions, checks });
+  }
+  return { kept, dropped };
+}
+
 /** A kept issue in the shape the report's findings use, so the two mix without a second renderer. */
 export function toFinding(issue, { id, improvement = null } = {}) {
   return {
@@ -204,6 +335,7 @@ export function toFinding(issue, { id, improvement = null } = {}) {
     count: issue.evidence?.length ?? issue.sessions.length,
     summary: String(issue.issue).slice(0, 300),
     change: String(issue.instead ?? "").slice(0, 300),
+    ...(issue.line !== undefined || issue.new !== undefined ? { skill_line: String(issue.line ?? ""), skill_new: issue.new === true } : {}),
     sessions: issue.sessions,
     evidence: (issue.evidence ?? []).map((item) => ({ session: String(item.ref).split("#")[0], message: Number(String(item.ref).split("#")[1]), excerpt: String(item.quote).slice(0, 300) })),
     detector: "model",
@@ -223,6 +355,7 @@ function runBuild(args) {
   const ctx = hostContext({ hours });
   const listed = listHostSessions({ only: selectedHosts(args.host ?? null), ctx });
   const skills = skillNamesOnDisk(typeof args["skills-dir"] === "string" ? args["skills-dir"] : null);
+  const skillsDir = skills.dir ?? "skills";
   const digests = [];
   const warnings = [];
   for (const session of listed.sessions.slice(0, max)) {
@@ -238,13 +371,19 @@ function runBuild(args) {
   fs.mkdirSync(dir, { recursive: true });
   const base = path.join(dir, "E00-issues-prompt");
   const files = chunk(digests).map((group, i) => writeIfRoom(base, i + 1, buildPrompt(group)));
+  const skillFiles = skillPrompts(digests, { skillsDir }).map((entry) => {
+    const file = path.join(dir, `E00-skill-${entry.skill}-prompt.md`);
+    fs.writeFileSync(file, entry.prompt);
+    return { skill: entry.skill, sessions: entry.sessions, file };
+  });
   const index = path.join(dir, "E00-issues-index.json");
   fs.writeFileSync(
     index,
-    `${JSON.stringify({ schema: SCHEMA, generatedAt: new Date().toISOString(), hours, sessions: digests.length, prompts: files, digests }, null, 2)}\n`
+    `${JSON.stringify({ schema: SCHEMA, generatedAt: new Date().toISOString(), hours, sessions: digests.length, prompts: files, skillPrompts: skillFiles, digests }, null, 2)}\n`
   );
   return {
     prompts: files,
+    skillPrompts: skillFiles,
     index,
     sessions: digests.length,
     turns: digests.reduce((sum, entry) => sum + entry.turns.length, 0),
@@ -259,10 +398,13 @@ function runRead(args) {
   const { digests, prompts } = JSON.parse(fs.readFileSync(indexFile, "utf8"));
   const skills = skillNamesOnDisk(typeof args["skills-dir"] === "string" ? args["skills-dir"] : null);
   const { issues, unreadable } = parseIssues(fs.readFileSync(args.read, "utf8"));
-  const { kept, dropped } = verifyIssues(issues, digests, { knownSkills: skills.names });
-  const findings = kept.map((issue, i) => toFinding(issue, { id: `I${i + 1}` }));
-  const out = path.join(dir, "E00-issues.json");
-  fs.writeFileSync(out, `${JSON.stringify({ schema: SCHEMA, source: args.read, prompts, findings, dropped, unreadable }, null, 2)}\n`);
+  const bySkill = args["by-skill"] === true;
+  const { kept, dropped } = bySkill
+    ? verifySkillIssues(issues, digests, { skillsDir: skills.dir ?? "skills", knownSkills: skills.names })
+    : verifyIssues(issues, digests, { knownSkills: skills.names });
+  const findings = kept.map((issue, i) => toFinding(issue, { id: `${bySkill ? "S" : "I"}${i + 1}` }));
+  const out = path.join(dir, bySkill ? "E00-skill-issues.json" : "E00-issues.json");
+  fs.writeFileSync(out, `${JSON.stringify({ schema: SCHEMA, source: args.read, mode: bySkill ? "skill" : "session", prompts, findings, dropped, unreadable }, null, 2)}\n`);
   return {
     out,
     claims: issues.length,
@@ -280,11 +422,12 @@ function usage() {
     "",
     "Usage:",
     "  node hunt-issues.mjs --build [--hours 240] [--max 60] [--out <run dir>]",
-    "  node hunt-issues.mjs --read <answers.md> [--dir <run dir>] [--index <file>]",
+    "  node hunt-issues.mjs --read <answers.md> [--dir <run dir>] [--index <file>] [--by-skill]",
     "",
     "Flags:",
-    "  --build          Walk the window's sessions and write the prompt(s) + the index",
-    "  --read <file>    Verify a model's answers against the index and write E00-issues.json",
+    "  --build          Walk the window's sessions and write the prompt(s), the per-skill prompts and the index",
+    "  --read <file>    Verify a model's answers against the index and write E00-issues.json (E00-skill-issues.json with --by-skill)",
+    "  --by-skill       Read answers to the per-skill prompts: the SKILL.md pass, where a fix must quote the line it changes",
     "  --hours <n>      Window to assemble (default: 240)",
     "  --max <n>        Sessions to read (default: 60)",
     "  --dir <dir>      Run folder holding the index (default: .)",
@@ -295,7 +438,7 @@ function usage() {
 }
 
 function main() {
-  const args = parseArgs(process.argv.slice(2), { booleans: ["build", "help"], known: ["build", "read", "dir", "index", "out", "hours", "max", "skills-dir", "help"] });
+  const args = parseArgs(process.argv.slice(2), { booleans: ["build", "help", "by-skill"], known: ["build", "read", "dir", "index", "out", "hours", "max", "skills-dir", "by-skill", "help"] });
   try {
     if (args.unknown.length) throw new Error(`Unknown argument "${args.unknown[0]}"`);
     if (args.help || (!args.build && typeof args.read !== "string")) return process.stdout.write(usage());

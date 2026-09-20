@@ -32,6 +32,20 @@ The highest-yield fixes, in order of impact: item list → table → fix per-row
 4. **Add states.** Every interactive element gets default, hover, focus, disabled, and every data region gets empty/loading/error.
 5. **Run the pre-flight checklist.** All items must pass.
 
+## Presenting Options
+
+When the ask is for several versions — "4 variants", "10 propositions", "propose alternatives" — the set
+is the deliverable, and N near-copies of one layout are one option with N names.
+
+- **Vary the presentation, not the content.** Keep the data, the task and the scope identical across the
+  set; change density, hierarchy, chart form, grouping, or where the eye lands first.
+- **Name what each one bets on**, in one line: "dense console, for scanning", "one big number per panel".
+- **Make them comparable**: same data loaded, same viewport, side by side or one view with a switch.
+- **Cut the marginal ones.** Three defensible options beat ten that differ by a border radius.
+
+**Check:** list what differs between any two options. If the answer is a colour, a border, or nothing, the
+set is not finished.
+
 ---
 
 ## Principle 1 — One loud thing
@@ -151,6 +165,12 @@ Run every item. The screen is not done until all pass.
 - [ ] Technical IDs truncated and de-emphasized?
 - [ ] Status shown as text badge, color never the only signal?
 - [ ] Pagination shows total count and current range?
+
+**Rendered, not reasoned about.** Two items are checked in the running app, not on paper, and the reply
+says which screens were loaded and at which sizes:
+
+- [ ] The changed screen loaded at the widths the user works at, with every state reached once?
+- [ ] Every visual claim in the reply was seen on screen, not inferred from the diff or a typecheck?
 
 ## Component Patterns & Anti-Patterns
 See `references/rules.md` for the component-pattern pointers and the Anti-Patterns list (any of which fails the run).

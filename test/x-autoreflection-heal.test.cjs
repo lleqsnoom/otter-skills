@@ -167,9 +167,33 @@ describe("x-autoreflection heal — quality fixes and the separation of powers",
   it("carries a watch field for a quality finding, and asks for it before the plan passes", () => {
     const minted = mintPlan({ findings: [{ id: "F1", kind: "user-redo", class: "missing-expectation", skill: "x-research", change: "c", evidence: [] }] });
     assert.equal(minted.items[0].watch, "");
+    assert.equal(minted.items[0].skill_md, "");
+    assert.equal(minted.items[0].global, false);
     const item = { ...minted.items[0], target: "skills/x-research/SKILL.md" };
     assert.ok(rules([item]).includes("item-watch"), "a quality item says which rate should move");
     assert.equal(rules([{ ...item, watch: "x-research user-redo per session, deepseek-v4-flash, 14 days" }]).includes("item-watch"), false);
+  });
+
+  it("prefills the SKILL.md delta a per-skill finding carries", () => {
+    const mine = { id: "S1", class: "missing-expectation", skill: "x-ui", summary: "s", change: "write it this way", skill_line: "the old line", skill_new: false, evidence: [] };
+    const plan = mintPlan({ findings: [mine] });
+    assert.equal(plan.items[0].target, "skills/x-ui/SKILL.md");
+    assert.equal(plan.items[0].find, "the old line");
+    assert.equal(plan.items[0].replace, "write it this way");
+    const added = mintPlan({ findings: [{ ...mine, id: "S2", skill_line: "", skill_new: true, change: "a new section" }] });
+    assert.equal(added.items[0].find, "", "the file has no line for it, so the edit is an addition");
+    assert.equal(added.items[0].replace, "a new section");
+    const theme = mintPlan({ findings: [{ id: "I1", class: "missing-expectation", skill: "x-ui", summary: "s", change: "c", evidence: [] }] });
+    assert.equal(theme.items[0].find, "", "a theme-level finding names no line, so nothing is prefilled");
+  });
+
+  it("refuses a quality fix that never names the SKILL.md it changes", () => {
+    const only = { id: "F1", class: "missing-expectation", target: "skills/x-research/evals/expectations.json", issue: "i", improvement: "r", watch: "w", auto: false };
+    assert.ok(rules([only]).includes("item-skill-md"), "an expectation alone leaves the instruction that failed unchanged");
+    assert.equal(rules([{ ...only, skill_md: "skills/x-research/SKILL.md" }]).includes("item-skill-md"), false, "the SKILL.md line rides along in skill_md");
+    assert.equal(rules([{ ...only, target: "skills/x-research/SKILL.md" }]).includes("item-skill-md"), false, "or the target is the SKILL.md itself");
+    assert.equal(rules([{ ...only, target: "skills/x-research/references/rules.md" }]).includes("item-skill-md"), false, "a reference file is the skill's own document");
+    assert.equal(rules([{ ...only, target: "/home/me/.config/crush/CRUSH.md", global: true }]).includes("item-skill-md"), false, "a finding no skill owns names the preferences file");
   });
 
   it("refuses an item whose check runs the file the item edits", () => {

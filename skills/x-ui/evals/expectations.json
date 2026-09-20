@@ -1,0 +1,8 @@
+{
+  "skill": "x-ui",
+  "expected_behavior": [
+    "A UI change is not reported as done until the changed screen has been rendered in the running app at the sizes I use, and the reply says what was rendered.",
+    "When I ask for several options or variants, each one is a genuinely different presentation and the reply says what differs between them."
+  ],
+  "source": ["R05/I3", "R05/I6"]
+}

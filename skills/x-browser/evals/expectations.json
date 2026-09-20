@@ -1,0 +1,7 @@
+{
+  "skill": "x-browser",
+  "expected_behavior": [
+    "If a dev server is already answering for this project, reuse it instead of starting a second one, and never wait without a bound on a server I started."
+  ],
+  "source": ["R05/I4"]
+}

@@ -107,7 +107,8 @@ Apply fixes manually based on review findings. Track progress by updating checkb
 
 A plan without a `[Comments]` section is **incomplete, not clean**: the comments pass is step 3 of every
 review, including a re-run, and its findings belong under that heading (say so plainly when it found
-nothing).
+nothing). On a re-run, carry each earlier finding forward as resolved or still open, and list pre-existing
+findings apart from the ones this branch introduced, so the counts describe the change under review.
 
 ## Next Steps — Which Skill to Use
 

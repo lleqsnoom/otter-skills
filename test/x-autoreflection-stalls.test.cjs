@@ -55,6 +55,7 @@ describe("x-autoreflection stall signals", async () => {
     "Youre stuck in a loop. Do what i said",
     "YOU ARE STUCK IN A LOOP",
     "when you run app to check something set some short execution time, you can always make it longer.",
+    "your build is hung again, kill it and try once more",
   ];
 
   for (const words of complaints) {
@@ -72,6 +73,8 @@ describe("x-autoreflection stall signals", async () => {
     "search online for possible linux freezes (total system freeze)",
     "the ratchet pattern freezes current violations so the count can only go down",
     "fix the issue with ERROR Request timed out - the model stopped sending data for 1m0s",
+    "I think you do not get my need - i do not need to detect this stalls freezes, i want to detect any problematic issue with any skill",
+    "Ok now i have an idea with autoreflection skill. It scanned all conversations but ity did not found recurring issues - like for example i ask llm very ofter to look that it has frozen with some script executin, i asked it to add some timeout etc.",
   ];
 
   for (const words of notComplaints) {

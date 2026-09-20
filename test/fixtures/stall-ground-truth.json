@@ -84,6 +84,12 @@
       "id": "5fe2b092-3d07-4371-841e-f1cd75bd4418",
       "host": "claude",
       "note": "an x-research session: no wait, no complaint"
+    },
+    {
+      "id": "3dcff3cd75ba442e",
+      "host": "crush",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-pm",
+      "note": "the user naming the phenomenon while asking for it to be detected: \"i asked it to add some timeout\" and \"i do not need to detect this stalls freezes\" — the session has no wait either"
     }
   ]
 }

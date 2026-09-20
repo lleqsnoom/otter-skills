@@ -1,0 +1,7 @@
+{
+  "skill": "x-commit",
+  "expected_behavior": [
+    "A commit is made, not announced: the agent runs the commit itself and reports the result, instead of printing a git command for me to paste or waiting for me to say go."
+  ],
+  "source": ["R04/S3"]
+}

@@ -17,12 +17,16 @@ export const HANDOFF_RE =
 
 /**
  * A user saying the run stalled: the agent waited on something that never finished, or is asked to
- * bound the wait it just left open. Every shape names the agent's own run — the second person, a loop
- * the run is in, or a limit being asked for — so a question about someone else's hung process
- * ("it is stuck at what", "stuck at 11%") is not one, and neither is a topic ("linux system freezes").
+ * bound the wait it just left open. Every shape names the agent's own run — the second person and the
+ * state it is in, a loop the run is in, or a limit being asked for — so a question about someone
+ * else's hung process ("it is stuck at what", "stuck at 11%") is not one, neither is a topic ("linux
+ * system freezes"), and neither is the user naming the phenomenon while asking for it to be detected
+ * ("i do not need to detect this stalls freezes") — the state word has to follow a copula, not a noun.
+ * A bound reported from an earlier session is not a request either: "i asked it to add some timeout"
+ * is the user describing what they once had to say, not the agent's open wait.
  */
 export const STUCK_RE =
-  /\b(?:you|youre|you're|your|u)\b[^.!?\n]{0,160}\b(?:stuck|frozen|froze|freezes|hung|hanging)\b|\b(?:stuck|caught|trapped)\s+(?:in\s+)?(?:an?\s+)?(?:infinite\s+)?loop\b|\b(?:no time limit|no timeout|without a timeout|add (?:some |a )?timeout|set (?:some |a )?(?:short|shorter|reasonable) (?:execution time|timeout|expiry|limit)|never stops running|keeps? running (?:forever|for hours|all night))\b/i;
+  /\b(?:youre|you're)\s+(?:stuck|frozen|froze|freezes|hung|hanging)\b|\b(?:you|your|u)\b[^.!?\n]{0,160}\b(?:are|is|will|been|being|got|get|gets|keeps|kept|stays|stay|seems|looks|to|be)\s+(?:\w+\s+){0,2}(?:stuck|frozen|froze|freezes|hung|hanging)\b|\b(?:stuck|caught|trapped)\s+(?:in\s+)?(?:an?\s+)?(?:infinite\s+)?loop\b|(?<!\b(?:i|we)\s+(?:asked|told|had|begged)\s+(?:it|you|them|him|her)\s+to\s)\b(?:no time limit|no timeout|without a timeout|add (?:some |a )?timeout|set (?:some |a )?(?:short|shorter|reasonable) (?:execution time|timeout|expiry|limit)|never stops running|keeps? running (?:forever|for hours|all night))\b/i;
 
 /** A host's own refusal notice opens the tool result; the same sentence quoted inside other output is not one. */
 const REJECTED_RE = /^(The user doesn't want to proceed with this tool use|User (denied|rejected)|Permission denied by (the )?user)/i;

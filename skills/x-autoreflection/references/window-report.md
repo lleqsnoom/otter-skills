@@ -112,10 +112,17 @@ identity everywhere after this: the panel, `--apply`, the ledger.
   user expected, and each names its `watch`: the skill, the model, the anchor rate that should fall, and
   the window (`x-research user-redo per session on deepseek-v4-flash, next 14 days`). The next digests
   read it back, so a fix that moved nothing is visible and can be reverted.
-- **A `missing-expectation` fix is one line in `skills/<x>/evals/expectations.json`**, in the user's
-  words, with the finding in `source` (`{"skill", "expected_behavior": [...], "source": ["F2"]}`, at most
-  seven lines). The first accepted finding creates the file; `x-skill-lint` checks its shape. The judge
-  reads it next to `SKILL.md`, so an expectation the user once had to state is asked of every run.
+- **A quality fix lands in an instruction, and the expectation is that instruction's copy.** The
+  `SKILL.md` (or the reference file it belongs in) gets the line that should have prevented the finding
+  — named in `skill_md` when the item's `target` is the expectation file, or as the target itself.
+  Alongside it, `skills/<x>/evals/expectations.json` carries the same behaviour in the user's words,
+  with the finding in `source` (`{"skill", "expected_behavior": [...], "source": ["F2"]}`, at most seven
+  lines). The first accepted finding creates the file; `x-skill-lint` checks its shape. The judge reads
+  it next to `SKILL.md`, so an expectation the user once had to state is asked of every run — but an
+  expectation alone leaves the instruction that failed unchanged, which is how the same finding comes
+  back. `check-heal.mjs` refuses that plan (`item-skill-md`). When the finding has no owning skill, the
+  item sets `global: true` and names the user's own preferences file as its target: that is the only
+  instruction such a finding has, and the panel says so.
 - **Deltas, not rewrites.** `find` is one line or a short paragraph, and `replace` changes only what the
   finding needs. "Rewrite this section to be clearer" loses the detail the section was carrying —
   rewriting prompts wholesale is how a skill forgets the one line that mattered.
@@ -129,5 +136,6 @@ identity everywhere after this: the panel, `--apply`, the ledger.
 
 `check-heal.mjs` exits **0** clean, **1** when an item lacks a target, an issue, a rate, or — for an
 `auto` item — a find or a check; when an item names a class outside the auto whitelist; when a quality
-item has no `watch`; when an item's check runs the file the item edits; when a detector or check is
-`auto` or shares a plan with a skill it measures; **2** on a usage error.
+item has no `watch`, or names no `SKILL.md` line (in `target` or `skill_md`) and is not `global`; when an
+item's check runs the file the item edits; when a detector or check is `auto` or shares a plan with a
+skill it measures; **2** on a usage error.
