@@ -15,10 +15,10 @@ Generate hypotheses, test them with platform tools and git history, and eliminat
 
 These files must exist from prior steps in the debugging pipeline:
 
-- `<run folder>/E<nn>-triage.md` — produced by `x-triage`. Contains Platform + Bug Type + Symptoms + Evidence fields.
-- `<run folder>/E<nn>-repro-<platform>.js` — produced by `x-reproduce` or `x-debug`. The reproduction script that triggers the bug locally.
+- `<run folder>/E<nn>-triage.md` — the triage brief: Platform + Bug Type + Symptoms + Evidence fields.
+- `<run folder>/E<nn>-repro-<platform>.js` — produced by `x-debug`. The reproduction script that triggers the bug locally.
 
-If either file is missing, stop and offer to run them with a `confirm` panel (yes/no). Do not proceed without them.
+If either file is missing, stop and offer to produce it with a `confirm` panel (yes/no). Do not proceed without them.
 
 ## Workflow (5 Steps)
 
@@ -55,7 +55,7 @@ If the repo has no commits (fresh init), note this limitation and proceed with o
 
 ### 3. Route Investigation Tools by Platform
 
-Read the triage brief's **Platform** field and use corresponding tools from x-triage's routing table (`<x-triage skill root>/scripts/route.js` — `~/.agents/skills/x-triage/scripts/route.js` for a global install, `.agents/skills/x-triage/scripts/route.js` for a local one):
+Read the triage brief's **Platform** field and use the corresponding tools:
 
 | Platform | Tools (from triage brief) | Concrete Actions |
 |----------|---------------------------|-----------------|
