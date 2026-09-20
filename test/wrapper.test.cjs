@@ -32,6 +32,7 @@ function runWrapper(args, { cwd, stateHome, root = ROOT, extraEnv = {} }) {
     cwd,
     env: { ...process.env, XDG_STATE_HOME: stateHome, OTTER_PM_ROOT: root, ...extraEnv },
     stdio: ['ignore', 'pipe', 'pipe'],
+    detached: true,
   });
 }
 
@@ -81,6 +82,15 @@ function childArgv(launcherPid) {
   }
 }
 
+/** Stop the launcher *and* the server it started: they share a process group, and only the group is complete. */
+function stop(child) {
+  try {
+    process.kill(-child.pid, 'SIGTERM');
+  } catch {
+    child.kill('SIGTERM');
+  }
+}
+
 test('the wrapper runs the launcher from the checkout it is pointed at, from any directory', async () => {
   const stateHome = tempDir('otter-pm-state-');
   const elsewhere = tempDir('otter-pm-cwd-');
@@ -107,7 +117,7 @@ test('the wrapper serves with no arguments, the way the unit calls it', async (t
   const stateHome = tempDir('otter-pm-state-');
   const port = await freePort();
   const child = runWrapper(['--port', String(port)], { cwd: tempDir('otter-pm-cwd-'), stateHome });
-  t.after(() => child.kill('SIGTERM'));
+  t.after(() => stop(child));
 
   const url = await waitFor(() => publishedUrl(stateHome));
   await waitFor(async () => {
@@ -131,7 +141,7 @@ test('the server is started with the checkout config named explicitly', async (t
   const stateHome = tempDir('otter-pm-state-');
   const port = await freePort();
   const child = runWrapper(['--port', String(port)], { cwd: tempDir('otter-pm-cwd-'), stateHome });
-  t.after(() => child.kill('SIGTERM'));
+  t.after(() => stop(child));
   await waitFor(() => publishedUrl(stateHome));
 
   const config = path.join(ROOT, 'otter-pm.config.json');
@@ -139,4 +149,50 @@ test('the server is started with the checkout config named explicitly', async (t
 
   assert.ok(argv.includes('--config'), `the server is told which config to use (got ${argv.join(' ')})`);
   assert.ok(argv.includes(config), 'and it is the checkout’s own config, not whatever cwd held');
+});
+
+test('the pointer file decides which checkout the wrapper runs', async () => {
+  const stateHome = tempDir('otter-pm-state-');
+  const elsewhere = tempDir('otter-pm-pointer-');
+  fs.mkdirSync(path.join(elsewhere, 'scripts'), { recursive: true });
+  fs.writeFileSync(
+    path.join(elsewhere, 'scripts', 'launch.mjs'),
+    "process.stdout.write('from the pointer\\n');\n",
+  );
+  fs.mkdirSync(path.join(stateHome, 'otter-pm'), { recursive: true });
+  fs.writeFileSync(path.join(stateHome, 'otter-pm', 'root'), `${elsewhere}\n`);
+
+  const ran = await collect(
+    spawn('bash', [WRAPPER, 'port'], {
+      cwd: tempDir('otter-pm-cwd-'),
+      env: { ...process.env, XDG_STATE_HOME: stateHome },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }),
+  );
+
+  assert.equal(ran.code, 0, ran.complaint);
+  assert.equal(ran.out.trim(), 'from the pointer', 'the pointer wins over the built-in default');
+});
+
+test('an explicit OTTER_PM_ROOT still wins over the pointer', async () => {
+  const stateHome = tempDir('otter-pm-state-');
+  const pointed = tempDir('otter-pm-pointer-');
+  fs.mkdirSync(path.join(pointed, 'scripts'), { recursive: true });
+  fs.writeFileSync(path.join(pointed, 'scripts', 'launch.mjs'), "process.stdout.write('from the pointer\\n');\n");
+  fs.mkdirSync(path.join(stateHome, 'otter-pm'), { recursive: true });
+  fs.writeFileSync(path.join(stateHome, 'otter-pm', 'root'), `${pointed}\n`);
+
+  const asked = tempDir('otter-pm-asked-');
+  fs.mkdirSync(path.join(asked, 'scripts'), { recursive: true });
+  fs.writeFileSync(path.join(asked, 'scripts', 'launch.mjs'), "process.stdout.write('from the ask\\n');\n");
+
+  const ran = await collect(
+    spawn('bash', [WRAPPER, 'port'], {
+      cwd: tempDir('otter-pm-cwd-'),
+      env: { ...process.env, XDG_STATE_HOME: stateHome, OTTER_PM_ROOT: asked },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }),
+  );
+
+  assert.equal(ran.out.trim(), 'from the ask', 'an explicit root is not overridden by what the machine was pointed at');
 });

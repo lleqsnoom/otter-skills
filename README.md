@@ -28,6 +28,19 @@ Installing that service, the two desktop entries and the wrapper is [`docs/insta
 the right path for a machine that is going to keep the board. The three failure codes `open` can exit with, and what
 each means, are in that guide's troubleshooting section.
 
+**Run the version in this directory.** For a branch or a worktree you are testing, without disturbing the
+installed one:
+
+```bash
+otter-pm-here use     # make this checkout the one the machine runs: rebuild if stale, then restart the service
+otter-pm-here serve   # or just serve it here, in the foreground
+```
+
+`use` writes the pointer `~/.local/state/otter-pm/root`, and `oc-otter-pm` reads it — so the service, the app
+launcher and the command all follow it, while an explicit `OTTER_PM_ROOT` still wins. `otter-pm-here` also
+rebuilds when the sources are newer than `dist/`, which is the state a `git switch` leaves behind and the one
+`serve` alone would serve stale.
+
 **Develop it.**
 
 ```bash

@@ -4,9 +4,18 @@
 # The unit and the desktop entries call this with no arguments, and a supervisor chooses their working directory —
 # which is why nothing here may depend on it. A moved checkout has to fail loudly: a service that starts and serves
 # nothing is worse than one that refuses and says why.
+#
+# Which checkout: `OTTER_PM_ROOT` first, then the pointer `otter-pm-here use` writes, then the built-in default.
+# The pointer is what lets a machine be switched to another branch or worktree without editing the unit.
 set -euo pipefail
 
-OTTER_PM_ROOT="${OTTER_PM_ROOT:-$HOME/orca/workspaces/otter-pm/feat-app-version}"
+POINTER="${XDG_STATE_HOME:-$HOME/.local/state}/otter-pm/root"
+DEFAULT="$HOME/orca/workspaces/otter-pm/feat-app-version"
+
+if [ -z "${OTTER_PM_ROOT:-}" ] && [ -f "$POINTER" ]; then
+  OTTER_PM_ROOT="$(head -n 1 "$POINTER")"
+fi
+OTTER_PM_ROOT="${OTTER_PM_ROOT:-$DEFAULT}"
 LAUNCH="$OTTER_PM_ROOT/scripts/launch.mjs"
 
 if [ ! -f "$LAUNCH" ]; then
