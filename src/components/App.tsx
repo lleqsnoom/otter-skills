@@ -4,7 +4,7 @@ import { deleteItem, fetchSnapshot, moveItem, refreshSnapshot } from '../lib/api
 import { BoardProvider } from '../lib/board-context';
 import type { WorkItem } from '../lib/items';
 import { current, href, linkProps, navigate, routeCategory, routeFilePath, routeGroupPath, routeProject } from '../lib/router';
-import type { BoardColumn, BoardDeletions, Snapshot } from '../lib/types';
+import type { BoardColumn, BoardDeletions, BoardOrder, Snapshot } from '../lib/types';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { CloseIcon, SearchIcon } from './icons';
@@ -71,15 +71,15 @@ export default function App() {
   });
 
   /**
-   * Filing a card. The column is the reader's, so it is written beside the app rather than into the repository —
-   * and the only thing that changes in the snapshot is the board, so that is the only thing replaced. A drag must
-   * not cost a re-scan of nine repositories.
+   * Filing a card, and sorting the lane it was filed into. Both are the reader's, so both are written beside the app
+   * rather than into the repository — and the only things that change in the snapshot are the moves and the orders,
+   * so those are the only things replaced. A drag must not cost a re-scan of nine repositories.
    */
-  const move = async (item: WorkItem, column: BoardColumn | null) => {
+  const move = async (item: WorkItem, column: BoardColumn | null, order: BoardOrder | null) => {
     try {
-      const answer = await moveItem(item.projectId, item.relPath, column);
+      const answer = await moveItem(item.projectId, item.relPath, column, order);
       if (!answer.ok) return;
-      mutate((current) => (current ? { ...current, board: answer.board } : current));
+      mutate((current) => (current ? { ...current, board: answer.board, orders: answer.orders } : current));
     } catch {
       /* the board on screen is still the last good one */
     }
@@ -262,7 +262,7 @@ function Screen(props: {
   error: string;
   query: string;
   deletions: BoardDeletions;
-  onMove: (item: WorkItem, column: BoardColumn | null) => void;
+  onMove: (item: WorkItem, column: BoardColumn | null, order: BoardOrder | null) => void;
   /** The write itself, for a page that knows its project but holds only a path inside it. */
   onDeleteAt: (projectId: string, relPath: string, deleted: boolean) => void;
   onDelete: (item: WorkItem, deleted: boolean) => void;
@@ -323,6 +323,7 @@ function Screen(props: {
                       project={active()}
                       category={routeCategory()}
                       board={snap().board}
+                      orders={snap().orders}
                       deletions={props.deletions}
                       onMove={props.onMove}
                       onDelete={props.onDelete}

@@ -1,6 +1,6 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
 
-import { liveItems } from '../lib/board.mjs';
+import { landingBoundary, leftLane, liveItems, orderKey, orderedLane, placeAtPointer } from '../lib/board.mjs';
 import {
   COLUMNS,
   COLUMN_LABELS,
@@ -13,9 +13,19 @@ import {
   type WorkItem,
 } from '../lib/items';
 import { linkProps } from '../lib/router';
-import type { BoardColumn, BoardDeletions, BoardMoves } from '../lib/types';
+import type { BoardColumn, BoardDeletions, BoardMoves, BoardOrder, BoardOrders } from '../lib/types';
 import { Button } from '../ui/Button';
+import { cn } from '../ui/cn';
 import { Card, CardHead, Chip, ProgressBar, StatusBadge } from './Card';
+
+/**
+ * The place a card would land: a dashed slot the size of the card in hand. It is `aria-hidden`, because where a card
+ * goes is a question the keyboard already answers with `Alt + ←/→`, and it is a slot rather than a card because
+ * nothing has been decided until the hand lets go.
+ */
+function DropSlot(props: { height: number }) {
+  return <div class="drop-slot" style={{ height: `${props.height}px` }} aria-hidden="true" />;
+}
 
 /** Where an item's own page is: a collection opens as a group, a document as a file. */
 export function routeFor(item: WorkItem) {
@@ -30,7 +40,7 @@ export function WorkCard(props: {
   column?: BoardColumn;
   moved?: boolean;
   dragging?: boolean;
-  onDragStart?: (item: WorkItem) => void;
+  onDragStart?: (item: WorkItem, height: number) => void;
   onDragEnd?: () => void;
   onKeyMove?: (item: WorkItem, direction: -1 | 1) => void;
 }) {
@@ -48,15 +58,16 @@ export function WorkCard(props: {
       {...linkProps(routeFor(props.item))}
       label={`${props.item.categoryLabel}: ${props.item.title}`}
       title={
-        props.onKeyMove ? 'Drag to another column, or Alt + ← / → to file it' : undefined
+        props.onKeyMove ? 'Drag to a column and a place in it, or Alt + ← / → to file it' : undefined
       }
-      class={props.dragging ? 'opacity-50' : undefined}
+      class={cn(props.dragging && 'opacity-40 shadow-none rotate-[-1.2deg]')}
       draggable={Boolean(props.onDragStart)}
       onDragStart={(event) => {
         // Firefox will not start a drag without data on the transfer, even though the board keeps the item itself.
         event.dataTransfer?.setData('text/plain', props.item.key);
         if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-        props.onDragStart?.(props.item);
+        // How tall the card is, so the slot that opens for it is the shape it will take rather than a guess at it.
+        props.onDragStart?.(props.item, (event.currentTarget as HTMLElement).offsetHeight);
       }}
       onDragEnd={() => props.onDragEnd?.()}
       onKeyDown={onKeyDown}
@@ -119,10 +130,11 @@ export function WorkCard(props: {
 const LANE_PAGE = 12;
 
 /**
- * One lane: its heading, the cards it holds, and the drop target for the whole column.
+ * One lane: its heading, the cards it holds in the order the reader left them, and the place a drop would land.
  *
- * It owns no state of its own — what is being dragged and which lane the pointer is over belong to the board,
- * because they are facts about the drag rather than about a lane.
+ * It owns no state of its own — what is being dragged, which lane the pointer is over, and where in that lane the
+ * card would land belong to the board, because they are facts about the drag rather than about a lane. What it does
+ * own is the two readings a lane alone can take: where in itself the pointer is, and whether a leave is leaving.
  */
 function Lane(props: {
   column: BoardColumn;
@@ -131,43 +143,62 @@ function Lane(props: {
   window: ClosedWindow;
   board: BoardMoves;
   showProject?: boolean;
-  dragging: WorkItem | null;
-  over: BoardColumn | null;
+  carried: { item: WorkItem; height: number } | null;
+  over: { column: BoardColumn; index: number } | null;
   expanded: boolean;
-  onDragOver: (column: BoardColumn) => void;
+  onDragOver: (column: BoardColumn, index: number) => void;
   onDragLeave: (column: BoardColumn) => void;
-  onDrop: (column: BoardColumn) => void;
-  onDragStart?: (item: WorkItem) => void;
+  onDrop: (column: BoardColumn, index: number) => void;
+  onDragStart?: (item: WorkItem, height: number) => void;
   onDragEnd: () => void;
   onKeyMove?: (item: WorkItem, direction: -1 | 1) => void;
   onToggleFold: (column: BoardColumn) => void;
 }) {
   // A lane being dragged over shows everything: the card you are carrying must be droppable where you mean it.
-  const shown = () => (props.expanded || props.dragging !== null ? props.items : props.items.slice(0, LANE_PAGE));
+  const shown = () => (props.expanded || props.carried !== null ? props.items : props.items.slice(0, LANE_PAGE));
   const folded = () => props.items.length - shown().length;
-  const highlighted = () => props.over === props.column && props.dragging !== null;
+  const highlighted = () => props.over?.column === props.column && props.carried !== null;
+  const carriedAt = () => (props.carried ? props.items.findIndex((item) => item.key === props.carried?.item.key) : -1);
+
+  const indexAtPointer = (event: DragEvent) => {
+    const cards = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('.card')].filter(
+      (_, rendered) => rendered !== carriedAt(),
+    );
+    return placeAtPointer(cards.map((card) => card.getBoundingClientRect()), event.clientY);
+  };
+
+  const leaveLane = (event: DragEvent) => {
+    const lane = event.currentTarget as HTMLElement;
+    const entering = event.relatedTarget as Node | null;
+    if (leftLane({ x: event.clientX, y: event.clientY }, lane.getBoundingClientRect(), entering !== null && lane.contains(entering))) {
+      props.onDragLeave(props.column);
+    }
+  };
+
+  // The slot opens on a boundary between two cards, and the card in hand is still drawn where it came from — the one
+  // thing the place measured above does not count, so `landingBoundary` is where the two meet.
+  const landing = () => (props.over?.column === props.column ? props.over.index : -1);
+  const slotBoundary = () => landingBoundary(landing(), carriedAt());
+  const slotAt = (rendered: number) => props.carried !== null && slotBoundary() === rendered;
 
   return (
     <section
-      class="grid content-start gap-2 rounded-lg border border-transparent p-1.5 transition-colors"
-      classList={{
-        'border-[color-mix(in_srgb,var(--primary)_35%,var(--border))]': highlighted(),
-        'bg-[color-mix(in_srgb,var(--muted)_45%,transparent)]': highlighted(),
-      }}
+      class="lane grid content-start gap-2 rounded-lg p-2 transition-[background-color,box-shadow] motion-reduce:transition-none"
+      data-over={highlighted() ? 'true' : undefined}
       aria-label={`${COLUMN_LABELS[props.column]} column`}
       onDragOver={(event) => {
-        if (!props.dragging) return;
+        if (!props.carried) return;
         // Only a lane that accepted the drop can receive it, so this has to be prevented on every drag-over.
         event.preventDefault();
-        props.onDragOver(props.column);
+        props.onDragOver(props.column, indexAtPointer(event));
       }}
-      onDragLeave={() => props.onDragLeave(props.column)}
+      onDragLeave={leaveLane}
       onDrop={(event) => {
         event.preventDefault();
-        props.onDrop(props.column);
+        props.onDrop(props.column, indexAtPointer(event));
       }}
     >
-      <header class="flex items-baseline gap-2 border-b border-border pb-1.5">
+      <header class="flex items-center gap-2">
         <h2 class={`m-0 border-0 p-0 text-chrome font-medium tracking-wide uppercase ${columnTone(props.column)}`}>
           {COLUMN_LABELS[props.column]}
         </h2>
@@ -176,23 +207,31 @@ function Lane(props: {
             {props.window.ms === null ? 'every finished item' : `finished in the last ${props.window.label}`}
           </span>
         </Show>
-        <span class="ml-auto text-chrome text-muted-foreground tabular-nums">{props.count}</span>
+        <Chip class="ml-auto shrink-0 bg-background/70 tabular-nums">{props.count}</Chip>
       </header>
 
       <div class="grid content-start gap-2">
         <For each={shown()}>
-          {(item) => (
-            <WorkCard
-              item={item}
-              showProject={props.showProject}
-              moved={isMoved(item, props.board)}
-              dragging={props.dragging?.key === item.key}
-              onDragStart={props.onDragStart}
-              onDragEnd={props.onDragEnd}
-              onKeyMove={props.onKeyMove}
-            />
+          {(item, rendered) => (
+            <>
+              <Show when={slotAt(rendered())}>
+                <DropSlot height={props.carried?.height ?? 0} />
+              </Show>
+              <WorkCard
+                item={item}
+                showProject={props.showProject}
+                moved={isMoved(item, props.board)}
+                dragging={props.carried?.item.key === item.key}
+                onDragStart={props.onDragStart}
+                onDragEnd={props.onDragEnd}
+                onKeyMove={props.onKeyMove}
+              />
+            </>
           )}
         </For>
+        <Show when={slotAt(shown().length)}>
+          <DropSlot height={props.carried?.height ?? 0} />
+        </Show>
         <Show when={folded() > 0}>
           <Button
             size="chip"
@@ -203,10 +242,8 @@ function Lane(props: {
             {props.expanded ? `fold the last ${folded()}` : `+ ${folded()} more`}
           </Button>
         </Show>
-        <Show when={!props.items.length}>
-          <p class="m-0 text-chrome text-muted-foreground italic">
-            {props.dragging ? 'drop here' : 'nothing here'}
-          </p>
+        <Show when={!props.items.length && !props.carried}>
+          <p class="m-0 text-chrome text-muted-foreground italic">nothing here</p>
         </Show>
       </div>
     </section>
@@ -214,26 +251,35 @@ function Lane(props: {
 }
 
 /**
- * The board: one lane per column, in the order `COLUMNS` gives.
+ * The board: one lane per column, in the order `COLUMNS` gives, and each lane in the order a reader left it.
  *
  * A card can be filed by dragging it onto a lane, or by `Alt + ←/→` while it has focus — the pointer gesture is the
  * quick one and the keyboard one is the reason the feature is usable at all. Both end in the same call: the column
  * is stored beside the app (`board.json`), never in the repository, because a document's own state is not a thing
  * this app can change.
  *
- * Dropping a card on the column its *data* already gives it clears the move rather than storing a preference that
- * says nothing — so a card can always be put back by dragging it where it would have been anyway.
+ * A drag also says *where* in the lane the card was let go, and that is why a drop hands over the whole lane rather
+ * than one place in it: a place is only meaningful against the cards around it, and the list is what keeps those
+ * cards where they were. Dropping a card on the column its *data* already gives it clears the move rather than
+ * storing a preference that says nothing — so a card can always be put back by dragging it where it would have been
+ * anyway — while the order it was dropped at still stands, because that was a decision the reader made either way.
+ *
+ * `Alt + ←/→` names a lane and no place in it, and hands over no order at all: a card filed that way is drawn where
+ * the lane already puts it — last among the cards somebody has sorted by hand — and the lane it arrives in keeps
+ * the order it had.
  */
 export function Board(props: {
+  projectId: string;
   items: WorkItem[];
   board: BoardMoves;
+  orders: BoardOrders;
   window: ClosedWindow;
   deletions: BoardDeletions;
   showProject?: boolean;
-  onMove?: (item: WorkItem, column: BoardColumn | null) => void;
+  onMove?: (item: WorkItem, column: BoardColumn, order: BoardOrder | null) => void;
 }) {
-  const [dragging, setDragging] = createSignal<WorkItem | null>(null);
-  const [over, setOver] = createSignal<BoardColumn | null>(null);
+  const [carried, setCarried] = createSignal<{ item: WorkItem; height: number } | null>(null);
+  const [over, setOver] = createSignal<{ column: BoardColumn; index: number } | null>(null);
   const [expanded, setExpanded] = createSignal<BoardColumn[]>([]);
 
   // A board draws what the reader has not archived, and its lane counts agree with it: a lane that says `12` while
@@ -241,25 +287,39 @@ export function Board(props: {
   const live = () => liveItems(props.items, props.deletions);
   const counts = createMemo(() => columnCounts(liveItems(props.items, props.deletions), props.board, props.window));
 
-  const itemsIn = (column: BoardColumn) => live().filter((item) => columnOf(item, props.board, props.window) === column);
+  const itemsIn = (column: BoardColumn) =>
+    orderedLane(
+      live().filter((item) => columnOf(item, props.board, props.window) === column),
+      orderKey(props.projectId, column),
+      props.orders,
+    );
 
   const toggleFold = (column: BoardColumn) => {
     setExpanded((current) => (current.includes(column) ? current.filter((entry) => entry !== column) : [...current, column]));
   };
 
-  const drop = (column: BoardColumn) => {
-    const item = dragging();
+  const drop = (column: BoardColumn, index: number) => {
+    const item = carried()?.item;
     setOver(null);
-    setDragging(null);
+    setCarried(null);
     if (!item || !props.onMove) return;
-    props.onMove(item, column);
+    // The lane as the drop leaves it: the card taken out of the list it was measured against, and put back where
+    // the slot was drawn. What is stored is the whole lane, because that is the only thing that says a place.
+    const paths = itemsIn(column)
+      .filter((entry) => entry.key !== item.key)
+      .map((entry) => entry.relPath);
+    paths.splice(Math.max(0, Math.min(index, paths.length)), 0, item.relPath);
+    props.onMove(item, column, { column, paths });
   };
 
   const keyMove = (item: WorkItem, direction: -1 | 1) => {
     if (!props.onMove) return;
     const current = columnOf(item, props.board, props.window);
     const next = COLUMNS[COLUMNS.indexOf(current) + direction];
-    if (next) props.onMove(item, next);
+    if (!next) return;
+    // No order travels with a keyboard move: a card filed that way lands at the end of the lane, and filing it must
+    // not freeze the order of a lane the reader never sorted by hand.
+    props.onMove(item, next, null);
   };
 
   return (
@@ -273,15 +333,15 @@ export function Board(props: {
             window={props.window}
             board={props.board}
             showProject={props.showProject}
-            dragging={dragging()}
+            carried={carried()}
             over={over()}
             expanded={expanded().includes(column)}
-            onDragOver={setOver}
-            onDragLeave={(leaving) => setOver((current) => (current === leaving ? null : current))}
+            onDragOver={(dragged: BoardColumn, index: number) => setOver({ column: dragged, index })}
+            onDragLeave={(leaving) => setOver((current) => (current?.column === leaving ? null : current))}
             onDrop={drop}
-            onDragStart={props.onMove ? setDragging : undefined}
+            onDragStart={props.onMove ? (item, height) => setCarried({ item, height }) : undefined}
             onDragEnd={() => {
-              setDragging(null);
+              setCarried(null);
               setOver(null);
             }}
             onKeyMove={props.onMove ? keyMove : undefined}

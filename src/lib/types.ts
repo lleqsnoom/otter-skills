@@ -104,6 +104,15 @@ export type BoardMoves = Record<string, { column: BoardColumn; at: string | null
 /** Items a reader archived, keyed `<projectId>:<relPath>`. */
 export type BoardDeletions = Record<string, { at: string | null }>;
 
+/** A lane in the order a reader left it, keyed `<projectId>:<column>`: the paths in it, top to bottom. */
+export type BoardOrders = Record<string, string[]>;
+
+/** One lane as a drop left it: the column the card was let go in, and every path in it, top to bottom. */
+export interface BoardOrder {
+  column: BoardColumn;
+  paths: string[];
+}
+
 export interface Snapshot {
   generatedAt: string;
   projects: Project[];
@@ -115,6 +124,8 @@ export interface Snapshot {
   orca: OrcaSource;
   /** The reader's own column moves, by `<projectId>:<relPath>`. */
   board: BoardMoves;
+  /** The order each lane was left in, by `<projectId>:<column>`. */
+  orders: BoardOrders;
   /** The items the reader archived: hidden from the board, still in the repository. */
   deletions: BoardDeletions;
   boardFile: string;

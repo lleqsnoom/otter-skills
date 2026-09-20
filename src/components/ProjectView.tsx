@@ -21,7 +21,7 @@ import {
   STATUS_LABELS,
 } from '../lib/items';
 import { linkProps, navigate } from '../lib/router';
-import type { BoardColumn, BoardDeletions, BoardMoves, Category, Project } from '../lib/types';
+import type { BoardColumn, BoardDeletions, BoardMoves, BoardOrder, BoardOrders, Category, Project } from '../lib/types';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { ToggleGroup } from '../ui/ToggleGroup';
@@ -160,11 +160,16 @@ export function ProjectView(props: {
   project: Project;
   category: string | null;
   board: BoardMoves;
+  orders: BoardOrders;
   deletions: BoardDeletions;
   onRefresh: () => void;
   refreshing: boolean;
-  /** Absent when the snapshot cannot be written to, which is when the board is read-only. */
-  onMove?: (item: WorkItem, column: BoardColumn | null) => void;
+  /**
+   * Absent when the snapshot cannot be written to, which is when the board is read-only. `column: null` is a card
+   * dropped back where its own data puts it, and `order` — the lane it was dropped into either way — is absent for a
+   * card filed with the keyboard, which names a lane and no place in it.
+   */
+  onMove?: (item: WorkItem, column: BoardColumn | null, order: BoardOrder | null) => void;
   /** Absent for the same reason: with nothing to write to, an item cannot be archived either. */
   onDelete?: (item: WorkItem, deleted: boolean) => void;
 }) {
@@ -212,10 +217,13 @@ export function ProjectView(props: {
   /**
    * A card dropped on the column its own data already gives it is not a move — the stored preference would say
    * nothing and would outlive a change to the document. `null` clears it instead.
+   *
+   * The order still travels: where a card was dropped *within* the lane is a decision about the reader's own board
+   * either way, and a lane a card was sorted in is a lane the reader arranged, whatever its column says.
    */
-  const move = (item: WorkItem, column: BoardColumn) => {
+  const move = (item: WorkItem, column: BoardColumn, order: BoardOrder | null) => {
     const own = columnOf(item, {}, window());
-    props.onMove?.(item, column === own ? null : column);
+    props.onMove?.(item, column === own ? null : column, order);
   };
 
   return (
@@ -256,7 +264,7 @@ export function ProjectView(props: {
           <ClosedWindowPicker value={window()} windows={CLOSED_WINDOWS} onChange={setWindowId} />
           <Show when={view() === 'board' && props.onMove}>
             <span class="text-chrome text-muted-foreground">
-              drag a card to another column, or Alt + ← / → on a focused one
+              drag a card to a column and a place in it, or Alt + ← / → on a focused one
             </span>
           </Show>
         </div>
@@ -290,11 +298,13 @@ export function ProjectView(props: {
           }
         >
           <Board
+            projectId={props.project.id}
             items={items()}
             board={props.board}
+            orders={props.orders}
             window={window()}
             deletions={props.deletions}
-            onMove={props.onMove ? (item, column) => (column ? move(item, column) : props.onMove?.(item, null)) : undefined}
+            onMove={props.onMove ? move : undefined}
           />
         </Show>
       </Show>

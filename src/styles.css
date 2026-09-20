@@ -189,6 +189,28 @@ code { background: var(--muted); padding: .05em .3em; border-radius: calc(var(--
 [data-selected="true"] .progress-track { background: color-mix(in srgb, var(--foreground) 26%, transparent); }
 [data-selected="true"] .progress-fill { background: color-mix(in srgb, var(--foreground) 70%, transparent); }
 
+/* The board's lanes, and the three things a card can be while one is in hand.
+
+   A lane is a container, not a column of gaps: it carries its own surface, because "drop it here" is a question
+   about an area, and an area a reader cannot see is an area they aim at by guessing. The surface is one step off
+   the page in either theme, and a lane under a drag steps one step further toward the ink and closes a hairline ring
+   around itself. The ring is the whole signal: this board has one accent, and a lane is not where it lives.
+
+   A card is the only surface a reader aims at, so it carries the elevation: a hairline and a 1px shadow at rest, a
+   shadow that grows once the pointer or the keyboard is on it. Every shadow is mixed from the foreground rather than
+   written in black, so one rule reads as a shadow in either theme — a black shadow on a near-black page is a smudge.
+
+   A card in hand stays where it came from as a ghost (the browser draws its own copy under the pointer), and the
+   place it would land opens as a slot: the size of the card itself, dashed rather than filled, because a slot is a
+   promise and not a card. */
+.lane { background: var(--muted); }
+.lane[data-over="true"] { background: color-mix(in srgb, var(--muted) 88%, var(--foreground));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent); }
+.lane .card { box-shadow: 0 1px 1px color-mix(in srgb, var(--foreground) 7%, transparent); }
+.lane .card:hover, .lane .card:focus-visible { box-shadow: 0 2px 6px color-mix(in srgb, var(--foreground) 16%, transparent); }
+.drop-slot { border: 1px dashed color-mix(in srgb, var(--foreground) 24%, transparent);
+  border-radius: var(--radius); background: color-mix(in srgb, var(--foreground) 4%, transparent); }
+
 
 @media (max-width: 860px) {
   /* A narrow pane gets the rail as a sticky bar across the top, one row, the same 28px segments. The main

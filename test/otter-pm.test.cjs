@@ -425,6 +425,165 @@ test('a malformed deletion entry is dropped, not read as a deletion', async () =
   assert.equal(read.deleted['p:c'].at, null, 'an `at` that is not a time is no time');
 });
 
+test('a drop records the place a card landed in, and the lane is where the order is kept', async () => {
+  const { orderKey, readBoard, writeMove } = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-order-'));
+  const env = { OTTER_PM_BOARD: path.join(dir, 'board.json') };
+
+  assert.deepEqual(readBoard(env).orders, {}, 'no file yet is no order, not an error');
+  assert.equal(orderKey('fixture', 'todo'), 'fixture:todo');
+
+  const written = writeMove({
+    projectId: 'fixture',
+    relPath: 'runs/b',
+    column: 'todo',
+    order: { column: 'todo', paths: ['runs/a', 'runs/b', 'runs/c'] },
+    env,
+  });
+  assert.equal(written.ok, true);
+  assert.deepEqual(readBoard(env).orders['fixture:todo'], ['runs/a', 'runs/b', 'runs/c']);
+
+  writeMove({
+    projectId: 'fixture',
+    relPath: 'runs/d',
+    column: 'done',
+    order: { column: 'done', paths: ['runs/e', 'runs/d'] },
+    env,
+  });
+  assert.deepEqual(
+    readBoard(env).orders['fixture:todo'],
+    ['runs/a', 'runs/b', 'runs/c'],
+    'another lane is another order, and writing one leaves the other alone',
+  );
+
+  // Sorting inside the lane a card's own data already gives it clears the move and keeps the order: the column was
+  // never in question, and the place is what the reader decided.
+  writeMove({
+    projectId: 'fixture',
+    relPath: 'runs/b',
+    column: null,
+    order: { column: 'todo', paths: ['runs/b', 'runs/a', 'runs/c'] },
+    env,
+  });
+  assert.equal(readBoard(env).moves['fixture:runs/b'], undefined, 'a card put back where its data has it keeps no move');
+  assert.equal(readBoard(env).moves['fixture:runs/d'].column, 'done', 'and the move it did not touch is still there');
+  assert.deepEqual(readBoard(env).orders['fixture:todo'], ['runs/b', 'runs/a', 'runs/c'], 'while the lane reads the way it was left');
+
+  writeMove({ projectId: 'fixture', relPath: 'runs/b', column: null, order: { column: 'todo', paths: ['runs/a', 7, '', 'runs/a', 'runs/b'] }, env });
+  assert.deepEqual(readBoard(env).orders['fixture:todo'], ['runs/a', 'runs/b'], 'a path is in a lane once, and only a path is a place');
+
+  writeMove({ projectId: 'fixture', relPath: 'runs/b', column: null, order: { column: 'todo', paths: [] }, env });
+  assert.equal(readBoard(env).orders['fixture:todo'], undefined, 'an emptied lane stores no order to contradict the empty lane it is');
+
+  const bad = writeMove({ projectId: 'fixture', relPath: 'runs/b', column: null, order: { column: 'sideways', paths: ['runs/b'] }, env });
+  assert.equal(bad.ok, false);
+  assert.match(bad.error, /unknown column/);
+});
+
+test('a malformed order is dropped rather than half-read', async () => {
+  const { readBoard } = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-order-bad-'));
+  const file = path.join(dir, 'board.json');
+  writeFile(file, JSON.stringify({ orders: { 'p:todo': 'runs/a', 'p:done': null, 'p:active': [] } }));
+
+  assert.deepEqual(readBoard({ OTTER_PM_BOARD: file }).orders, {}, 'an order is a list with something in it, or it is not an order');
+
+  writeFile(file, JSON.stringify({ orders: { 'p:todo': ['runs/a', 7, '', 'runs/a', 'runs/b'] } }));
+  assert.deepEqual(readBoard({ OTTER_PM_BOARD: file }).orders['p:todo'], ['runs/a', 'runs/b'], 'and reading it back keeps only the places in it');
+});
+
+test('a lane reads in the order the reader left it, and anything the order does not name follows', async () => {
+  const { orderKey, orderedLane } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
+
+  const item = (relPath) => ({ projectId: 'fixture', relPath });
+  const lane = [item('runs/a'), item('runs/b'), item('runs/c')];
+  const paths = (items) => items.map((entry) => entry.relPath);
+
+  assert.equal(orderKey('fixture', 'todo'), 'fixture:todo');
+  assert.deepEqual(orderedLane(lane, 'fixture:todo', {}), lane, 'with nothing arranged, a lane reads as it always did');
+  assert.deepEqual(orderedLane(lane, 'fixture:todo', undefined), lane, 'and no board at all is the same answer');
+
+  const orders = { 'fixture:todo': ['runs/c', 'runs/a'] };
+  assert.deepEqual(paths(orderedLane(lane, 'fixture:todo', orders)), ['runs/c', 'runs/a', 'runs/b'], 'the paths the order names come first, and the ones it does not follow');
+  assert.deepEqual(paths(orderedLane(lane, 'fixture:done', orders)), ['runs/a', 'runs/b', 'runs/c'], 'an order belongs to the lane it was made in');
+  assert.deepEqual(paths(orderedLane(lane, 'other:todo', orders)), ['runs/a', 'runs/b', 'runs/c'], 'and to the repository it was made in');
+
+  const grown = [...lane, item('runs/d')];
+  assert.deepEqual(paths(orderedLane(grown, 'fixture:todo', orders)), ['runs/c', 'runs/a', 'runs/b', 'runs/d'], 'a card that turned up after the last drop is drawn after the ones the lane names');
+});
+
+test('a place in a lane is drawn on the boundary the cards on screen show', async () => {
+  const { landingBoundary } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
+
+  assert.equal(landingBoundary(-1, 2), -1, 'no place draws no line');
+  assert.equal(landingBoundary(0, -1), 0, 'a card carried in from another lane is measured among all of them');
+  assert.equal(landingBoundary(3, -1), 3, 'and its last place is the boundary past the last card');
+
+  // Four cards on screen, the one in hand third (index 2), so the lane the place was measured in has three. Places
+  // 0 and 1 are above where it came from and draw where they are; 2 (its own old place) and 3 draw one boundary
+  // further down, because the card being carried is still drawn on the boundary in between.
+  assert.deepEqual([0, 1, 2, 3].map((place) => landingBoundary(place, 2)), [0, 1, 3, 4]);
+  assert.equal(landingBoundary(3, 2), 4, 'and the last of them is the boundary past the last card on screen');
+});
+
+test('a pointer is measured between the cards of a lane, and a leave is only a leave', async () => {
+  const { leftLane, placeAtPointer } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
+
+  const card = (top, height = 100) => ({ top, height });
+  const lane = [card(0), card(108), card(216)];
+  assert.equal(placeAtPointer(lane, -10), 0, 'above them all is the top of the lane');
+  assert.equal(placeAtPointer(lane, 49), 0, 'the top half of a card is a place in front of it');
+  assert.equal(placeAtPointer(lane, 51), 1, 'and the bottom half is the place behind it');
+  assert.equal(placeAtPointer(lane, 157), 1);
+  assert.equal(placeAtPointer(lane, 265), 2, 'the third card is still in front of a pointer above its middle');
+  assert.equal(placeAtPointer(lane, 267), 3, 'and behind one below it');
+  assert.equal(placeAtPointer(lane, 400), 3, 'past the last card is the end of the lane');
+  assert.equal(placeAtPointer([], 400), 0, 'an empty lane has one place in it — the only one');
+  assert.equal(placeAtPointer([card(0, 175)], 87), 0, 'and a card is measured by its own height');
+
+  const box = { left: 100, right: 300, top: 0, bottom: 500 };
+  assert.equal(leftLane({ x: 200, y: 200 }, box, false), false, 'a pointer inside the lane is not a leave, whatever it crossed');
+  assert.equal(leftLane({ x: 200, y: 600 }, box, false), true, 'a leave below the lane is a leave');
+  assert.equal(leftLane({ x: 20, y: 200 }, box, false), true, 'and so is one out to the side');
+  assert.equal(leftLane({ x: 200, y: 600 }, box, true), false, 'while either sign saying the pointer is still inside wins: a stale ring is cheaper than a flickering one');
+});
+
+test('a card can be sorted inside a lane, and the place survives the drop', () => {
+  const board = source(path.join('components', 'Board.tsx'));
+  const view = source(path.join('components', 'ProjectView.tsx'));
+  const api = source(path.join('lib', 'api.ts'));
+  const app = source(path.join('components', 'App.tsx'));
+  const styles = fs.readFileSync(path.join(APP_SRC, 'styles.css'), 'utf8');
+  const route = fs.readFileSync(path.join(APP_SRC, 'pages', 'api', 'move.ts'), 'utf8');
+  const types = source(path.join('lib', 'types.ts'));
+
+  assert.match(board, /orderedLane\(/, 'a lane is drawn in the order the reader left it');
+  assert.match(board, /placeAtPointer\(cards\.map\(\(card\) => card\.getBoundingClientRect\(\)\), event\.clientY\)/, 'a lane hands the pointer and the cards it can see to the rule, which is where the measuring lives');
+  assert.match(board, /props\.onMove\(item, column, \{ column, paths \}\)/, 'a drop hands over the whole lane, because a place only means something against the cards around it');
+  assert.match(board, /props\.onMove\(item, next, null\)/, 'a keyboard move names a lane and no place, so it writes no order and cannot freeze a lane nobody sorted by hand');
+  assert.match(board, /const slotAt = \(rendered: number\) => props\.carried !== null && slotBoundary\(\) === rendered/, 'the place opens as a slot, drawn on the boundary the place maps to rather than on the card it was measured from');
+  assert.match(board, /<DropSlot height=\{props\.carried\?\.height \?\? 0\} \/>/, 'and the slot is the size of the card in hand, which is the shape the place will take');
+  // The flicker this board had: `dragleave` fires on every boundary crossed *inside* a lane too — card to card, and
+  // card to the slot that has just opened under the pointer — and clearing the drop on each of those un-mounted the
+  // slot and let the cards under it jump, forty times down one lane. Only a leave that arrives outside counts.
+  assert.match(board, /onDragLeave=\{leaveLane\}/, 'a lane is left only through the one handler that can tell a leave from a crossing');
+  assert.match(board, /leftLane\(\{ x: event\.clientX, y: event\.clientY \}, lane\.getBoundingClientRect\(\), entering !== null && lane\.contains\(entering\)\)/, 'and that handler reads the two signs a leave carries and hands them to the rule');
+  assert.match(board, /props\.onDragStart\?\.\(props\.item, \(event\.currentTarget as HTMLElement\)\.offsetHeight\)/, 'the height is read off the card when it is picked up, because that is the only moment the card is still the card');
+  assert.match(view, /column === own \? null : column, order/, 'putting a card back where its data has it clears the move and keeps the place — the column was never the decision');
+  assert.match(api, /order: BoardOrder \| null = null/, 'the client sends the place with the filing, in one write');
+  assert.match(app, /orders: answer\.orders/, 'and replaces the orders with the ones the server answered, so the screen and the file cannot disagree');
+  assert.match(route, /orders: snapshot\.orders/);
+  assert.match(types, /BoardOrders = Record<string, string\[\]>/, 'the stored order is a lane of paths, keyed by the lane');
+
+  // The board's own look, which is the one thing a reader never sees asserted anywhere else: a lane is a surface
+  // rather than a column of gaps, a card on it is lifted off it, and the slot is dashed because it is not a card.
+  assert.match(styles, /\.lane \{ background: var\(--muted\); \}/, 'a lane carries its own surface, because "drop it here" is a question about an area');
+  assert.match(styles, /\.lane\[data-over="true"\]/, 'and a lane under a drag steps once more and rings itself');
+  assert.match(styles, /\.lane \.card \{ box-shadow: 0 1px 1px color-mix/, 'the card is the surface a reader aims at, so it carries the elevation');
+  assert.match(styles, /\.drop-slot \{ border: 1px dashed/, 'and the place is a dashed slot, never a filled card');
+  assert.match(board, /motion-reduce:transition-none/, 'the two steps a lane and a card take are colour steps: a reader who asked for less motion still gets them, and gets them without the fade');
+});
+
 test('a deletion hides the item and everything inside it, and an unarchive brings it all back', async () => {
   const { boardKey, isDeleted, liveItems, deletedItems } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
 
