@@ -7,6 +7,29 @@ One repository or twenty; a root is either a `.x-skills` directory or a reposito
 
 ## Running it
 
+**Open the board.** If it is already running, this is all there is:
+
+```bash
+oc-otter-pm open            # a chrome-less window on the board
+oc-otter-pm open --browser  # the same board in a browser tab
+oc-otter-pm port            # print the URL it is serving on, or fail if nothing is
+```
+
+The window and the tab are the same board: the URL is published by whichever process is serving it
+(`~/.local/state/otter-pm/url`), so nothing has to know the port in advance.
+
+**Keep it running.** Installed as a user service, the board starts with your session and restarts if it dies:
+
+```bash
+systemctl --user start oc-otter-pm
+```
+
+Installing that service, the two desktop entries and the wrapper is [`docs/install.md`](docs/install.md), which is
+the right path for a machine that is going to keep the board. The three failure codes `open` can exit with, and what
+each means, are in that guide's troubleshooting section.
+
+**Develop it.**
+
 ```bash
 npm install                  # once: the app's own dependencies
 npm run dev                  # hot reload on http://127.0.0.1:4321/ (the first free port from 4321)
@@ -21,9 +44,6 @@ npm run typecheck
 Installed as a package (`otter-pm` once `@lleqsnoom/otter-pm` is published), the same server is the command's whole job:
 it builds the app if `dist/` is missing and then serves it, so the bin and `npm run serve` are one path. The package is
 not on npm yet, so there is nothing to `npx` today.
-
-To keep the board running on a machine — started with your session, opening from the app launcher as a window or a
-tab — see [`docs/install.md`](docs/install.md).
 
 `npm run dev` and `npm run serve` print the address and stay in the foreground; ctrl-c stops them. Both start
 their port search at `--port` (or `$PORT`), and **a dev server already running does not block a new one** — the

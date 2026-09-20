@@ -65,3 +65,17 @@ test('the guide says what a machine without gh or the Orca IDE still gets', () =
   assert.match(section, /roots/, 'the config key that replaces the IDE list is named');
   assert.match(section, /gh/, 'and the feature that needs it is named');
 });
+
+test('the README opens with how to run it, before the detail', () => {
+  const readme = read(README);
+  const start = readme.indexOf('## Running it');
+  const end = readme.indexOf('\n## ', start + 1);
+  const first = readme.slice(start, end);
+
+  assert.ok(start >= 0, 'the first section a reader meets is how to run it');
+  assert.match(first, /oc-otter-pm open\b/, 'the window is one command away');
+  assert.match(first, /oc-otter-pm open --browser/, 'and so is a browser tab');
+  assert.match(first, /oc-otter-pm port/, 'and the URL can be asked for');
+  assert.match(first, /systemctl --user start oc-otter-pm/, 'the always-on service is named, with the command');
+  assert.match(first, /npm run dev/, 'and the development loop is still here');
+});
