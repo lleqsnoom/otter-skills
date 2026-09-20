@@ -15,6 +15,15 @@ export const REDO_RE =
 export const HANDOFF_RE =
   /\b(another agent|other agent|pass it to|hand (it )?off|as (an? )?(llm )?prompt|i'?ll do it myself|i will do it myself|never ?mind|forget it|i give up)\b/i;
 
+/**
+ * A user saying the run stalled: the agent waited on something that never finished, or is asked to
+ * bound the wait it just left open. Every shape names the agent's own run — the second person, a loop
+ * the run is in, or a limit being asked for — so a question about someone else's hung process
+ * ("it is stuck at what", "stuck at 11%") is not one, and neither is a topic ("linux system freezes").
+ */
+export const STUCK_RE =
+  /\b(?:you|youre|you're|your|u)\b[^.!?\n]{0,160}\b(?:stuck|frozen|froze|freezes|hung|hanging)\b|\b(?:stuck|caught|trapped)\s+(?:in\s+)?(?:an?\s+)?(?:infinite\s+)?loop\b|\b(?:no time limit|no timeout|without a timeout|add (?:some |a )?timeout|set (?:some |a )?(?:short|shorter|reasonable) (?:execution time|timeout|expiry|limit)|never stops running|keeps? running (?:forever|for hours|all night))\b/i;
+
 /** A host's own refusal notice opens the tool result; the same sentence quoted inside other output is not one. */
 const REJECTED_RE = /^(The user doesn't want to proceed with this tool use|User (denied|rejected)|Permission denied by (the )?user)/i;
 const INTERRUPT_TEXT_RE = /^\[Request interrupted by user/;
@@ -245,6 +254,7 @@ export function scanReactions(messages, { keep = (names) => names, loaded = [], 
   const found = {
     redo: phraseReactions(later, REDO_RE),
     handoff: phraseReactions(later, HANDOFF_RE),
+    stuck: phraseReactions(userTurns(messages), STUCK_RE),
     rejected: rejections(messages),
     interrupted: interrupts(messages),
     silent: silentScripts(messages).filter((entry) => keep([entry.skill]).length),
@@ -255,6 +265,14 @@ export function scanReactions(messages, { keep = (names) => names, loaded = [], 
   const payloads = [
     ...reactionPayload({ kind: "user-redo", found: found.redo, timeline, fallback, severity: "high", summary: (n) => `the user asked for the same work again ${n}x` }),
     ...reactionPayload({ kind: "user-handoff", found: found.handoff, timeline, fallback, severity: "high", summary: (n) => `the user handed the work to someone else ${n}x` }),
+    ...reactionPayload({
+      kind: "user-stuck",
+      found: found.stuck,
+      timeline,
+      fallback,
+      severity: "high",
+      summary: (n) => `the user said the run had stalled (stuck, frozen, or no time limit) ${n}x`,
+    }),
     ...reactionPayload({
       kind: "tool-rejected",
       found: found.rejected,
@@ -290,6 +308,7 @@ export function scanReactions(messages, { keep = (names) => names, loaded = [], 
     stats: {
       redoRequests: found.redo.length,
       handoffs: found.handoff.length,
+      stuck: found.stuck.length,
       rejections: found.rejected.length,
       interrupts: found.interrupted.length,
       silentScripts: found.silent.length,
