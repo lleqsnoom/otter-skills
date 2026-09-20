@@ -49,6 +49,10 @@ node <skill>/scripts/scenario.mjs record --dir <dir> --to <node>
 node <skill>/scripts/scenario.mjs verify --dir <dir>   # exit 0 iff the stop is justified
 ```
 
+`start` prints the run folder relative to the working directory it runs in: run it from the project
+root and pass that same `--dir` verbatim, or every later command resolves it against the skill's own
+directory and reports `no state.json`.
+
 The guard that refuses a transition reads an event, so recording the right kind is not optional — the
 gate you did not feed is the gate that stops the run. These are the kinds `applyEvent` accepts, and the
 guard each one satisfies:
@@ -194,7 +198,7 @@ Based on the analysis scope and user decision, present the routes as a `single` 
 | Single, small fix (<1 file, <30 min) | `x-fix` or direct implementation | Apply the fix directly; reference this analysis |
 | Multi-file fix or moderate complexity | Create tasks and use `x-implement` | Split into tasks, follow TDD workflow |
 | Large / architectural issue | Use `x-plan` → `x-epic` → `x-decompose` | Write spec first, then epic and tasks |
-| Needs more investigation | Use `x-investigate` + `x-debug` pipeline | Hand off with full analysis as context |
+| Needs more investigation | Use `x-investigate` + `x-reproduce` pipeline | Hand off with full analysis as context |
 | Not actionable right now | Note for later | Save analysis; don't force a decision |
 
 When routing to another skill, pass `<run folder>/E<nn>-analysis.md` as the input context so the downstream skill has full background.

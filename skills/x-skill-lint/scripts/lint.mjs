@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * x-skill-lint — validate the xskills repo's own skills.
+ * x-skill-lint — validate this repository's own skills.
  *
  * Checks every skills/<name>/SKILL.md for: parseable frontmatter, name == folder,
  * a description, no stray template tokens, same-skill script/reference paths that
