@@ -1,0 +1,201 @@
+/* This app borrows Orca's design language, the same one the report app wears, so a reader stepping out of the IDE
+   is still reading one application. Every colour is a value from Orca's own theme, the type is Geist (Orca's app
+   font), and the surfaces follow its recipes: a sidebar, cards on `--card` with a 1px `--border`, badges as
+   colour at 10% with a 25% edge.
+
+   Type has four sizes with one job each: the page headline, a section heading, body, and chrome (labels, table
+   heads, buttons). Muting is a colour, never a smaller size. Layout and controls are Tailwind utilities laid on
+   these variables (see `tailwind.css`); what stays here is the base, the tokens, and the markdown prose an
+   artifact is read in. */
+@font-face {
+  font-family: "Geist";
+  src: url("./assets/geist-var.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+:root {
+  color-scheme: light dark;
+  /* Orca light theme (its `:root`), value for value. */
+  --background: #fff; --foreground: #0a0a0a;
+  --card: #fff; --card-foreground: #0a0a0a;
+  /* One step darker than Orca's #737373, which is 4.35:1 on its own `--muted` surface — and this app puts
+     muted text on that surface (a hovered row, an inline `code` chip), so Orca's value would fail AA there. */
+  --muted: #f5f5f5; --muted-foreground: #6d6d6d;
+  --secondary: #f5f5f5; --secondary-foreground: #171717;
+  --accent: #f5f5f5; --accent-foreground: #171717;
+  --primary: #171717; --primary-foreground: #fafafa;
+  --destructive: #e40014;
+  --border: #e5e5e5; --input: #e5e5e5; --ring: #a1a1a1;
+  --sidebar: #fafafa; --sidebar-border: #e5e5e5;
+  /* The states a work item can be in, from the palette Orca paints status with. Light-theme steps clear 4.5:1
+     on both white and the badge's own 10% tint, which is where a status is usually read. */
+  --good: #007956; --fair: #953d01; --weak: #bf000f; --unknown: #6b6b73;
+  --link: #0969da;
+  --scroll: #c2c7d1; --scroll-track: #f0f0f0;
+  --radius: .625rem;
+  --t-title: 24px; --t-section: 16px; --t-body: 14px; --t-chrome: 12px;
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  /* Orca dark theme (its `.dark`), value for value. */
+  :root {
+    --background: #0a0a0a; --foreground: #fafafa;
+    --card: #171717; --card-foreground: #fafafa;
+    --muted: #262626; --muted-foreground: #a1a1a1;
+    --secondary: #262626; --secondary-foreground: #fafafa;
+    --accent: #404040; --accent-foreground: #fafafa;
+    --primary: #e5e5e5; --primary-foreground: #171717;
+    --destructive: #ff6568;
+    --border: #ffffff12; --input: #ffffff26; --ring: #737373;
+    --sidebar: #171717; --sidebar-border: #ffffff12;
+    --good: #86efac; --fair: #ffd236; --weak: #ff6568; --unknown: #a1a1a1;
+    --link: #58a6ff;
+    --scroll: #3f3f46; --scroll-track: #141414;
+  }
+}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+html { overflow-y: scroll; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
+::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 999px; border: 3px solid var(--scroll-track); }
+::-webkit-scrollbar-thumb:hover { background: var(--ring); }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+body { background: var(--background); color: var(--foreground);
+  font: var(--t-body)/1.5 var(--font-sans); letter-spacing: .01em;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+a { color: var(--link); text-decoration: none;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 2px; }
+a:hover { text-decoration: underline; }
+/* A control is not a browser widget. Left alone, `button` and `input` keep the user agent's own font (13.33px), its
+   `padding: 1px 6px`, a `buttonface` background and a 2px outset border — none of which is in the source, and all
+   of which show wherever a utility does not happen to set it. That is how a segment of a switch ends up a grey
+   chip beside a white one, and 1px taller for a reason nothing in the file explains. So the base inherits the
+   app's type and clears the widget chrome; every edge and surface is the utilities'. (This is the part of
+   Tailwind's preflight this app needs — the rest of it is deliberately not imported.) */
+button, input, select, textarea {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+code, .mono { font-family: var(--font-mono); overflow-wrap: anywhere; }
+code { background: var(--muted); padding: .05em .3em; border-radius: calc(var(--radius) * .6); }
+/* A machine string — a path, a run id — is one unbreakable word, and one of those is a card wider than its pane. */
+.break-anywhere { overflow-wrap: anywhere; }
+
+/* No column is wider than the pane. A grid track left at `auto` grows to its content's *max-content* width, so one
+   long line of Mermaid in an artifact — or one unbreakable path in a card — is a screen that scrolls sideways,
+   even though the block holding it fits. Every grid in this app is therefore one column that can shrink to
+   nothing, and a `grid-cols-*` utility still wins wherever a component asks for more (utilities are the later
+   layer, so a responsive class, or any class at all, overrides this rule). */
+.main .grid, .rail .grid { grid-template-columns: minmax(0, 1fr); }
+
+/* An artifact, read. The prose is the app's own base: Geist at body size, 1.5 leading, and headings marked by
+   the same border the panels use.
+
+   What is added here is the rhythm a *document* needs rather than a screen: one measure, one left edge, a heading
+   that steps down visibly, and a link that is underlined where it appears — a document is read in order, so a link
+   only tells a reader it is a link once the pointer is over it too late. Two kinds of content inside it are not
+   prose and are not set like it: a table is a record, read by column, and a fence is a machine, read by line. */
+.markdown { max-width: 92ch; }
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+
+.markdown h1, .markdown h2, .markdown h3, .markdown h4 { line-height: 1.3; }
+.markdown h1 { font-size: var(--t-title); font-weight: 600; margin: 0 0 .8rem; letter-spacing: -.015em; }
+.markdown h2 { font-size: var(--t-section); font-weight: 600; margin: 2rem 0 .6rem; padding-bottom: .3rem;
+  border-bottom: 1px solid var(--border); }
+/* A level-3 heading is marked by weight, not by a third size: this app has four sizes and a heading that shares
+   one with the prose it introduces is still a heading, because the weight and the space around it say so. */
+.markdown h3 { font-size: var(--t-body); font-weight: 600; margin: 1.4rem 0 .35rem; }
+.markdown h4 { font-size: var(--t-body); font-weight: 500; margin: 1.1rem 0 .25rem; color: var(--muted-foreground); }
+
+.markdown p { margin: .75rem 0; }
+.markdown p, .markdown li { overflow-wrap: anywhere; }
+.markdown ul, .markdown ol { margin: .5rem 0; padding-left: 1.35rem; }
+.markdown li { margin: .25rem 0; }
+.markdown li::marker { color: var(--muted-foreground); }
+.markdown li > p { margin: .25rem 0; }
+.markdown ul ul, .markdown ol ol, .markdown ul ol, .markdown ol ul { margin: .15rem 0; }
+.markdown a { font-weight: 500; text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); }
+.markdown a:hover { text-decoration-color: currentColor; }
+.markdown code { font-size: .92em; }
+.markdown blockquote { margin: .8rem 0; padding: .3rem 0 .3rem .9rem; border-left: 2px solid var(--border);
+  color: var(--muted-foreground); }
+.markdown hr { border: 0; border-top: 1px solid var(--border); margin: 1.6rem 0; }
+.markdown img { max-width: 100%; border-radius: var(--radius); }
+/* A table is a record and is read across: a head that stands off its cells, a hairline per row, and a zebra so a
+   wide row can be followed. It never pans the page — every cell breaks a long token instead, which is what keeps a
+   path or a session id from setting the table's width. */
+.markdown table { width: 100%; border-collapse: collapse; margin: .8rem 0; }
+.markdown th, .markdown td { text-align: left; padding: .4rem .55rem; border-bottom: 1px solid var(--border);
+  vertical-align: top; overflow-wrap: anywhere; }
+.markdown thead th { background: var(--muted); color: var(--muted-foreground); font-weight: 600;
+  font-size: var(--t-chrome); }
+.markdown tbody tr:nth-child(even) { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+.markdown table code { background: transparent; padding: 0; }
+
+/* A fence, and the same fence read as a whole file. It scrolls inside itself rather than widening the page, and it
+   holds a height so a long one does not bury the rest of the document. The dialect sits in the corner because the
+   reader is owed it — and a dialect the document did not name says `· detected` there, rather than being presented
+   as a fact about the document. */
+.markdown pre, .code-view pre { background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: .6rem .7rem; overflow-x: auto; font-size: var(--t-chrome); line-height: 1.5; max-height: 70vh; }
+.markdown pre code { background: none; padding: 0; }
+.markdown pre[data-language]::before {
+  content: attr(data-language);
+  display: block; margin: 0 0 .4rem; padding-bottom: .3rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--muted-foreground); font: var(--t-chrome)/1.2 var(--font-sans); text-transform: lowercase;
+}
+.markdown pre[data-detected]::before { content: attr(data-language) " · detected"; }
+/* A whole file is one fence in a frame: the frame carries the border, the surface and the scroll, the pre carries
+   nothing but the code. */
+.code-view pre { margin: 0; padding: 0; border: 0; background: transparent; max-height: none; overflow: visible; }
+
+/* Shiki paints both palettes it was given into one `<pre>`: the light colour inline, the dark one in a
+   `--shiki-dark` custom property. That is what the media query moves to — the same signal the app's own tokens
+   move on, so a code block and the page around it change theme together — and the `!important` is the published
+   way to run a two-theme shiki, since the inline style holds the light value. The *surface* stays the app's: a
+   theme's own background is a slab of another product's white, dark or light. */
+.shiki { background: var(--muted) !important; }
+@media (prefers-color-scheme: dark) {
+  .shiki, .shiki span { color: var(--shiki-dark) !important; }
+}
+
+/* A diagram is a figure, and a wide one scrolls inside itself rather than widening the pane. Mermaid scales to fit
+   (`useMaxWidth`), so the scroll is the fallback for a graph whose own minimum layout is wider than the box. */
+.markdown .diagram { margin: .7rem 0; overflow-x: auto; }
+.markdown .diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.markdown .diagram-note { color: var(--weak); margin: 0 0 .3rem; font-size: var(--t-chrome); }
+/* A diagram still being drawn holds its height, so the page does not jump when the SVG lands. */
+.markdown .diagram[data-diagram="pending"] { min-height: 4rem; }
+/* An unchecked box is not a glyph the browser draws on its own, so the checklist is the app's own marks — and a
+   task list has no bullet beside its box, which is what `:has` is for. */
+.markdown li input[type="checkbox"] { margin-right: .4rem; accent-color: var(--primary); }
+.markdown li:has(> input[type="checkbox"]) { list-style: none; margin-left: -1.1rem; }
+
+/* A checklist bar is drawn in the page's own ink rather than in `--muted`, because a card is not the only surface
+   it lands on: the chosen artifact in a list tints its own row, and a `--muted` track on a `--muted` row is a bar
+   that disappears exactly when the reader has selected the thing it describes. Both mixes move one step darker on
+   that selected row, so the bar reads as the same object on a different surface. */
+.progress-track { background: color-mix(in srgb, var(--foreground) 14%, transparent); }
+.progress-fill { background: color-mix(in srgb, var(--foreground) 55%, transparent); }
+[data-selected="true"] .progress-track { background: color-mix(in srgb, var(--foreground) 26%, transparent); }
+[data-selected="true"] .progress-fill { background: color-mix(in srgb, var(--foreground) 70%, transparent); }
+
+
+@media (max-width: 860px) {
+  /* A narrow pane gets the rail as a sticky bar across the top, one row, the same 28px segments. The main
+     pane moves to row 2 of that one column — without it, `grid-column: 2` from the base would open a second
+     implicit column and the whole board would pan sideways. */
+  .app { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: auto minmax(0, 1fr); }
+  .rail { position: sticky; top: 0; z-index: 10; height: auto !important; border-right: 0 !important;
+    border-bottom: 1px solid var(--border); grid-column: 1 !important; grid-row: 1 !important; }
+  .main { grid-column: 1 !important; grid-row: 2 !important; }
+}

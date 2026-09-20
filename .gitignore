@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+board.json
+
+# npm pack output
+*.tgz
