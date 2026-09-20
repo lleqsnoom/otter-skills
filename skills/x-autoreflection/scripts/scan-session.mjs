@@ -28,6 +28,21 @@ const RUN_FOLDER_RE = /\.x-skills\/runs\/([A-Za-z0-9:._-]+)/g;
 /** Tool names that write a file; everything else that names a path only reads it. */
 const WRITE_TOOL_RE = /edit|write/i;
 
+/**
+ * A host's wait-style tool for a background job. A call to one of these says the agent chose to block
+ * on the job it started, which is how a run stalls: a server or a watcher never returns on its own.
+ */
+const WAIT_TOOL_RE = /^(job_output|job_wait|shell_output|bash_output|task_output|background_output)$/i;
+
+/** The result of a wait that came back while the job was still going: the agent is now blocked on it. */
+const STILL_RUNNING_RE = /^\s*Status:\s*(?:running|pending|queued|in progress)\b|\bstill running\b|\bcommand is taking longer than expected\b/im;
+
+/** The host's own notice that a command outlived its call, so the shell it runs in is still open. */
+const BACKGROUND_NOTICE_RE = /\b(?:moved to background|Background shell (?:started|ID)|started in the background|running in the background)\b/i;
+
+/** The command shapes that never return on their own: a dev server, a bundler, a watcher, a follow. */
+const UNBOUNDED_COMMAND_RE = /\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:dev|start|serve|watch)\b|\bvite\b|\bwebpack\b|http\.server\b|\bserve\b|--watch\b|\s-w\b|tail\s+-f|docker\s+compose\s+up|\bwatch\b|\bdev\.mjs\b/i;
+
 function excerpt(text, limit = 160) {
   return String(text ?? "").replace(/\s+/g, " ").trim().slice(0, limit);
 }
@@ -372,10 +387,13 @@ function scanParts(messages, keep) {
       excerpt: excerpt(entry.part.input, 120),
     }));
 
+  const waits = scanWaits(messages);
+
   return {
-    stats: { ...stats, repeats: repeats.length },
+    stats: { ...stats, repeats: repeats.length, waits: waits.length },
     failures,
     repeats,
+    waits,
     runFolders: [...runFolders].sort(),
     artifacts: [...artifacts].sort(),
     writes: [...writes].map(([file, message]) => ({ path: file, message })),
@@ -468,6 +486,55 @@ function scanAssistantTurns(messages) {
   return { panels, proseQuestions };
 }
 
+/**
+ * The waits that came back while the command they waited on was still running, with the command the
+ * host had already parked in the background. A wait like this is the stall: the agent asked for the
+ * job to finish, the host answered "still going", and the turn cannot end until a person breaks it.
+ */
+function scanWaits(messages) {
+  const calls = new Map();
+  const parked = new Map();
+  const blocked = [];
+  for (const message of messages) {
+    for (const part of message.parts) {
+      if (part.type === "tool_call") {
+        calls.set(part.id, part);
+        continue;
+      }
+      if (part.type !== "tool_result") continue;
+      const call = calls.get(part.id);
+      if (!call) continue;
+      const content = String(part.content ?? "");
+      if (BACKGROUND_NOTICE_RE.test(content)) parked.set(part.id, commandOf(call.input) || call.name || "?");
+      const waits = WAIT_TOOL_RE.test(call.name ?? "") || /"wait"\s*:\s*true/.test(String(call.input ?? ""));
+      if (!waits || !STILL_RUNNING_RE.test(content)) continue;
+      blocked.push({
+        message: message.index,
+        tool: call.name ?? "?",
+        subject: [...parked.values()].pop() ?? null,
+        excerpt: excerpt(content, 120),
+      });
+    }
+  }
+  return blocked;
+}
+
+function waitPayloads(waits, keep) {
+  if (!waits.length) return [];
+  const suspects = keep([...new Set(waits.flatMap((wait) => skillMentions(String(wait.subject ?? ""))))]);
+  const unbounded = waits.some((wait) => UNBOUNDED_COMMAND_RE.test(String(wait.subject ?? "")));
+  return [
+    {
+      kind: "blocking-wait",
+      severity: unbounded || waits.length > 1 ? "high" : "medium",
+      summary: `the agent waited on a command that was still running ${waits.length}x${unbounded ? ` (unbounded: ${excerpt(waits[0].subject, 60)})` : ""}`,
+      count: waits.length,
+      suspects,
+      evidence: waits.slice(0, MAX_EVIDENCE).map(({ message, tool, excerpt: text }) => ({ message, tool, excerpt: text })),
+    },
+  ];
+}
+
 function failurePayloads(failures) {
   return failures.map((failure) => ({
     kind: failure.marker,
@@ -545,6 +612,7 @@ function buildSignals({ partScan, users, turns, skills, keep, reactions }) {
   const payloads = [
     ...failurePayloads(partScan.failures),
     ...repeatPayloads(partScan.repeats, keep),
+    ...waitPayloads(partScan.waits, keep),
     ...userPayloads({ users, turns, skills }),
     ...reactions.payloads,
     ...unusedPayload(skills),

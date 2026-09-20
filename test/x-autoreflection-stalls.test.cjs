@@ -91,4 +91,49 @@ describe("x-autoreflection stall signals", async () => {
     assert.equal(stuck.count, 1);
     assert.ok(stuck.evidence.length >= 1, "the complaint itself is the evidence");
   });
+
+  it("reads a wait on a job that was still running as the blocked pattern", () => {
+    const scan = mod.scanSession(normalized(stalledSession("ok, carry on")), { skillNames: [] });
+    const wait = scan.signals.find((signal) => signal.kind === "blocking-wait");
+    assert.ok(wait, "a blocking-wait signal is emitted");
+    assert.equal(wait.count, 1);
+    assert.equal(wait.severity, "high", "npm run dev never returns on its own");
+    assert.equal(wait.evidence.length, 1);
+  });
+
+  it("stays quiet when the wait came back with the job finished", () => {
+    const session = transcript([
+      { role: "user", parts: [text(OPENING)] },
+      { role: "assistant", parts: [call("c1", "bash", { command: "npm run build" })] },
+      { role: "tool", parts: [result("c1", "bash", "Background shell started with ID: 042")] },
+      { role: "assistant", parts: [call("c2", "job_output", { shell_id: "042", wait: true })] },
+      { role: "tool", parts: [result("c2", "job_output", "Status: done\n\nbuilt in 2s")] },
+    ]);
+    const scan = mod.scanSession(normalized(session), { skillNames: [] });
+    assert.equal(scan.signals.some((signal) => signal.kind === "blocking-wait"), false);
+  });
+
+  it("stays quiet on a backgrounded command nobody waited on", () => {
+    const session = transcript([
+      { role: "user", parts: [text(OPENING)] },
+      { role: "assistant", parts: [call("c1", "bash", { command: "npm run dev" })] },
+      { role: "tool", parts: [result("c1", "bash", "Background shell started with ID: 030")] },
+      { role: "assistant", parts: [text("The server is up; moving on.")] },
+    ]);
+    const scan = mod.scanSession(normalized(session), { skillNames: [] });
+    assert.equal(scan.signals.some((signal) => signal.kind === "blocking-wait"), false);
+  });
+
+  it("names the skill whose script the parked command runs", () => {
+    const session = transcript([
+      { role: "user", parts: [text(OPENING)] },
+      { role: "assistant", parts: [call("c1", "bash", { command: "node skills/x-ui/scripts/preview.mjs --watch" })] },
+      { role: "tool", parts: [result("c1", "bash", "Background shell started with ID: 7")] },
+      { role: "assistant", parts: [call("c2", "job_output", { shell_id: "7", wait: true })] },
+      { role: "tool", parts: [result("c2", "job_output", "Status: running\npreview on :4321")] },
+    ]);
+    const scan = mod.scanSession(normalized(session), { skillNames: ["x-ui"] });
+    const wait = scan.signals.find((signal) => signal.kind === "blocking-wait");
+    assert.deepEqual(wait.suspects, ["x-ui"]);
+  });
 });
