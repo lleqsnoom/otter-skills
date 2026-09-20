@@ -1,4 +1,4 @@
-import type { BoardColumn, BoardDeletions, BoardMoves, FileContent, Snapshot } from './types';
+import type { BoardColumn, BoardDeletions, BoardMoves, BoardOrder, BoardOrders, FileContent, Snapshot } from './types';
 
 async function json<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -42,15 +42,22 @@ export function saveFile(project: string, path: string, content: string): Promis
 }
 
 /**
- * The one write: the column a reader filed a card into. `null` puts it back to the column its own data gives it.
- * The answer carries the whole board, so the screen and the file cannot disagree.
+ * The one write: the column a reader filed a card into, and the lane it was let go in. `null` puts the card back to
+ * the column its own data gives it, while the order still records where it was dropped — the place is a decision
+ * even when the column is not. The answer carries the whole board and every order, so the screen and the file
+ * cannot disagree.
  */
-export function moveItem(project: string, path: string, column: BoardColumn | null): Promise<{ ok: boolean; board: BoardMoves; error?: string }> {
+export function moveItem(
+  project: string,
+  path: string,
+  column: BoardColumn | null,
+  order: BoardOrder | null = null,
+): Promise<{ ok: boolean; board: BoardMoves; orders: BoardOrders; error?: string }> {
   return fetch('/api/move', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ project, path, column }),
-  }).then(json<{ ok: boolean; board: BoardMoves }>);
+    body: JSON.stringify({ project, path, column, order }),
+  }).then(json<{ ok: boolean; board: BoardMoves; orders: BoardOrders }>);
 }
 
 /**

@@ -39,6 +39,8 @@ export function getSnapshot({ force = false } = {}) {
     orca,
     /** The reader's own column moves, keyed `<projectId>:<relPath>`; see `board.mjs`. */
     board: board.moves,
+    /** The order each lane was left in, keyed `<projectId>:<column>`. */
+    orders: board.orders,
     /** The items the reader archived, by the same key: off the board, and still on disk. */
     deletions: board.deleted,
     boardFile: board.file,

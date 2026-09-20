@@ -60,8 +60,8 @@ A path is accepted either as the repository or as the `.x-skills` directory itse
 different config, and `$OTTER_PM_CONFIG` does the same.
 
 The tree is read. Two things are written: `board.json` beside the config, which holds the reader's own decisions (a
-card dragged to a lane, and an item archived), and an artifact the reader edits in the app itself — see *Reading and
-editing* below.
+card dragged to a lane and a place in it, the order each lane was left in, and an item archived), and an artifact
+the reader edits in the app itself — see *Reading and editing* below.
 
 ## Making a project
 
@@ -195,12 +195,19 @@ says decides its lane — a finished run is done, a partly ticked checklist is i
   **beside `otter-pm.config.json`** (or wherever `$OTTER_PM_BOARD` points) and never into the repository. A
   filed card says `moved`, and dropping it on the lane its data already gives it removes the entry rather than
   storing a preference that says nothing.
+- **A card can be sorted within its lane**, and the sort is kept. A drag carries a card to a lane *and* to a place
+  in it — the slot that opens between two cards, the size of the card in hand — and letting go writes that lane, top
+  to bottom, into `board.json`. So the order survives a reload, a rescan and a restart, and a card dropped on the
+  lane its own data gives it keeps its place even though it stops saying `moved`: the place was the decision, and the
+  column never was. A card that turns up later — a new run, or one that was filtered off the board when the drop
+  happened — is drawn after the ones the lane names. `Alt + ←/→` names a lane and no place, so a card filed that way
+  lands where its own data would put it.
 - **A card can be archived**, and that is a soft delete: the artifact is untouched, the board simply stops drawing
   it, and the `Archived` list at the bottom of the project page brings it back. Archiving a collection takes
   everything inside it off the board, while that list holds the entry the reader made rather than one line per file
-  it covers; an artifact whose own entry was not made says it is inside an archived collection. Filing and
-  archiving are two decisions in the same `board.json` under the same key, so an unarchive lands in the column it
-  was filed into, and an unarchive removes the entry rather than storing a `false`.
+  it covers; an artifact whose own entry was not made says it is inside an archived collection. Filing, sorting and
+  archiving are three decisions in the same `board.json`, so none of them clears the others: an unarchive lands in
+  the column and the place it was filed into, and unarchiving removes the entry rather than storing a `false`.
 
 A lane shows twelve cards and folds the rest behind `+ N more`; while a card is being dragged every lane opens,
 because the card you are carrying has to be droppable where you mean it.

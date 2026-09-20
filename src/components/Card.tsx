@@ -39,10 +39,13 @@ export function Card(props: {
       aria-label={props.label}
       title={props.title}
       class={cn(
-        // `card` is the hook a browser check and the tests reach for; no rule in the stylesheet depends on it.
+        // `card` is the hook the board's own stylesheet and the tests reach for: a card on a lane carries an
+        // elevation, and there is nowhere else to hang a rule that every card in every lane gets.
         'card',
         'grid content-start gap-1.5 rounded-lg border border-border bg-card p-2.5 text-foreground no-underline',
-        props.as === 'a' && 'transition-colors hover:border-ring',
+        // The border and the shadow are two halves of the same hover: a card on a lane is lifted by both, so both
+        // move together — and neither moves at all for a reader who asked for less motion.
+        props.as === 'a' && 'transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none hover:border-ring',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         props.class,
       )}
