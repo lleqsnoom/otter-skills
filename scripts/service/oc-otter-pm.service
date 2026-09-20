@@ -1,0 +1,13 @@
+[Unit]
+Description=Otter PM board — the local project board over .x-skills trees
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/oc-otter-pm serve
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

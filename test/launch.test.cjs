@@ -114,6 +114,18 @@ async function statusOf(url, pathname = '/') {
   }
 }
 
+/** Move `dist/` aside for one test: the launcher is meant to put it back by building. */
+function hideBuildOutput(t) {
+  const dist = path.join(ROOT, 'dist');
+  const hidden = path.join(ROOT, `dist.test-hidden-${process.pid}`);
+  fs.renameSync(dist, hidden);
+  t.after(() => {
+    if (!fs.existsSync(hidden)) return;
+    if (fs.existsSync(dist)) fs.rmSync(hidden, { recursive: true, force: true });
+    else fs.renameSync(hidden, dist);
+  });
+}
+
 async function serve({ stateHome, port }) {
   const child = run(['serve', '--port', String(port)], stateHome);
   const url = await waitFor(() => readPublished(stateHome));
@@ -277,4 +289,42 @@ test('open --dry-run reports the same refusals as a real open', async () => {
   assert.notEqual(stale.code, 0);
   assert.match(stale.complaint, new RegExp(String(dead)));
   assert.equal(window.opened(), null);
+});
+
+test('serve builds the app when the build output is missing', async (t) => {
+  hideBuildOutput(t);
+  const stateHome = tempStateHome();
+  const port = await freePort();
+
+  const child = run(['serve', '--port', String(port)], stateHome);
+  t.after(() => child.kill('SIGTERM'));
+  let log = '';
+  child.stdout.on('data', (chunk) => (log += chunk));
+  child.stderr.on('data', (chunk) => (log += chunk));
+
+  const url = await waitFor(() => readPublished(stateHome), 60000);
+  await waitFor(async () => (await statusOf(url)) === 200, 60000);
+
+  assert.match(log, /building/i, 'the build is announced rather than silent');
+  assert.ok(fs.existsSync(path.join(ROOT, 'dist', 'server', 'entry.mjs')), 'and the output is there to serve');
+});
+
+test('serve refuses when the app cannot be built, and publishes nothing', async () => {
+  const stateHome = tempStateHome();
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-scratch-'));
+  fs.cpSync(path.join(ROOT, 'scripts'), path.join(scratch, 'scripts'), { recursive: true });
+
+  const child = spawn(process.execPath, [path.join(scratch, 'scripts', 'launch.mjs'), 'serve'], {
+    cwd: scratch,
+    env: { ...process.env, XDG_STATE_HOME: stateHome },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let complaint = '';
+  child.stderr.on('data', (chunk) => (complaint += chunk));
+  const code = await new Promise((resolvePromise) => child.on('exit', resolvePromise));
+
+  assert.notEqual(code, 0, 'a checkout that cannot build is a failure, not a server that serves nothing');
+  assert.match(complaint, /npm install/, 'the message names the command that fixes it');
+  assert.match(complaint, new RegExp(process.version.replace(/\./g, '\\.')), 'and the Node version in use');
+  assert.equal(readPublished(stateHome), null, 'and no URL is published for a server that never started');
 });

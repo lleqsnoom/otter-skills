@@ -15,10 +15,12 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { hasAstro, spawnAstro } from './astro.mjs';
 import { findFreePort, requestedPort } from './ports.mjs';
 
 const TOOL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ENTRY = resolve(TOOL_ROOT, 'dist', 'server', 'entry.mjs');
+const CONFIG = resolve(TOOL_ROOT, 'otter-pm.config.json');
 const TOOL = 'oc-otter-pm';
 const UNIT = 'oc-otter-pm.service';
 const WINDOW_DOOR = 'omarchy-launch-webapp';
@@ -59,24 +61,38 @@ function fail(message) {
   process.exit(1);
 }
 
-async function serve(argv, env) {
-  if (!existsSync(ENTRY)) {
-    fail(`the app is not built: ${ENTRY} is missing (run npm run build)`);
+/** `dist/` is gitignored and `node_modules/` can be wiped, so a start without either builds first, in the open. */
+function build() {
+  process.stdout.write('building Otter PM…\n');
+  return new Promise((resolvePromise, reject) => {
+    const build = spawnAstro(TOOL_ROOT, ['build'], { stdio: 'inherit' });
+    build.on('error', reject);
+    build.on('exit', (code) => (code === 0 ? resolvePromise() : reject(new Error(`astro build exited ${code}`))));
+  });
+}
+
+async function ensureBuilt() {
+  if (existsSync(ENTRY)) return;
+  if (!hasAstro(TOOL_ROOT)) {
+    fail(`the app is not built and Astro is not installed — run npm install (node ${process.version})`);
   }
+  try {
+    await build();
+  } catch (error) {
+    fail(`the build failed: ${error.message}`);
+  }
+}
 
-  const host = env.HOST || '127.0.0.1';
-  const port = await findFreePort(requestedPort(argv), host);
-  const url = `http://${host}:${port}/`;
-
-  publish(url, env);
-  process.stdout.write(`Otter PM → ${url}\npress ctrl-c to stop\n`);
-
-  const server = spawn(process.execPath, [ENTRY], {
+function start(port, host, env) {
+  return spawn(process.execPath, [ENTRY, '--config', env.OTTER_PM_CONFIG || CONFIG], {
     cwd: TOOL_ROOT,
     stdio: 'inherit',
     env: { ...env, PORT: String(port), HOST: host },
   });
+}
 
+/** The server is this process's child, so ctrl-c reaches it; when it ends, what it published stops being true. */
+function handOff(server, env) {
   for (const signal of ['SIGINT', 'SIGTERM']) {
     process.on(signal, () => server.kill(signal));
   }
@@ -84,6 +100,18 @@ async function serve(argv, env) {
     unpublish(env);
     process.exit(code ?? 0);
   });
+}
+
+async function serve(argv, env) {
+  await ensureBuilt();
+
+  const host = env.HOST || '127.0.0.1';
+  const port = await findFreePort(requestedPort(argv), host);
+  const url = `http://${host}:${port}/`;
+
+  publish(url, env);
+  process.stdout.write(`Otter PM → ${url}\npress ctrl-c to stop\n`);
+  handOff(start(port, host, env), env);
 }
 
 function port(env) {
