@@ -51,8 +51,8 @@ function holdPort(port) {
   });
 }
 
-function run(args, stateHome, options = {}) {
-  return spawn(process.execPath, [LAUNCH, ...args], {
+function run(args, stateHome, { entry = LAUNCH, ...options } = {}) {
+  return spawn(process.execPath, [entry, ...args], {
     cwd: ROOT,
     env: { ...process.env, XDG_STATE_HOME: stateHome },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -173,26 +173,23 @@ test('serve removes the published URL when it is stopped', async (t) => {
   assert.equal(readPublished(stateHome), null, 'nothing is published once nothing serves');
 });
 
-test('port prints the published URL, and fails when nothing is published', async (t) => {
+test('port prints the URL a server published', async (t) => {
   const stateHome = tempStateHome();
   const port = await freePort();
   const server = await serve({ stateHome, port });
   t.after(() => server.stop());
 
-  const printed = run(['port'], stateHome);
-  let out = '';
-  printed.stdout.on('data', (chunk) => (out += chunk));
-  const code = await new Promise((resolvePromise) => printed.on('exit', resolvePromise));
-  assert.equal(code, 0);
-  assert.equal(out.trim(), server.url);
+  const printed = await runToCompletion(['port'], stateHome);
 
-  const empty = tempStateHome();
-  const missing = run(['port'], empty);
-  let complaint = '';
-  missing.stderr.on('data', (chunk) => (complaint += chunk));
-  const missingCode = await new Promise((resolvePromise) => missing.on('exit', resolvePromise));
-  assert.equal(missingCode, 1, 'a port that was never published is a failure, not an empty answer');
-  assert.match(complaint, /nothing is serving/i);
+  assert.equal(printed.code, 0);
+  assert.equal(printed.out.trim(), server.url);
+});
+
+test('port fails when nothing has been published', async () => {
+  const printed = await runToCompletion(['port'], tempStateHome());
+
+  assert.equal(printed.code, 1, 'a port that was never published is a failure, not an empty answer');
+  assert.match(printed.complaint, /nothing is serving/i);
 });
 
 test('open hands the published URL to the window front door, and starts no server', async (t) => {
@@ -314,17 +311,162 @@ test('serve refuses when the app cannot be built, and publishes nothing', async 
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-scratch-'));
   fs.cpSync(path.join(ROOT, 'scripts'), path.join(scratch, 'scripts'), { recursive: true });
 
-  const child = spawn(process.execPath, [path.join(scratch, 'scripts', 'launch.mjs'), 'serve'], {
-    cwd: scratch,
-    env: { ...process.env, XDG_STATE_HOME: stateHome },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  let complaint = '';
-  child.stderr.on('data', (chunk) => (complaint += chunk));
-  const code = await new Promise((resolvePromise) => child.on('exit', resolvePromise));
+  const ran = await serveFrom(scratch, [], stateHome);
 
-  assert.notEqual(code, 0, 'a checkout that cannot build is a failure, not a server that serves nothing');
-  assert.match(complaint, /npm install/, 'the message names the command that fixes it');
-  assert.match(complaint, new RegExp(process.version.replace(/\./g, '\\.')), 'and the Node version in use');
+  assert.notEqual(ran.code, 0, 'a checkout that cannot build is a failure, not a server that serves nothing');
+  assert.match(ran.complaint, /npm install/, 'the message names the command that fixes it');
+  assert.match(ran.complaint, new RegExp(process.version.replace(/\./g, '\\.')), 'and the Node version in use');
   assert.equal(readPublished(stateHome), null, 'and no URL is published for a server that never started');
 });
+
+test('open tells "never started" from "the URL is stale", by exit code', async () => {
+  const stateHome = tempStateHome();
+  const { env, window } = openable(stateHome);
+
+  const neverStarted = await runToCompletion(['open', '--dry-run'], stateHome, { env });
+  assert.equal(neverStarted.code, 1, 'nothing has ever been published');
+  assert.match(neverStarted.complaint, /systemctl --user start oc-otter-pm\.service/, 'and it says what to run');
+
+  const dead = await freePort();
+  fs.mkdirSync(path.dirname(urlFile(stateHome)), { recursive: true });
+  fs.writeFileSync(urlFile(stateHome), `http://127.0.0.1:${dead}/\n`);
+  const stale = await runToCompletion(['open', '--dry-run'], stateHome, { env });
+
+  assert.equal(stale.code, 2, 'a published URL nothing answers on is its own kind of failure');
+  assert.match(stale.complaint, new RegExp(String(dead)), 'the message carries the URL it tried');
+  assert.equal(window.opened(), null, 'and no dead window is opened');
+});
+
+test('open refuses a published file that is not a URL', async () => {
+  const stateHome = tempStateHome();
+  const { env, window } = openable(stateHome);
+  fs.mkdirSync(path.dirname(urlFile(stateHome)), { recursive: true });
+  fs.writeFileSync(urlFile(stateHome), 'not a url\n');
+
+  const ran = await runToCompletion(['open', '--dry-run'], stateHome, { env });
+
+  assert.equal(ran.code, 3, 'an unreadable state file is neither "never started" nor "stale"');
+  assert.match(ran.complaint, /not a URL/i);
+  assert.equal(window.opened(), null);
+});
+
+test('open gives up on a URL that never answers instead of hanging', async () => {
+  const stateHome = tempStateHome();
+  const { env, window } = openable(stateHome);
+  const silent = net.createServer(() => {});
+  await new Promise((resolvePromise) => silent.listen(0, '127.0.0.1', resolvePromise));
+  const { port } = silent.address();
+  fs.mkdirSync(path.dirname(urlFile(stateHome)), { recursive: true });
+  fs.writeFileSync(urlFile(stateHome), `http://127.0.0.1:${port}/\n`);
+
+  const startedAt = Date.now();
+  const ran = await runToCompletion(['open', '--dry-run'], stateHome, { env });
+  silent.close();
+
+  assert.notEqual(ran.code, 0, 'a port that accepts but never answers is not a board');
+  assert.ok(Date.now() - startedAt < 60000, 'and the wait is bounded');
+  assert.equal(window.opened(), null);
+});
+
+/** A checkout-shaped directory the launcher can be pointed at, with the app's real dependencies linked in. */
+function scratchCheckout({ page }) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-scratch-'));
+  fs.cpSync(path.join(ROOT, 'scripts'), path.join(root, 'scripts'), { recursive: true });
+  for (const file of ['package.json', 'astro.config.mjs', 'tsconfig.json']) {
+    fs.symlinkSync(path.join(ROOT, file), path.join(root, file));
+  }
+  fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(root, 'node_modules'));
+  fs.mkdirSync(path.join(root, 'src', 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'src', 'pages', 'index.astro'), page);
+  return root;
+}
+
+/** Run the launcher that lives in another checkout, so a test can hand it a tree that cannot build. */
+function serveFrom(root, args, stateHome) {
+  return runToCompletion(['serve', ...args], stateHome, {
+    entry: path.join(root, 'scripts', 'launch.mjs'),
+    cwd: root,
+  });
+}
+
+test('serve names the state path it cannot write', async () => {
+  const stateHome = tempStateHome();
+  fs.mkdirSync(path.join(stateHome, 'otter-pm'), { recursive: true });
+  fs.chmodSync(path.join(stateHome, 'otter-pm'), 0o500);
+  const port = await freePort();
+
+  const ran = await runToCompletion(['serve', '--port', String(port)], stateHome);
+
+  fs.chmodSync(path.join(stateHome, 'otter-pm'), 0o700);
+  assert.notEqual(ran.code, 0);
+  assert.match(ran.complaint, /^oc-otter-pm: /, 'the message says who is complaining');
+  assert.ok(ran.complaint.includes(path.join(stateHome, 'otter-pm', 'url')), `it names the path (${ran.complaint.trim()})`);
+});
+
+test('serve names the port range when nothing in it is free', async (t) => {
+  const stateHome = tempStateHome();
+  const first = await freePort();
+  const held = [];
+  for (let port = first; port < first + 20; port += 1) held.push(await holdPort(port));
+  t.after(() => held.forEach((server) => server.close()));
+
+  const ran = await runToCompletion(['serve', '--port', String(first)], stateHome);
+
+  assert.notEqual(ran.code, 0);
+  assert.ok(ran.complaint.includes(String(first)), `the search is named (${ran.complaint.trim()})`);
+  assert.match(ran.complaint, new RegExp(String(first + 19)), 'and so is its end');
+  assert.equal(readPublished(stateHome), null, 'nothing is published when nothing could start');
+});
+
+test('serve reports a build that fails, and publishes nothing for it', async () => {
+  const stateHome = tempStateHome();
+  const root = scratchCheckout({ page: '---\nconst broken = ;\n---\n<h1>nope</h1>\n' });
+  const port = await freePort();
+
+  const ran = await serveFrom(root, ['--port', String(port)], stateHome);
+
+  assert.notEqual(ran.code, 0, 'a build that fails is not a server');
+  assert.match(ran.complaint, /^oc-otter-pm: the build failed/m, `the reason is named (${ran.complaint.slice(-200)})`);
+  assert.equal(readPublished(stateHome), null, 'and nothing is published for it');
+});
+
+test('serve clears a URL it cannot stand behind', async (t) => {
+  const stateHome = tempStateHome();
+  fs.mkdirSync(path.dirname(urlFile(stateHome)), { recursive: true });
+  fs.writeFileSync(urlFile(stateHome), 'http://127.0.0.1:4999/\n');
+  const first = await freePort();
+  const held = [];
+  for (let port = first; port < first + 20; port += 1) held.push(await holdPort(port));
+  t.after(() => held.forEach((server) => server.close()));
+
+  const ran = await runToCompletion(['serve', '--port', String(first)], stateHome);
+
+  assert.notEqual(ran.code, 0);
+  assert.equal(readPublished(stateHome), null, 'a URL from a run that is gone is not left for a launcher to trust');
+});
+
+test('a server that dies by signal is a failure, so the unit restarts it', async () => {
+  const stateHome = tempStateHome();
+  const port = await freePort();
+  const child = run(['serve', '--port', String(port)], stateHome);
+  const url = await waitFor(() => readPublished(stateHome));
+  await waitFor(async () => (await statusOf(url)) === 200);
+
+  const server = await waitFor(() => childPid(child.pid));
+
+  process.kill(server, 'SIGKILL');
+
+  const code = await new Promise((resolvePromise) => child.on('exit', resolvePromise));
+
+  assert.notEqual(code, 0, 'a crash must not look like a clean stop, or Restart=on-failure never fires');
+});
+
+/** The pid the launcher started, read from `/proc`: the server is its direct child, so this is exact. */
+function childPid(launcherPid) {
+  try {
+    const children = fs.readFileSync(`/proc/${launcherPid}/task/${launcherPid}/children`, 'utf8').trim();
+    return children ? Number(children.split(/\s+/)[0]) : null;
+  } catch {
+    return null;
+  }
+}

@@ -32,6 +32,9 @@ test('the unit starts the wrapper, and lets it resolve both the checkout and the
   assert.match(unit, /^RestartSec=\d+$/m, 'and not instantly');
   assert.match(unit, /^WantedBy=default\.target$/m, 'enabled for the user session, the way the other services here are');
 
+  assert.match(unit, /^StartLimitBurst=\d+$/m, 'a permanently broken start must stop trying instead of looping');
+  assert.match(unit, /^StartLimitIntervalSec=\d+$/m, 'and the window that limit is counted over is stated');
+
   assert.doesNotMatch(unit, /WorkingDirectory/, 'the launcher must not depend on a working directory');
   assert.doesNotMatch(unit, /\b\d{4}\b/, 'and no port is written down here');
   assert.doesNotMatch(unit, /OTTER_PM_ROOT/, 'the checkout path lives in the wrapper, not in two places');

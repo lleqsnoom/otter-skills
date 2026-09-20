@@ -1,5 +1,9 @@
 [Unit]
 Description=Otter PM board — the local project board over .x-skills trees
+# A start that fails for a reason that will not change (a moved checkout, every port taken) would otherwise be
+# retried forever; five tries a minute is enough to ride out a transient one and few enough to notice the rest.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
