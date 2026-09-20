@@ -5,19 +5,45 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 /**
- * x-autoreflection-heal — turn the analysis report into approved edits and apply them.
+ * x-autoreflection heal — turn the window's analysis report into approved edits and apply them.
  *
- * The plan carries, per finding, the exact `find`/`replace`, the target file and a check command.
- * The agent opens each target to write those fields, marks the mechanical ones `auto: true`, and
- * proposes them as a multi-select panel. On approval, `heal.mjs --apply <ids>` applies each one,
- * runs its check, reverts on failure, and appends the ledger. A human always picks the fixes; the
- * script only does what was picked, and only the `auto` classes.
+ * The plan carries, per finding, the issue it answers, the rate the fix should move, the exact
+ * `find`/`replace`, the target file and a check command. The agent opens each target to write those
+ * fields, marks the mechanical ones `auto: true`, and proposes them as a multi-select panel. On
+ * approval, `heal.mjs --apply <ids>` applies each one, runs its check, reverts on failure, and appends
+ * the ledger. A human always picks the fixes; the script only does what was picked, and only `auto`.
  */
 
 export const SCHEMA = "x-autoreflection-heal/1";
 
 /** The improvement classes a mechanical, verifiable, reversible edit may be applied unattended. */
 export const AUTO_CLASSES = new Set(["doc-command-drift", "missing-gate", "panel-rule", "contract-drift"]);
+
+/**
+ * The classes that answer a session falling short rather than failing. Each is a judgement about what
+ * the user expected, so none is ever applied unattended, and each names the rate it should move.
+ */
+export const QUALITY_CLASSES = new Set(["rule-not-applied", "missing-expectation", "unbacked-report", "depth-floor", "ritual-cost", "silent-success"]);
+
+/** The files that find the gaps and grade the reflections: they measure every skill. */
+const SHARED_MEASURES = [
+  /^skills\/x-autoreflection\/scripts\/(scan-session|reactions|anchors|classify-turns|check-reflection|analyze|check-analysis|heal|check-heal)\.mjs$/,
+  /^skills\/x-autoreflection\/references\/(gap-taxonomy|quality-judge)\.md$/,
+  /^skills\/x-skill-lint\/scripts\/lint\.mjs$/,
+];
+const OWN_CHECK_RE = /^skills\/(x-[a-z0-9-]+)\/scripts\/(check|validate)-[A-Za-z0-9._-]+\.(mjs|js|cjs)$/;
+
+/**
+ * Which skills a file measures: `*` for the shared detectors and gates, one skill for its own
+ * `check-*` / `validate-*` script, null for a file that measures nothing. What is measured must not
+ * edit its own measure in the same step — the one self-improving agent that could rewrote its
+ * hallucination detector to report a perfect score.
+ */
+export function measuresOf(target) {
+  const file = path.posix.normalize(String(target ?? "").replace(/\\/g, "/")).replace(/^\.\//, "");
+  if (SHARED_MEASURES.some((re) => re.test(file))) return "*";
+  return file.match(OWN_CHECK_RE)?.[1] ?? null;
+}
 
 function pad2(value) {
   return String(value).padStart(2, "0");
@@ -26,6 +52,7 @@ function pad2(value) {
 function timestamp(date = new Date()) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
+
 
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
@@ -111,20 +138,45 @@ function nextE(runDir) {
 }
 // #endregion run-folder
 
-/** A plan skeleton: one item per finding, the edit fields left for the agent to fill after reading. */
+/**
+ * The rate a fix should move, in the words the next report can be read against. Every proposal names
+ * one: a change nobody can score is a change nobody can tell worked, and the panel's third line.
+ */
+export function improvementFor(finding) {
+  const where = finding.skill ? ` on ${finding.skill}` : "";
+  const span = (finding.recurrence ?? 0) > 1 ? `${finding.count} across ${finding.recurrence} sessions` : `${finding.count} in one session`;
+  return `${finding.kind} signals${where}: ${span} → none in the next 14 days`;
+}
+
+/**
+ * A plan skeleton: one item per finding, carrying the issue and the rate it should move, with the edit
+ * fields left for the agent to fill after reading the target. The skill's own usage scores ride along,
+ * so the panel can show what the numbers were before the fix.
+ */
 export function mintPlan(analysis, { analysisPath = null, date = new Date() } = {}) {
-  const items = (analysis.findings ?? []).map((finding) => ({
-    id: finding.id,
-    skill: finding.skill ?? null,
-    class: finding.class ?? null,
-    target: finding.skill ? `skills/${finding.skill}/SKILL.md` : "",
-    find: "",
-    replace: "",
-    check: "",
-    auto: false,
-    change: finding.change ?? "",
-    evidence: finding.evidence ?? [],
-  }));
+  const scores = new Map((analysis.skills ?? []).map((row) => [row.name, row]));
+  const items = (analysis.findings ?? []).map((finding) => {
+    const row = scores.get(finding.skill) ?? null;
+    return {
+      id: finding.id,
+      skill: finding.skill ?? null,
+      class: finding.class ?? null,
+      issue: finding.summary ?? "",
+      severity: finding.severity ?? null,
+      recurrence: finding.recurrence ?? 0,
+      count: finding.count ?? 0,
+      scores: row ? { sessions: row.sessions ?? 0, loaded: row.loaded ?? 0, used: row.used ?? 0, unused: row.unused ?? 0, high: row.high ?? 0, medium: row.medium ?? 0, low: row.low ?? 0 } : null,
+      improvement: improvementFor(finding),
+      target: finding.skill ? `skills/${finding.skill}/SKILL.md` : "",
+      find: "",
+      replace: "",
+      check: "",
+      auto: false,
+      ...(QUALITY_CLASSES.has(finding.class) ? { watch: "" } : {}),
+      change: finding.change ?? "",
+      evidence: finding.evidence ?? [],
+    };
+  });
   return {
     schema: SCHEMA,
     analysis: analysisPath,
@@ -176,7 +228,7 @@ export function applyItem(item, { cwd = process.cwd(), dryRun = false } = {}) {
     if (!dryRun) fs.writeFileSync(file, original);
     return { id: item.id, status: "reverted", detail: `check failed: ${check.stderr || check.stdout || item.check}`.slice(0, 200) };
   }
-  return { id: item.id, status: dryRun ? "would-apply" : "applied", detail: item.target };
+  return { id: item.id, status: dryRun ? "would-apply" : "applied", detail: item.target, ...(item.watch ? { watch: item.watch } : {}) };
 }
 
 export function applyHeal(plan, ids, { cwd = process.cwd(), dryRun = false } = {}) {
@@ -208,11 +260,13 @@ export function renderResults(plan, results) {
 
 function usage() {
   return [
-    "x-autoreflection-heal heal — mint a plan from an analysis report, then apply approved edits.",
+    "x-autoreflection heal — mint a plan from an analysis report, then apply approved edits.",
     "",
     "Usage:",
     "  node heal.mjs --mint <analysis.json> --out <plan.json>",
     "  node heal.mjs --plan <plan.json> --apply F1,F3 [--dry-run] [--cwd <dir>]",
+    "",
+    "`improve.mjs` mints the plan for you; this script is the mint-and-apply half of that flow.",
     "",
     "Flags:",
     "  --mint <file>   Create a plan skeleton from the analysis report",
@@ -307,6 +361,6 @@ function main() {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   main();
 }

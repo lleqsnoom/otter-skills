@@ -52,7 +52,6 @@ For engineering principles definitions and violation patterns, see `references/p
 
 ## Related Skills
 
-- **x-refactor** — Use after reviewing this plan to get automated refactoring suggestions (extract method, rename variables, replace conditionals). Run `x-refactor` on flagged files for before/after comparisons. Note: `x-refactor` provides analysis only; apply changes manually based on its suggestions.
 - **x-debug** — For runtime errors or behavioral issues that require hypothesis-driven investigation rather than static code analysis.
 - **x-comments** — Required on every review. Enforces commentary rules (remove obvious comments, refactor over-commented blocks into named functions, keep only `why` comments). Route comment findings here.
 
@@ -100,7 +99,7 @@ The script prints the full path. Open that file with `edit` or `write`, then ins
 ## Summary
 
 **Total issues:** N (**critical:** N, **major:** N, **minor:** N)
-**Status:** 0/N resolved | Review issues manually or run `x-refactor <file>` for automated suggestions.
+**Status:** 0/N resolved | Review issues manually or route them to `x-fix`.
 ```
 
 Apply fixes manually based on review findings. Track progress by updating checkboxes `[ ]` → `[x]`.
@@ -112,8 +111,7 @@ After saving the plan file, recommend the appropriate next skill based on what w
 | Review finding | Recommended skill | Why |
 |----------------|-------------------|-----|
 | Any issues that need fixing (complexity, SOLID violations, duplication) | `x-fix` | Reads your plan and actually edits source files to resolve each issue |
-| Structural refactoring suggestions without applying changes | `x-refactor` | Analysis-only — produces before/after comparisons but doesn't edit code |
 | Behavioral bugs or runtime errors that need investigation | `x-debug` | Hypothesis-driven debugging — reproduce, isolate root cause, then fix with x-fix |
 | Comment noise, obvious comments, over-commented blocks | `x-comments` | Removes noisy comments and refactors over-explained blocks into named functions |
 
-For most review workflows: **use `x-fix`** to resolve issues from your plan. Use `x-refactor` only when you want suggestions without applying changes.
+For most review workflows: **use `x-fix`** to resolve issues from your plan.

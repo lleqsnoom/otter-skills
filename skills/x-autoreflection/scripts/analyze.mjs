@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { fileURLToPath, pathToFileURL } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { pathToFileURL } from "node:url";
+import { anchorsForScans } from "./anchors.mjs";
+import { hostById } from "./hosts/index.mjs";
+import { hostContext, listHostSessions, normalizeSession, selectedHosts } from "./read-session.mjs";
+import { scanSession, skillNamesOnDisk } from "./scan-session.mjs";
 
 /**
- * x-autoreflection-analysis — traverse past sessions across every CLI and write the skill-health
- * report: one JSON (the source of truth the heal skill consumes) and one markdown (the human read),
+ * x-autoreflection analyze — traverse past sessions across every CLI and write the skill-health
+ * report: one JSON (the source of truth the heal stage consumes) and one markdown (the human read),
  * rendered from the same object so they cannot drift.
  *
- * Traversal shells out to the sibling `x-autoreflection` scripts (read-session, scan-session): those
- * own the host adapters, and the lint forbids importing them. The path is resolved relative to this
- * file, so the two skills must be installed side by side — which they always are, as one package.
+ * Traversal reads the siblings directly — `read-session.mjs` owns the adapters and `scan-session.mjs`
+ * the signals — so one pass lists the sessions and each is read once. Shelling out to those scripts
+ * per session re-listed every project for every session, which turned a 60-session window into hours.
  */
 
 export const SCHEMA = "x-autoreflection-analysis/1";
@@ -26,6 +26,11 @@ export const CLASS_BY_KIND = {
   "user-correction": "missing-gate",
   "user-reprompt": "stopping-point",
   "prose-question": "panel-rule",
+  "user-redo": "missing-expectation",
+  "user-handoff": "missing-expectation",
+  "user-pushback": "missing-expectation",
+  "tool-rejected": "ritual-cost",
+  "skill-script-silent": "silent-success",
   // skill-unused and expected-exit have no per-file class: the first is a portfolio
   // decision, the second is not a gap at all.
 };
@@ -37,14 +42,22 @@ export const CHANGE_HINT = {
   "user-correction": "add the missing question or default so the agent does not proceed on a wrong assumption",
   "user-reprompt": "name the stopping point in the step's Completion: line",
   "prose-question": "point the asking section at the panel rule (references/questions.md)",
+  "user-redo": "quote the user's redo, name what the first answer missed, and add it to the skill as one expected behaviour",
+  "user-handoff": "read the turns before the handoff, name what the output lacked, and add it as an expected behaviour or a report-with-evidence rule",
+  "user-pushback": "quote the pushback, find the skill line that should have prevented it, or add the missing expected behaviour",
+  "tool-rejected": "make the step the user refused conditional on the situation that needs it",
+  "skill-script-silent": "make the script print a result line on success, and compare real paths in its main guard",
 };
 
 export const SEVERITY_WEIGHT = { high: 3, medium: 2, low: 1 };
 const MAX_EVIDENCE = 5;
 const DELETE_MIN_RECURRENCE = 2;
 
-/** The signals that are not gaps: expected-exit is an answer, not a failure. */
-const NON_GAP_KINDS = new Set(["expected-exit"]);
+/**
+ * The signals that are not gaps: expected-exit is an answer, not a failure, and an interrupt only says
+ * the user stopped a turn — the reason is in the anchor that follows it, if any.
+ */
+const NON_GAP_KINDS = new Set(["expected-exit", "interrupt"]);
 
 function firstSummary(summaries) {
   return summaries.filter(Boolean).sort((a, b) => a.length - b.length)[0] ?? "";
@@ -218,6 +231,7 @@ function timestamp(date = new Date()) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
+
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
 const RUNS_ROOT = ".x-skills/runs";
@@ -302,6 +316,34 @@ function nextE(runDir) {
 }
 // #endregion run-folder
 
+/** The cross-session view the sibling `anchors.mjs` computed: retries, reading order, audit. */
+export function withAnchors(report, anchors) {
+  return {
+    ...report,
+    retries: anchors?.retries ?? [],
+    select: anchors?.select ?? [],
+    recurring: anchors?.recurring ?? [],
+    audit: anchors?.audit ?? null,
+  };
+}
+
+function renderReadFirst(report) {
+  if (!report.select?.length) return [];
+  const lines = ["## Read first", ""];
+  for (const choice of report.select) {
+    const anchors = choice.anchors.map((anchor) => (anchor.message === null || anchor.message === undefined ? anchor.kind : `${anchor.kind} msg ${anchor.message}`));
+    lines.push(`- \`${choice.session}\` — ${choice.reason}${choice.owner ? ` (\`${choice.owner}\`)` : ""}${choice.model ? ` · ${choice.model}` : ""}${anchors.length ? ` · ${anchors.join(", ")}` : ""}`);
+  }
+  if (report.audit) lines.push(`- audit: \`${report.audit.session}\` — no anchor, read and label it anyway`);
+  lines.push("");
+  if (report.retries?.length) {
+    lines.push("## Asked again in a later session", "");
+    for (const retry of report.retries) lines.push(`- \`${retry.earlier}\` → \`${retry.later}\` after ${retry.hours} h: "${retry.excerpt}"`);
+    lines.push("");
+  }
+  return lines;
+}
+
 export function renderMarkdown(report) {
   const lines = [];
   lines.push(`# Skill-health analysis — ${report.window.hours}h window`);
@@ -312,6 +354,7 @@ export function renderMarkdown(report) {
   );
   lines.push("");
 
+  lines.push(...renderReadFirst(report));
   lines.push("## Skills in use");
   lines.push("");
   if (!report.skills.length) {
@@ -372,42 +415,35 @@ export function writeReport(report, runDir) {
   return { jsonPath, mdPath };
 }
 
-/** Resolve the sibling skill's script dir, or throw a clear error when it is not installed. */
-export function siblingScripts(root = path.resolve(__dirname, "..", "..")) {
-  const dir = path.join(root, "x-autoreflection", "scripts");
-  if (!fs.existsSync(path.join(dir, "read-session.mjs"))) {
-    throw new Error(`x-autoreflection is not installed beside x-autoreflection-analysis (expected ${dir}/read-session.mjs)`);
+/**
+ * Retries, reading order and audit, computed in-process. A failure leaves the report without them and
+ * says so, rather than failing the whole analysis: the scans are still the evidence.
+ */
+export function anchorsFor(scans, { date = timestamp(new Date()).slice(0, 10) } = {}) {
+  try {
+    return anchorsForScans(scans, { date });
+  } catch (err) {
+    return { retries: [], select: [], recurring: [], audit: null, error: err.message.slice(0, 160) };
   }
-  return dir;
 }
 
-function runNode(script, args) {
-  return execFileSync("node", [script, ...args], { encoding: "utf8", maxBuffer: 512 * 1024 * 1024 });
+/** Enumerate the window's sessions from every detected host, in one pass. */
+export function listWindow({ hours, host, env = process.env, run = null, now = new Date() } = {}) {
+  const ctx = hostContext({ hours, env, run, now });
+  return listHostSessions({ only: selectedHosts(host), ctx });
 }
 
-/** Enumerate the window's sessions by shelling to the sibling reader. */
-export function listWindow({ hours, host, scripts }) {
-  const args = ["--list", "--hours", String(hours)];
-  if (host) args.push("--host", host);
-  const { sessions, hosts } = JSON.parse(runNode(path.join(scripts, "read-session.mjs"), args));
-  return { sessions, hosts };
-}
-
-/** Scan one session into a signals file, returning the parsed scan. */
-export function scanOne({ host, id, skillsDir, scripts, workDir, out, hours = 24 }) {
-  const transcript = path.join(workDir, "session.json");
-  // `--hours` sets the project lookback, not the session window: `--session` reads any id, but the
-  // crush adapter only lists projects touched within the lookback, so a 72h window must look back 72h.
-  runNode(path.join(scripts, "read-session.mjs"), ["--session", String(id), "--host", host, "--hours", String(hours), "--out", transcript]);
-  const args = ["--input", transcript, "--out", out];
-  if (skillsDir) args.push("--skills-dir", skillsDir);
-  runNode(path.join(scripts, "scan-session.mjs"), args);
-  return JSON.parse(fs.readFileSync(out, "utf8"));
+/** Read one session and scan it, returning the scan (the signals the report aggregates). */
+export function scanOne({ session, skills, ctx, clip = 600 }) {
+  const adapter = hostById(session.host);
+  if (!adapter) throw new Error(`no adapter for host "${session.host}"`);
+  const transcript = normalizeSession(adapter.read(session, ctx), { limit: clip });
+  return scanSession(transcript, { skillNames: skills.names, skillsSource: skills.dir });
 }
 
 function usage() {
   return [
-    "x-autoreflection-analysis analyze — traverse past sessions and write the skill-health report.",
+    "x-autoreflection analyze — traverse past sessions and write the skill-health report.",
     "",
     "Usage:",
     "  node analyze.mjs [--hours 24] [--host crush,codex] [--scans <dir>] [--out <run-dir>]",
@@ -418,7 +454,7 @@ function usage() {
     "  --scans <dir>    Skip traversal and aggregate the *-signals.json files already in <dir>",
     "  --max <n>        Cap on sessions scanned (default: 60)",
     "  --skills-dir <d> Folder holding skill directories (default: skills/, then .agents/skills/)",
-    "  --slug <s>       Run-folder slug (default: autoreflection-analysis)",
+    "  --slug <s>       Run-folder slug (default: autoreflection)",
     "  --out <dir>      Write the report here instead of the run folder",
     "  --new-run        Mint a fresh run instead of joining the existing one",
     "  --help           Show this help",
@@ -448,31 +484,27 @@ function main() {
         scans.push(JSON.parse(fs.readFileSync(path.join(dir, name), "utf8")));
       }
     } else {
-      const scripts = siblingScripts();
-      const listed = listWindow({ hours, host: args.host || null, scripts });
+      const ctx = hostContext({ hours });
+      const listed = listWindow({ hours, host: args.host || null });
       hosts = listed.hosts;
-      const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-analysis-"));
+      const skills = skillNamesOnDisk(typeof args["skills-dir"] === "string" ? args["skills-dir"] : null);
       const warnings = [];
       let failed = 0;
-      try {
-        for (const session of listed.sessions.slice(0, max)) {
-          const safe = String(session.id).replace(/[^A-Za-z0-9._-]/g, "_");
-          const out = path.join(workDir, `${session.host}--${safe}.signals.json`);
-          try {
-            scans.push(scanOne({ host: session.host, id: session.id, skillsDir: args["skills-dir"] || null, scripts, workDir, out, hours }));
-          } catch (err) {
-            failed++;
-            if (warnings.length < 20) warnings.push({ session: `${session.host}:${session.id}`, reason: err.message.slice(0, 120) });
-          }
+      for (const session of listed.sessions.slice(0, max)) {
+        try {
+          scans.push(scanOne({ session, skills, ctx }));
+        } catch (err) {
+          failed++;
+          if (warnings.length < 20) warnings.push({ session: `${session.host}:${session.id}`, reason: err.message.slice(0, 120) });
         }
-      } finally {
-        fs.rmSync(workDir, { recursive: true, force: true });
       }
       reportWarnings = warnings;
       reportFailed = failed;
     }
 
-    const report = aggregate(scans, { hours });
+    const anchors = anchorsFor(scans);
+    const report = withAnchors(aggregate(scans, { hours }), anchors);
+    if (anchors.error) report.notes.push(`retries and reading order unavailable: ${anchors.error}`);
     if (hosts.length) {
       const since = new Date(Date.now() - hours * 3600 * 1000).toISOString();
       report.window.since = since;
@@ -484,7 +516,7 @@ function main() {
 
     const runDir = args.out
       ? path.resolve(args.out)
-      : resolveRunDir(args.slug || "autoreflection-analysis", { fresh: args["new-run"] === true });
+      : resolveRunDir(args.slug || "autoreflection", { fresh: args["new-run"] === true });
     const { jsonPath, mdPath } = writeReport(report, runDir);
     process.stdout.write(`${JSON.stringify({ json: jsonPath, md: mdPath, sessions: report.stats.sessions, findings: report.stats.findings, portfolio: report.stats.portfolio })}\n`);
   } catch (err) {
@@ -518,6 +550,6 @@ function parseArgs(args) {
   return out;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   main();
 }

@@ -177,7 +177,6 @@ node <skill>/scripts/check-report.mjs --file <report.md>   # exit 0 iff filled i
 | It is an epic/task that failed review | `x-epic` / `x-decompose` |
 | It is a skill that failed review | edit the `SKILL.md`, then `x-skill-lint` (frontmatter, refs, README) |
 | You need deeper root-cause work on a claim | `x-investigate` |
-| You need to reproduce a failing claim | `x-reproduce` |
 
 ## Files
 
