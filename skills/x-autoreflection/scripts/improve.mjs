@@ -188,6 +188,7 @@ function usage() {
     "  --max <n>        Cap on sessions scanned (default: 60)",
     "  --skills-dir <d> Folder holding skill directories (default: skills/, then .agents/skills/)",
     "  --scans <dir>    Skip traversal and aggregate the *-signals.json files already in <dir>",
+    "  --issues <file>  E00-issues.json from hunt-issues.mjs: the model's reading of the window",
     "  --slug <s>       Run-folder slug (default: autoreflection)",
     "  --out <dir>      Write the artifacts here instead of the run folder",
     "  --new-run        Mint a fresh run instead of joining the existing one",
@@ -203,7 +204,7 @@ function usage() {
 function parseArgs(args) {
   const out = { _: [], unknown: [] };
   const booleans = new Set(["new-run", "no-plan", "help"]);
-  const known = new Set(["host", "max", "skills-dir", "scans", "slug", "out", "new-run", "no-plan", "help"]);
+  const known = new Set(["host", "max", "skills-dir", "scans", "slug", "out", "new-run", "no-plan", "issues", "help"]);
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (!arg.startsWith("--")) {
@@ -239,6 +240,7 @@ function main() {
       ["max", args.max],
       ["skills-dir", args["skills-dir"]],
       ["scans", args.scans],
+      ["issues", args.issues],
       ["slug", args.slug],
       ["out", args.out],
     ]) {

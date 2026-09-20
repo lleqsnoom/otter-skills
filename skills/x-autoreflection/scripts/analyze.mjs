@@ -61,6 +61,14 @@ export const SEVERITY_WEIGHT = { high: 3, medium: 2, low: 1 };
  * failed step: a failed step cost a retry, a stalled run cost the user's intervention.
  */
 export const STALL_KINDS = new Set(["user-stuck", "blocking-wait"]);
+
+/**
+ * The findings that are the reflection's core job: a run the user had to break, and a behaviour the user
+ * had to correct again in a later session. Both are read before any failed step, because both cost the
+ * user their own time rather than a retry. `recurring-issue` is the model's reading of the window,
+ * verified against the transcripts by `hunt-issues.mjs` before it reaches here.
+ */
+export const CORE_KINDS = new Set([...STALL_KINDS, "recurring-issue"]);
 const MAX_EVIDENCE = 5;
 const DELETE_MIN_RECURRENCE = 2;
 
@@ -78,7 +86,7 @@ function firstSummary(summaries) {
  * Aggregate a batch of scan JSONs into the report object. Pure and importable: the traversal that
  * produced the scans is the caller's business, so a test drives it with synthetic scans alone.
  */
-export function aggregate(scans, { hours = 24 } = {}) {
+export function aggregate(scans, { hours = 24, issues = [] } = {}) {
   const sessions = scans.map((scan) => ({
     id: scan.source?.id ?? scan.source?.uuid ?? "?",
     title: scan.source?.title ?? null,
@@ -197,11 +205,15 @@ export function aggregate(scans, { hours = 24 } = {}) {
     }
   }
 
-  // Rank findings: a stalled run first (the user had to break it), then recurrence, severity and
-  // count — "most important" first.
+  // The model's own reading of the window, already verified against the transcripts by hunt-issues.mjs
+  // (a quote that is not in the turn it cites, or a theme only one session shows, never gets this far).
+  for (const issue of issues) findings.push({ detector: "model", ...issue });
+
+  // Rank findings: a stall or a corrected behaviour first (the user spent their own time on it), then
+  // recurrence, severity and count — "most important" first.
   findings.sort(
     (a, b) =>
-      Number(STALL_KINDS.has(b.kind)) - Number(STALL_KINDS.has(a.kind)) ||
+      Number(CORE_KINDS.has(b.kind)) - Number(CORE_KINDS.has(a.kind)) ||
       b.recurrence - a.recurrence ||
       SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity] ||
       b.count - a.count ||
@@ -466,6 +478,7 @@ function usage() {
     "  --hours <n>      How far back to look (default: 24)",
     "  --host <ids>     Comma-separated hosts to read (default: every detected host)",
     "  --scans <dir>    Skip traversal and aggregate the *-signals.json files already in <dir>",
+    "  --issues <file>  E00-issues.json from hunt-issues.mjs: the model's reading of the window",
     "  --max <n>        Cap on sessions scanned (default: 60)",
     "  --skills-dir <d> Folder holding skill directories (default: skills/, then .agents/skills/)",
     "  --slug <s>       Run-folder slug (default: autoreflection)",
@@ -517,7 +530,17 @@ function main() {
     }
 
     const anchors = anchorsFor(scans);
-    const report = withAnchors(aggregate(scans, { hours }), anchors);
+    const modelIssues = typeof args.issues === "string" ? (JSON.parse(fs.readFileSync(path.resolve(args.issues), "utf8")).findings ?? []) : [];
+    const report = withAnchors(aggregate(scans, { hours, issues: modelIssues }), anchors);
+    if (modelIssues.length) {
+      report.notes.push(
+        `${modelIssues.length} recurring-issue finding(s) came from a model reading the window: each quote was checked against the turn it cites, and each theme spans at least two sessions.`
+      );
+    } else {
+      report.notes.push(
+        "no recurring-issue findings: run `hunt-issues.mjs --build`, have a model answer the prompt, then re-run analyze with --issues <answers>.json. The scanner's own signal kinds only cover what someone listed."
+      );
+    }
     if (anchors.error) report.notes.push(`retries and reading order unavailable: ${anchors.error}`);
     if (hosts.length) {
       const since = new Date(Date.now() - hours * 3600 * 1000).toISOString();
@@ -542,7 +565,7 @@ function main() {
 function parseArgs(args) {
   const out = { _: [], unknown: [] };
   const booleans = new Set(["new-run", "help"]);
-  const known = new Set(["hours", "host", "scans", "max", "skills-dir", "slug", "out", "new-run", "help"]);
+  const known = new Set(["hours", "host", "scans", "max", "skills-dir", "slug", "out", "new-run", "issues", "help"]);
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (!arg.startsWith("--")) {

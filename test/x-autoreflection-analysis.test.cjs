@@ -222,6 +222,29 @@ describe("x-autoreflection analyze report writing", async () => {
     assert.equal(finding.recurrence, 1);
     assert.equal(finding.class, "missing-gate");
   });
+
+  it("merges a model-found recurring issue and reads it beside the stalls", () => {
+    const issue = {
+      id: "I1",
+      kind: "recurring-issue",
+      class: "missing-expectation",
+      skill: "x-ui",
+      severity: "high",
+      recurrence: 3,
+      count: 3,
+      summary: "the agent asks for confirmation on a request that was already complete",
+      change: "build it and report what changed",
+      sessions: ["a", "b", "c"],
+      evidence: [{ session: "a", message: 2, excerpt: "just do it" }],
+    };
+    const report = aggregate([scan("s1", [signal("tool-failure", { suspect: "x-epic" })], { loaded: ["x-epic"], used: ["x-epic"] })], {
+      hours: 24,
+      issues: [issue],
+    });
+    assert.equal(report.findings[0].id, "I1", "a corrected behaviour outranks a failed step");
+    assert.equal(report.findings[0].detector, "model");
+    assert.equal(report.findings[1].kind, "tool-failure");
+  });
 });
 
 describe("x-autoreflection check-analysis", async () => {

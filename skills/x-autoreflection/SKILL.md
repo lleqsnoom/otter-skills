@@ -71,7 +71,25 @@ says so: a quiet day is a result, not a failure.
 For a window that is too slow to re-traverse, `--max <n>` caps the sessions scanned (default 60) and
 `--scans <dir>` aggregates `*-signals.json` files already on disk.
 
-### 2. Read the report
+### 2. Run the model pass over the window
+
+No script can find the issues worth fixing: nobody knows in advance what a user will have to correct, so
+a lexicon only finds the phrasings someone listed. A model reads the window's real turns and names the
+themes instead, and `hunt-issues.mjs` does what the model cannot do for itself — it assembles the
+material from the transcripts and checks the answer back against them.
+
+```bash
+node <skill>/scripts/hunt-issues.mjs --build --hours 240 --out <run folder>   # writes E00-issues-prompt*.md
+<model> < <run folder>/E00-issues-prompt-01.md > answers.md                   # any model; the host chooses
+node <skill>/scripts/hunt-issues.mjs --read answers.md --dir <run folder>     # verifies, writes E00-issues.json
+node <skill>/scripts/improve.mjs 240h --issues <run folder>/E00-issues.json   # merges it into the report
+```
+
+Each claim is dropped unless its quote is really in the turn it cites and the theme spans at least two
+sessions; a dropped claim is reported with the rule it broke. `references/issue-hunt.md` has the rules the
+model follows and the bar its answers must clear.
+
+### 3. Read the report
 
 Open the markdown. It opens with **Read first** (the sessions ranked by their quality anchors, one per
 owning skill, plus one quiet session to audit) and **Asked again in a later session**, then **Skills in
@@ -81,7 +99,7 @@ loud what the numbers are: how many sessions, which skills, how many high signal
 `references/window-report.md` has the artifact's schema, what each section means, how findings and
 portfolio items are derived, and the heal rulebook. Read it before touching the plan.
 
-### 3. Ask whether to heal at all
+### 4. Ask whether to heal at all
 
 The report is a result on its own. Before any plan work, ask one `confirm` panel: whether to start an
 auto-heal session from this report. Say what it costs — the agent opens each flagged skill and edits it,
@@ -90,7 +108,7 @@ and the user will be asked to pick the fixes — and that the report stays on di
 On **no**: stop here, say where the report is, and offer the period again with a narrower window. Do not
 mint a plan, do not touch a skill file.
 
-### 4. Turn the findings into exact edits
+### 5. Turn the findings into exact edits
 
 The plan already exists (unless `--no-plan` was used — then run
 `node <skill>/scripts/heal.mjs --mint "<run folder>/E<nn>-analysis.json"`). It carries one item per
@@ -104,7 +122,7 @@ classes that always name a `watch`, `expectations.json`, why a measure is never 
 measures — are in `references/window-report.md`. A finding you drop after reading its file is **deleted
 from the plan**, not left empty.
 
-### 5. Gate the plan
+### 6. Gate the plan
 
 ```bash
 node <skill>/scripts/check-heal.mjs --file "<run folder>/E<nn>-heal.json"
@@ -114,7 +132,7 @@ Exit **0** clean, **1** when an item lacks a target, an issue, a rate or (for `a
 names a class outside the auto whitelist, or edits a measure beside the skill it measures; **2** on a
 usage error. Fix each violation and re-run.
 
-### 6. Offer the fixes, one selectable option each
+### 7. Offer the fixes, one selectable option each
 
 Render a `multi` panel from the plan's items — one option per fix, and each option carries the three
 lines the user is deciding on:
@@ -130,7 +148,7 @@ script will never apply: they name their `watch`, because whoever lands one need
 to read in the coming days. Portfolio items (create/merge/split/delete) are shown as decisions, never as
 edits. Say which items you dropped and why — a dropped finding is a result.
 
-### 7. Apply the picks, then report the ledger
+### 8. Apply the picks, then report the ledger
 
 ```bash
 node <skill>/scripts/heal.mjs --plan "<run folder>/E<nn>-heal.json" --apply F1,F3 --dry-run
@@ -236,6 +254,7 @@ options from the artifacts — the report's rankings and the plan's items — no
 - `scripts/check-analysis.mjs` — fail while a finding lacks evidence or a portfolio item is unshaped.
 - `scripts/heal.mjs` — mint a plan from the report, then apply the picked ids with a revert-on-failure ledger.
 - `scripts/check-heal.mjs` — fail while an item is unshaped, names a non-auto class, or edits a measure beside what it measures.
+- `scripts/hunt-issues.mjs` — the model pass: assemble the window's turns into a prompt, then verify the issues a model names back against the transcripts.
 - `scripts/read-session.mjs` — lists and exports a session transcript as normalized JSON.
 - `scripts/scan-session.mjs` — extracts friction signals, quality anchors, suspect skills, and run folders.
 - `scripts/reactions.mjs` — the quality anchors: redo, handoff, rejected tool call, interrupt, silent skill script, and the owner of each moment.
@@ -248,6 +267,7 @@ options from the artifacts — the report's rankings and the plan's items — no
 - `scripts/derive.mjs` — the movement, the calendar and the bands the report UI reads. Data only: the app under `tools/report-app/` draws, this decides what is true.
 - `references/window-report.md` — the report's schema and sections, how findings and portfolio items are derived, and the heal rulebook.
 - `references/session-reflection.md` — the single-session procedure: picking, scanning, verifying, the reflection format.
+- `references/issue-hunt.md` — the rules the model pass follows, and the evidence bar its answers must clear.
 - `references/gap-taxonomy.md` — signal kind → the improvement that answers it.
 - `references/quality-judge.md` — how to judge a quality anchor: one narrow question, quoted evidence, a `## Quality` line.
 - `references/questions.md` — how to ask as a panel, and when to stop asking.
