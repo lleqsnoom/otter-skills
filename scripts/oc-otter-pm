@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# The installed entry point: a real script rather than a symlink, so the checkout it runs is a variable in one place.
+#
+# The unit and the desktop entries call this with no arguments, and a supervisor chooses their working directory —
+# which is why nothing here may depend on it. A moved checkout has to fail loudly: a service that starts and serves
+# nothing is worse than one that refuses and says why.
+set -euo pipefail
+
+OTTER_PM_ROOT="${OTTER_PM_ROOT:-$HOME/orca/workspaces/otter-pm/feat-app-version}"
+LAUNCH="$OTTER_PM_ROOT/scripts/launch.mjs"
+
+if [ ! -f "$LAUNCH" ]; then
+  echo "oc-otter-pm: no launcher at $LAUNCH (set OTTER_PM_ROOT to the checkout)" >&2
+  exit 1
+fi
+
+exec node "$LAUNCH" "$@"

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=Otter PM (browser)
+Comment=Local project board over .x-skills trees, in a browser tab
+Exec=oc-otter-pm open --browser
+Terminal=false
+Type=Application
+Icon=otter-pm
+StartupNotify=true
