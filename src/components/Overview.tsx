@@ -101,8 +101,9 @@ function SourcePanel(props: { snapshot: Snapshot }) {
         <For each={props.snapshot.roots}>{(root) => <li class="break-anywhere">{root}</li>}</For>
       </ul>
       <p class="m-0 text-chrome text-muted-foreground">
-        Add a project the IDE does not have with <code>--root &lt;path&gt;</code> or a <code>roots</code> entry in{' '}
-        <code>otter-pm.config.json</code>; both are used alongside the IDE's list.
+        Add a project the IDE does not have with <code>+ add existing</code> in the rail, <code>--root &lt;path&gt;</code>,
+        or a <code>roots</code> entry in <code>otter-pm.config.json</code>; every one of them is used alongside the
+        IDE's list.
       </p>
     </section>
   );

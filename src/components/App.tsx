@@ -9,6 +9,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { CloseIcon, SearchIcon } from './icons';
 import { ProjectIcon } from './ProjectIcon';
+import { AddProject } from './AddProject';
 import { GroupDetail } from './GroupDetail';
 import { FileView } from './FileView';
 import { NewProject } from './NewProject';
@@ -200,6 +201,7 @@ function Rail(props: {
             {props.refreshing ? 'refreshing…' : 'refresh from disk'}
           </Button>
           <NewProject />
+          <AddProject />
         </div>
 
         <nav class="grid gap-0.5" aria-label="Projects">

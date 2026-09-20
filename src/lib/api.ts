@@ -70,6 +70,51 @@ export function countLabel(count: number, singular: string): string {
   return `${count} ${singular}${count === 1 ? '' : 's'}`;
 }
 
+export interface BrowsedFolder {
+  name: string;
+  path: string;
+  /** The `.x-skills` root this child is, when it is one: what the picker marks as already readable. */
+  root: string | null;
+}
+
+export interface BrowsedDirectory {
+  path: string;
+  /** Where the picker goes from here; null at the top of the tree. */
+  parent: string | null;
+  /** The root this folder itself is, when it is one. */
+  root: string | null;
+  dirs: BrowsedFolder[];
+}
+
+/** One level of folders, for the picker. With no path the server answers from the home directory. */
+export function browseDirectory(path?: string): Promise<BrowsedDirectory> {
+  const query = path ? `?${new URLSearchParams({ path })}` : '';
+  return fetch(`/api/browse${query}`).then(json<BrowsedDirectory>);
+}
+
+export interface AddedRoot {
+  ok: true;
+  id: string;
+  dir: string;
+  repo: string;
+  root: string;
+  /** True when the folder had no `.x-skills` and one was made for it. */
+  scaffolded: boolean;
+  configFile: string;
+}
+
+/**
+ * A folder that already exists, added to the board. A refusal arrives as the error the server gave it — 400 for a
+ * path that is missing or not a folder, 409 for one that is already read or would take another root's id.
+ */
+export function addProjectRoot(path: string): Promise<AddedRoot> {
+  return fetch('/api/roots', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path }),
+  }).then(json<AddedRoot>);
+}
+
 export interface ProjectIconSpec {
   text?: string;
   color?: string;

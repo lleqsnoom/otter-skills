@@ -92,9 +92,28 @@ refused: 400 for a name or a directory, 409 for a folder that is already there, 
 authenticated, 502 when a command failed, with its stderr as the reason. Every command goes through one
 `run(command, args, { cwd })` seam, which is what lets the tests cover the whole flow without touching GitHub.
 
+## Adding a project that already exists
+
+`+ add existing` in the rail is for a repository that is already on this machine. It opens a picker: one level of
+folders at a time, never a file, with a path field above the list for a path that is already in the clipboard.
+Confirming adds **the folder the picker is standing in** — `POST /api/roots` with that path — and lands on it.
+
+What is written is one line: the repository path in `roots`. Nothing else in the folder is touched — no `README.md`,
+no `project.md`, no commit, and no repository is made. The one exception is a folder that has no `.x-skills` at all:
+a repository with no run tree cannot be read, so it is given the least thing that makes it one, an empty
+`.x-skills/tasks/`, and the screen says so before the button is pressed rather than after. A folder that already has
+a tree is added exactly as it is.
+
+A refusal says which step refused, the same way a create does: 400 for a path that is missing or is not a folder, 409
+for one that is already on the board or that would answer to an id another root already has (an id is the repository
+folder's name, and the board and the archive are keyed by it), 500 when the tree or the config could not be written.
+The route answers with the project id it added, so the rail navigates to it, and both caches are dropped — the new
+root is in the next snapshot with no restart and no `--root` flag.
+
 ## Adding and removing
 
-**A repository** is one line in `otter-pm.config.json`. Delete the line and it is gone.
+**A repository** is one line in `otter-pm.config.json`: added by `+ new project`, by `+ add existing`, or by hand.
+Delete the line and it is gone.
 
 **A category** is one entry in `src/server/categories.mjs`:
 
@@ -244,11 +263,12 @@ otter-pm/
 │   ├── config.mjs       # root resolution: flags, config, env, discovery
 │   ├── categories.mjs   # the category registry, add one here or merge two folders into one
 │   ├── create.mjs       # making a project: temp tree, git, gh, through one run seam
+│   ├── roots.mjs        # adding a folder that exists: the picker's listing, the scaffold, the config line
 │   ├── parse.mjs        # headings, bold fields, checklists, dates, artifact kinds
 │   ├── highlight.mjs    # shiki, the two-theme wiring, and the dialect detector
 │   ├── scan.mjs         # .x-skills root to project model, with an mtime-keyed cache
 │   └── snapshot.mjs     # the whole snapshot + one file's rendered content, read and written
-├── src/pages/api/       # GET /api/snapshot, GET|POST /api/file, POST /api/refresh, /api/project
+├── src/pages/api/       # GET /api/snapshot, GET|POST /api/file, POST /api/refresh, /api/project, /api/roots
 ├── src/pages/           # the shell, for / and for every other path
 ├── src/ui/              # shared primitives: Button, Input, Badge, ToggleGroup, cn
 ├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail
@@ -258,6 +278,7 @@ otter-pm/
 ├── scripts/             # dev.mjs, serve.mjs: the ports, the foreground, the spawn
 ├── public/favicon.svg   # the app icon, see brand/README.md
 ├── brand/               # the mark's sources: the EPS, the traces, the proposals
+├── skills/              # a mirror of the xskills skills — what writes the trees this app reads
 ├── test/                # the app's tests, over a fixture .x-skills tree
 └── otter-pm.config.json # which repositories a machine reads
 ```
@@ -283,6 +304,21 @@ HTML a document may contain is stripped of anything that can run (script/style/i
 `javascript:` URLs) before it reaches the browser. The island therefore ships neither a markdown parser nor a
 highlighter.
 
+## Skills
+
+`skills/` is a **mirror, not a source**: the 31 skills from [xskills](https://github.com/lleqsnoom/xskills), copied
+whole so this repository carries both halves of the loop — the skills that write `.x-skills` trees and the board
+that reads them. They are the skills' own files (each a `SKILL.md` with its `scripts/`, `references/` and `assets/`)
+and they run from wherever they are installed, so the copy here is for reading, for an agent working in this
+repository, and for having both halves in one checkout. Nothing in the app imports them, `files` keeps them out of
+the published package, and xskills stays the source of truth.
+
+To refresh the mirror after the skills change:
+
+```bash
+rsync -a --delete ../xskills/skills/ skills/     # from a checkout beside this one
+```
+
 ## Endpoints
 
 | Route | What it answers |
@@ -294,6 +330,8 @@ highlighter.
 | `POST /api/refresh` | drop both caches and answer with a fresh snapshot |
 | `GET /api/project` | what the new-project form offers before anything is typed: the account, the directory, the licenses GitHub publishes |
 | `POST /api/project` | make a project — name, about, directory, visibility, license, icon — and answer what it made |
+| `GET /api/browse?path=<dir>` | one level of folders for the picker, directories only; no path starts at the home directory, and every answer carries its own `parent` |
+| `POST /api/roots` | add a folder that already exists — `{ path }` — giving it an empty `.x-skills/tasks/` when it has no tree, and answer the id it was added as; 400 for a path that is missing or not a folder, 409 for one already read or whose id is taken |
 | `POST /api/move` | file a card into a lane, and answer with the whole board |
 | `POST /api/delete` | archive or unarchive an item, and answer with the deletions map |
 | `GET /api/asset?project=<id>&path=<relPath>` | an image a project carries, as bytes; raster types only, and nothing outside the project's root |

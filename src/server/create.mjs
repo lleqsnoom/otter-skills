@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { configFilePath } from './config.mjs';
+import { addRoot } from './roots.mjs';
 
 /**
  * Making a project — the one write in this app that creates a repository rather than editing one.
@@ -253,27 +254,6 @@ function writeLicense(dir, spec, login, run) {
     return { ok: false, status: 500, error: `could not write ${dir}/LICENSE`, detail: error.message };
   }
   return { ok: true };
-}
-
-const readConfig = (file) => {
-  try {
-    return JSON.parse(readFileSync(file, 'utf8'));
-  } catch {
-    return {};
-  }
-};
-
-/** The path a created project is remembered by, so the next scan finds it. Every other key survives. */
-function addRoot(file, dir) {
-  const config = readConfig(file);
-  const roots = Array.isArray(config.roots) ? config.roots : [];
-  if (roots.includes(dir)) return { ok: true, file };
-  try {
-    writeFileSync(file, `${JSON.stringify({ ...config, roots: [...roots, dir] }, null, 2)}\n`, 'utf8');
-  } catch (error) {
-    return { ok: false, status: 500, error: `could not write ${file}`, detail: error.message };
-  }
-  return { ok: true, file };
 }
 
 export function createProject(spec = {}, { run = defaultRun, env = process.env } = {}) {

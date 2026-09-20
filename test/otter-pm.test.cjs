@@ -1235,3 +1235,178 @@ test('one mark at a time: a picture is drawn plain, and a choice replaces the la
   assert.match(picker, /const chooseText = \(value[\s\S]{0,240}props\.onFile\(null\)/, 'each drops the mark it replaces');
   assert.match(picker, /const chooseFile = \(file[\s\S]{0,240}props\.onText\(''\)/, 'so two marks can never be set at once');
 });
+/**
+ * Adding a folder that already exists needs a config file of its own and somewhere to point, so no test reads this
+ * repository's `otter-pm.config.json` and none of them touches the machine's own roots.
+ */
+function rootsHarness() {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-roots-'));
+  const configFile = path.join(base, 'otter-pm.config.json');
+  fs.writeFileSync(configFile, JSON.stringify({ note: 'keep me', orca: false, roots: [], autoDiscover: [] }));
+
+  return {
+    base,
+    configFile,
+    env: { ...process.env, OTTER_PM_CONFIG: configFile, OTTER_PM_ORCA: '0', OTTER_PM_ROOTS: '' },
+    config: () => JSON.parse(fs.readFileSync(configFile, 'utf8')),
+    folder: (name) => {
+      const dir = path.join(base, name);
+      fs.mkdirSync(dir, { recursive: true });
+      return dir;
+    },
+  };
+}
+
+test('an existing folder is added, and given the least tree that makes it a root', async () => {
+  const { addExistingProject } = await serverModule('roots');
+  const harness = rootsHarness();
+  const dir = harness.folder('existing-repo');
+  fs.writeFileSync(path.join(dir, 'README.md'), 'mine\n');
+
+  const answer = addExistingProject({ path: dir }, { env: harness.env });
+
+  assert.equal(answer.ok, true);
+  assert.equal(answer.id, 'existing-repo');
+  assert.equal(answer.root, path.join(dir, '.x-skills'));
+  assert.equal(answer.scaffolded, true, 'the tree was made, not found');
+  assert.deepEqual(fs.readdirSync(path.join(dir, '.x-skills')), ['tasks'], 'one empty category, and nothing else');
+
+  assert.deepEqual(harness.config().roots, [dir], 'the repository path is what is remembered');
+  assert.equal(harness.config().note, 'keep me', 'and every other key survives');
+  assert.equal(fs.readFileSync(path.join(dir, 'README.md'), 'utf8'), 'mine\n', 'nothing already in the folder is touched');
+  assert.ok(!fs.existsSync(path.join(dir, '.x-skills', 'project.md')), 'no mark is invented for it');
+  assert.ok(!fs.existsSync(path.join(dir, '.git')), 'and no repository is made');
+});
+
+test('a folder that already has a tree is added as it is', async () => {
+  const { addExistingProject } = await serverModule('roots');
+  const harness = rootsHarness();
+  const dir = harness.folder('already-a-root');
+  fs.mkdirSync(path.join(dir, '.x-skills', 'plans'), { recursive: true });
+  writeFile(path.join(dir, '.x-skills', 'plans', 'loose.md'), '# Loose\n');
+
+  const answer = addExistingProject({ path: dir }, { env: harness.env });
+
+  assert.equal(answer.ok, true);
+  assert.equal(answer.scaffolded, false, 'nothing was made for a folder that already reads');
+  assert.deepEqual(fs.readdirSync(path.join(dir, '.x-skills')), ['plans'], 'and nothing was added to the tree');
+  assert.deepEqual(harness.config().roots, [dir]);
+});
+
+test('the same folder is refused the second time', async () => {
+  const { addExistingProject } = await serverModule('roots');
+  const harness = rootsHarness();
+  const dir = harness.folder('twice');
+
+  assert.equal(addExistingProject({ path: dir }, { env: harness.env }).ok, true);
+  const again = addExistingProject({ path: dir }, { env: harness.env });
+
+  assert.equal(again.ok, false);
+  assert.equal(again.status, 409, 'already on the board is a conflict, not a bad request');
+  assert.deepEqual(harness.config().roots, [dir], 'and a refusal does not add the path again');
+});
+
+test('a second folder may not take an id that is already read', async () => {
+  const { addExistingProject } = await serverModule('roots');
+  const harness = rootsHarness();
+  const first = harness.folder(path.join('one', 'shared'));
+  const second = harness.folder(path.join('two', 'shared'));
+
+  assert.equal(addExistingProject({ path: first }, { env: harness.env }).ok, true);
+  const refused = addExistingProject({ path: second }, { env: harness.env });
+
+  assert.equal(refused.status, 409, 'the board and the archive are keyed by that id, so it cannot be taken twice');
+  assert.match(refused.error, /shared/);
+  assert.deepEqual(harness.config().roots, [first]);
+});
+
+test('a path that is missing, or is not a folder, is refused and writes nothing', async () => {
+  const { addExistingProject } = await serverModule('roots');
+  const harness = rootsHarness();
+  const file = path.join(harness.base, 'a-file.txt');
+  fs.writeFileSync(file, 'x\n');
+
+  assert.equal(addExistingProject({}, { env: harness.env }).status, 400);
+  assert.equal(addExistingProject({ path: '   ' }, { env: harness.env }).status, 400);
+  assert.match(addExistingProject({ path: path.join(harness.base, 'nope') }, { env: harness.env }).error, /no such folder/);
+  assert.equal(addExistingProject({ path: file }, { env: harness.env }).status, 400);
+  assert.deepEqual(harness.config().roots, [], 'nothing was remembered');
+});
+
+test('the picker lists folders and never files', async () => {
+  const { listDirectories } = await serverModule('roots');
+  const harness = rootsHarness();
+  harness.folder('app');
+  harness.folder('api');
+  harness.folder(path.join('app', '.x-skills', 'plans'));
+  fs.mkdirSync(path.join(harness.base, '.hidden'), { recursive: true });
+  fs.mkdirSync(path.join(harness.base, 'node_modules'), { recursive: true });
+  fs.writeFileSync(path.join(harness.base, 'notes.md'), '# notes\n');
+
+  const answer = listDirectories(harness.base, { env: harness.env });
+
+  assert.equal(answer.status, 200);
+  assert.deepEqual(answer.body.dirs.map((entry) => entry.name), ['api', 'app'], 'folders only, sorted, without the noise');
+  assert.equal(answer.body.parent, path.dirname(harness.base), 'the answer carries where to go up to');
+  assert.equal(answer.body.root, null, 'and this folder is not a root itself');
+  assert.equal(
+    answer.body.dirs.find((entry) => entry.name === 'app').root,
+    path.join(harness.base, 'app', '.x-skills'),
+    'a folder that is already readable says which root it is',
+  );
+});
+
+test('the picker answers from the home directory when it is given no path', async () => {
+  const { listDirectories } = await serverModule('roots');
+  const answer = listDirectories(undefined, { env: rootsHarness().env });
+
+  assert.equal(answer.status, 200, 'a picker always has somewhere to start');
+  assert.equal(answer.body.path, os.homedir());
+});
+
+test('a picker may not be pointed at a file or at nothing', async () => {
+  const { listDirectories } = await serverModule('roots');
+  const harness = rootsHarness();
+  const file = path.join(harness.base, 'a-file.txt');
+  fs.writeFileSync(file, 'x\n');
+
+  assert.equal(listDirectories(path.join(harness.base, 'nope'), { env: harness.env }).status, 404);
+  assert.equal(listDirectories(file, { env: harness.env }).status, 400);
+});
+
+test('an existing folder is added from the rail, through its own routes', () => {
+  const browse = fs.readFileSync(path.join(APP_SRC, 'pages', 'api', 'browse.ts'), 'utf8');
+  const roots = fs.readFileSync(path.join(APP_SRC, 'pages', 'api', 'roots.ts'), 'utf8');
+  const app = source(path.join('components', 'App.tsx'));
+  const dialog = source(path.join('components', 'AddProject.tsx'));
+  const api = source(path.join('lib', 'api.ts'));
+
+  assert.match(browse, /export const GET/, 'the picker has its own read route, beside the one that writes');
+  assert.match(browse, /listDirectories\(/, 'which is handed to the one place a folder is listed');
+  assert.match(browse, /answer\.status/, 'a refusal keeps the status it was given');
+
+  assert.match(roots, /export const POST/, 'adding a folder is its own route');
+  assert.match(roots, /addExistingProject\(body\)/, 'and it hands the request to the one place a path is added');
+  assert.match(roots, /invalidateSnapshot\(\)/, 'the snapshot is dropped, so the new root is found');
+  assert.match(roots, /clearParseCache\(\)/, 'and so is the parse cache');
+
+  assert.match(app, /<AddProject/, 'the rail carries the form');
+  assert.match(dialog, /add existing/, 'under a control that names it');
+  assert.match(dialog, /browseDirectory\(/, 'the picker walks the disk a level at a time');
+  assert.match(dialog, /addProjectRoot\(/, 'and posts the folder it is standing in');
+  assert.match(dialog, /await refreshSnapshot\(\)/, 'then asks for the snapshot again');
+  assert.match(dialog, /navigate\(\{ name: 'project', project: answer\.id \}\)/, 'so it lands on the project it just added');
+
+  assert.match(api, /export function browseDirectory\(/, 'the client has one way to list a folder');
+  assert.match(api, /export function addProjectRoot\(/, 'and one way to add it');
+  assert.match(api, /fetch\('\/api\/roots'/, 'which posts to the route that adds it');
+});
+
+test('adding an existing project is written down where the next reader looks', () => {
+  const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+
+  assert.match(readme, /## Adding a project that already exists/, 'the README describes the flow');
+  assert.match(readme, /\+ add existing/, 'and names the control');
+  assert.match(readme, /POST \/api\/roots/, 'and the two routes it uses');
+  assert.match(readme, /GET \/api\/browse/, 'including the one the picker reads');
+});
