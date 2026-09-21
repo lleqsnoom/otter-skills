@@ -7,6 +7,7 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Artifact } from './Artifact';
 import { Breadcrumbs, rootCrumb } from './Breadcrumbs';
+import { Related } from './Related';
 import { ProgressBar, StatusBadge } from './Card';
 
 const PREFERRED = ['plan', 'analysis', 'epic', 'summary', 'investigate', 'triage', 'review', 'reflection', 'doc'];
@@ -18,6 +19,17 @@ function preferredFirst(files: FileRef[]): FileRef[] {
     return index === -1 ? PREFERRED.length : index;
   };
   return files.filter((file) => file.isMarkdown).sort((a, b) => rank(a) - rank(b));
+}
+
+/**
+ * A run's artifacts as the run built them: the numbered stages first, in `E<nn>` order, and everything that is not
+ * a stage after them. "A plain name sort lists the run in the order it was built" is what the skills promise, and
+ * the `E<nn>` is the part of the name that keeps it — a benchmark beside a plan is not a rung of anything, so it
+ * stays where it was.
+ */
+function ladderOrder(files: FileRef[]): FileRef[] {
+  const staged = files.filter((file) => file.step !== null).sort((a, b) => (a.step ?? 0) - (b.step ?? 0));
+  return [...staged, ...files.filter((file) => file.step === null)];
 }
 
 function RunStatePanel(props: { group: Group }) {
@@ -124,7 +136,7 @@ function ArtifactList(props: {
         Artifacts <span class="text-chrome font-normal text-muted-foreground">{props.group.files.length}</span>
       </h2>
       <ul class="m-0 grid list-none gap-1 p-0">
-        <For each={props.group.files}>
+        <For each={ladderOrder(props.group.files)}>
           {(file) => (
             <li>
               <button
@@ -139,6 +151,10 @@ function ArtifactList(props: {
               >
                 <span class="break-anywhere text-body">{file.name}</span>
                 <span class="flex flex-wrap items-center justify-end gap-1">
+                  {/* The rung before the kind: `E00` and `plan` together are what makes the chain read in order. */}
+                  <Show when={file.step !== null}>
+                    <Badge tone="unknown">E{String(file.step).padStart(2, '0')}</Badge>
+                  </Show>
                   <Badge tone="unknown">{file.kind}</Badge>
                   <Show when={file.layer !== null}>
                     <Badge tone="unknown">L{file.layer}</Badge>
@@ -243,13 +259,19 @@ export function GroupDetail(props: {
               <ArtifactList group={match().group} selected={selected()?.relPath ?? null} onSelect={(file) => setSelectedPath(file.relPath)} />
             </div>
 
-            <Show when={selected()} fallback={<p class="text-muted-foreground italic">No readable file here.</p>}>
-              {/* No archive button in this panel: on a collection's page the header carries the only one, because a
-                  second inside the document archives just the file and leaves the run on the board looking untouched. */}
-              {(file) => (
-                <Artifact project={props.project.id} path={file().relPath} onSaved={props.onSaved} canArchive={false} />
-              )}
-            </Show>
+            <div class="grid content-start gap-4">
+              <Show when={selected()} fallback={<p class="text-muted-foreground italic">No readable file here.</p>}>
+                {/* No archive button in this panel: on a collection's page the header carries the only one, because a
+                    second inside the document archives just the file and leaves the run on the board looking unchanged. */}
+                {(file) => (
+                  <Artifact project={props.project.id} path={file().relPath} onSaved={props.onSaved} canArchive={false} />
+                )}
+              </Show>
+
+              {/* The same chain a file's own page draws, from the run rather than from one of its rungs: a run is
+                  where a reader lands, and what it read and what it led to is what they ask next. */}
+              <Related project={props.project} path={match().group.relPath} />
+            </div>
           </div>
         </div>
       )}

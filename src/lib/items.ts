@@ -1,3 +1,4 @@
+import { onePerPath } from './board.mjs';
 import type { BoardColumn, BoardMoves, Category, FileRef, Group, Progress, Project, Status } from './types';
 
 /** One thing a board can hold: a run/task folder, or a loose document beside them. */
@@ -207,6 +208,10 @@ function groupItem(project: Project, category: Category, group: Group): WorkItem
 /**
  * One artifact as something a board can hold: a document loose in a category, or a file inside a collection.
  * The second case is what search needs and the board does not — see `searchItemsForProject`.
+ *
+ * A stage read outside its run knows the run it belongs to (`runPath`/`runTitle`), which is what a card says
+ * instead of a count: `E00-analysis.md` is a file of `shared-key-rotation-staging-sandbox`, and a card that
+ * did not say so would be one of nine files with the same name on one board.
  */
 function fileItem(project: Project, category: Category, file: FileRef, group: Group | null): WorkItem {
   return {
@@ -217,14 +222,15 @@ function fileItem(project: Project, category: Category, file: FileRef, group: Gr
     kind: 'file',
     title: file.title,
     relPath: file.relPath,
-    groupRelPath: group?.relPath ?? null,
-    parentTitle: group?.title ?? null,
+    groupRelPath: group?.relPath ?? file.runPath ?? null,
+    parentTitle: group?.title ?? file.runTitle ?? null,
     date: file.date,
     mtime: file.mtime,
     status: file.progress ? progressStatus(file.progress) : 'unknown',
     progress: file.progress,
     badges: [
       badge(file.kind),
+      ...(file.step === null ? [] : [`E${String(file.step).padStart(2, '0')}`]),
       ...(file.layer !== null ? [`L${file.layer}`] : []),
       ...(effortBadge(file) ? [effortBadge(file) as string] : []),
     ],
@@ -243,12 +249,15 @@ function fileItem(project: Project, category: Category, file: FileRef, group: Gr
  * The board is a project board — a collection is one card, because that is the unit of work — but a reader who
  * knows a file's name has to be able to find it. Without this, `media-gateway-under-load` matched nothing at all:
  * the name lives on an artifact, and the artifact lives inside a run whose own name says nothing about it.
+ *
+ * A stage is both — a card in the category of its kind and a file inside its run — so the same path is dropped
+ * when it arrives twice (`onePerPath`). The board's own card is listed first and so is the reading that is kept.
  */
 export function searchItemsForProject(project: Project, categories: Category[] = project.categories): WorkItem[] {
   const deep = categories.flatMap((category) =>
     category.groups.flatMap((group) => group.files.map((file) => fileItem(project, category, file, group))),
   );
-  return [...itemsForProject(project, categories), ...deep].sort((a, b) =>
+  return onePerPath([...itemsForProject(project, categories), ...deep]).sort((a, b) =>
     String(b.date || b.mtime).localeCompare(String(a.date || a.mtime)),
   );
 }
@@ -257,14 +266,28 @@ export function searchItemsForProject(project: Project, categories: Category[] =
  * Where an artifact sits: which category holds it, and which collection, when it is inside one. A file page needs
  * this to draw its breadcrumbs — the address carries one path, and the trail wants the folder names that path came
  * from.
+ *
+ * A collection wins over a loose artifact, and that is the whole of the ordering: an artifact a run wrote is listed
+ * in the category of its kind *and* held by the run that numbered it, and the run is where it is.
  */
-export function locateFile(project: Project, relPath: string): { category: Category; group: Group | null } | null {
+export function locateFile(
+  project: Project,
+  relPath: string,
+): { category: Category; group: Group | null; file: FileRef } | null {
+  let loose: { category: Category; file: FileRef } | null = null;
   for (const category of project.categories) {
-    if (category.items.some((file) => file.relPath === relPath)) return { category, group: null };
-    const group = category.groups.find((candidate) => candidate.files.some((file) => file.relPath === relPath));
-    if (group) return { category, group };
+    loose ??= itemHolding(category, relPath);
+    for (const group of category.groups) {
+      const file = group.files.find((candidate) => candidate.relPath === relPath);
+      if (file) return { category, group, file };
+    }
   }
-  return null;
+  return loose && { category: loose.category, group: null, file: loose.file };
+}
+
+function itemHolding(category: Category, relPath: string): { category: Category; file: FileRef } | null {
+  const file = category.items.find((candidate) => candidate.relPath === relPath);
+  return file ? { category, file } : null;
 }
 
 export function statusCounts(items: WorkItem[]): Record<Status, number> {

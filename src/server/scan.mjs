@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename, extname, join, relative } from 'node:path';
+import { basename, dirname, extname, join, relative } from 'node:path';
 
-import { categoryForDir } from './categories.mjs';
+import { categoryForDir, categoryForStageKind } from './categories.mjs';
 import { projectIdFor, projectNameFor, repoPathFor } from './config.mjs';
 import {
   artifactKind,
@@ -10,7 +10,9 @@ import {
   excerpt,
   humanBytes,
   layerOf,
+  linkFields,
   progressOf,
+  stageStep,
   statusFromProgress,
   titleFrom,
 } from './parse.mjs';
@@ -72,6 +74,37 @@ function readText(path, stat) {
   }
 }
 
+/**
+ * A path an artifact named, as a path this root holds — or `null` when it leads nowhere.
+ *
+ * The value arrives as the document spelled it: `.x-skills/runs/<stamp>-R<nn>-<slug>/E00-analysis.md` is how one
+ * skill addresses another's output, and `<run folder>/E00-plan.md` is a placeholder in a skeleton that has not
+ * been filled in yet. So both readings are tried — from the root, then from the folder the naming artifact sits
+ * in — and only a path that exists becomes a link. A dead link is worse than no link: it reads as a promise.
+ */
+function resolveLink(root, from, value) {
+  const bare = value.replace(/^\.x-skills[/\\]/, '').replace(/^[/\\]+/, '');
+  if (!bare) return null;
+  for (const candidate of [join(root, bare), join(dirname(from), bare)]) {
+    const stat = safeStat(candidate);
+    if (!stat) continue;
+    const rel = relative(root, candidate).split('\\').join('/');
+    if (rel.startsWith('..')) continue;
+    return stat.isDirectory() ? `${rel}/` : rel;
+  }
+  return null;
+}
+
+function artifactLinks(root, path, markdown) {
+  const links = [];
+  for (const { label, value } of linkFields(markdown)) {
+    const target = resolveLink(root, path, value);
+    if (!target) continue;
+    links.push({ label, path: target, name: basename(target.replace(/\/$/, '')) });
+  }
+  return links;
+}
+
 function fileRef(root, path, stat) {
   const extension = extname(path).toLowerCase();
   const name = basename(path);
@@ -93,6 +126,10 @@ function fileRef(root, path, stat) {
       sizeLabel: humanBytes(stat.size),
       fields,
       layer: layerOf(fields),
+      /** The rung this artifact is in its run — `2` for `E02-epic.md` — or `null` for anything not numbered. */
+      step: stageStep(name),
+      /** The artifacts this one names, and only those this root holds. */
+      links: text && isMarkdown ? artifactLinks(root, path, text) : [],
       excerpt: text && isMarkdown ? excerpt(text) : '',
       progress,
       status: statusFromProgress(progress),
@@ -225,12 +262,48 @@ function compareFiles(a, b) {
   return rank !== 0 ? rank : a.name.localeCompare(b.name);
 }
 
-function groupFor(root, dir) {
+/**
+ * The rungs of a run: every `E<nn>-<kind>` it holds, in the order it built them.
+ *
+ * Read from the folder rather than from the files collected under it, because a stage can be a *folder* —
+ * x-decompose writes `E02-tasks/` — and its rung would otherwise be invisible while its task files look like
+ * loose artifacts of the run.
+ */
+function stagesFor(root, dir) {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries
+    .filter(isRung)
+    .map((entry) => rungOf(root, dir, entry))
+    .sort((a, b) => a.step - b.step || a.name.localeCompare(b.name));
+}
+
+function isRung(entry) {
+  return !entry.name.startsWith('.') && stageStep(entry.name) !== null;
+}
+
+function rungOf(root, dir, entry) {
+  const path = join(dir, entry.name);
+  return {
+    step: stageStep(entry.name),
+    kind: artifactKind(entry.name),
+    name: entry.name,
+    relPath: relative(root, path).split('\\').join('/'),
+    isDirectory: entry.isDirectory(),
+  };
+}
+
+function groupFor(root, dir, meta = {}) {
   const stat = safeStat(dir);
   const files = collectFiles(root, dir).sort(compareFiles);
   const state = readState(dir);
   const firstMarkdown = files.find((file) => file.isMarkdown);
   const name = basename(dir);
+  const relPath = meta.relPath ?? relative(root, dir).split('\\').join('/');
   const progress = files.reduce(
     (acc, file) => {
       if (file.progress) {
@@ -242,14 +315,15 @@ function groupFor(root, dir) {
     { done: 0, total: 0 },
   );
   return {
-    id: relative(root, dir).split('\\').join('/'),
+    id: relPath,
     name,
-    title: state?.slug || firstMarkdown?.title || name,
-    relPath: relative(root, dir).split('\\').join('/'),
+    title: meta.title ?? state?.slug ?? firstMarkdown?.title ?? name,
+    relPath,
     mtime: stat ? new Date(stat.mtimeMs).toISOString() : null,
     date: dateFrom(state?.updatedAt || name),
     state,
     files,
+    stages: stagesFor(root, dir),
     fileCount: files.length,
     progress: progress.total ? { ...progress, ratio: progress.done / progress.total } : null,
     status: state ? (state.finished ? 'done' : 'active') : statusFromProgress(progress.total ? progress : null),
@@ -327,6 +401,104 @@ function mergeCategory(into, extra) {
   return into;
 }
 
+/**
+ * The category a run's stage is read in: the one this root already has for that kind, and a category made from the
+ * registry when it has none. `plan` is **Plan** where `plan/` exists and **Plans** where only `plans/` does —
+ * resolving to a folder that is there is what keeps one kind from reading as two.
+ *
+ * A category made here says so (`fromRuns`): it was named by the registry rather than read from disk, and a screen
+ * that wrote "read from `analysis`" over it would be pointing at a folder nothing looked in.
+ */
+function stageCategoryFor(categories, kind) {
+  const names = new Set([kind, `${kind}s`, kind.replace(/s$/, '')]);
+  const existing = categories.find(
+    (category) => names.has(category.id) || category.dirs.some((dir) => names.has(dir)),
+  );
+  if (existing) return existing;
+
+  const descriptor = categoryForStageKind(kind);
+  if (!descriptor) return null;
+  const synthesized = {
+    ...descriptor,
+    kind: 'documents',
+    dir: descriptor.id,
+    dirs: [],
+    relPath: descriptor.id,
+    counts: { groups: 0, items: 0, files: 0 },
+    groups: [],
+    items: [],
+    fromRuns: true,
+  };
+  categories.push(synthesized);
+  return synthesized;
+}
+
+function recountCategory(category) {
+  category.kind =
+    category.groups.length && category.items.length
+      ? 'mixed'
+      : category.groups.length
+        ? 'containers'
+        : 'documents';
+  category.counts = {
+    groups: category.groups.length,
+    items: category.items.length,
+    files: category.groups.reduce((total, group) => total + group.fileCount, 0) + category.items.length,
+  };
+}
+
+/**
+ * The stages of every run, read where a reader looks for that kind of work.
+ *
+ * The skills write a run as one folder holding everything it produced, numbered in the order it was built
+ * (`x-plan`: "a plain name sort lists the run in the order it was built"). That is the right unit to *work* in and
+ * the wrong one to *find* things in: an analysis that has to be found inside a run is not in Analysis, and the
+ * category that names it looks like a folder nothing has written to since the skills moved into run folders.
+ *
+ * So each rung is also read in the category of its kind — the artifact itself where the rung is a file, the folder
+ * as a collection where x-decompose wrote `E02-tasks/`. Nothing is written: a stage keeps the path it came from,
+ * so it is the same file in two places, and the pair it travelled with (`runPath`, `runTitle`) is what a screen
+ * says instead of leaving a reader to guess where it came from. A run that is *already* filed in the category its
+ * own stage belongs to is skipped — there it would be the same work listed twice.
+ */
+function indexRunStages(root, categories) {
+  for (const category of [...categories]) {
+    for (const group of category.groups) {
+      for (const stage of rungsToIndex(categories, category, group)) indexRung(root, group, stage);
+    }
+  }
+}
+
+/**
+ * A folder that numbered its artifacts is a run of something. `state.json` says how far the run got, which is a
+ * different question — a skill that was interrupted still wrote its analysis, and that analysis is still an analysis.
+ */
+function rungsToIndex(categories, category, group) {
+  group.files = withRun(group);
+  return group.stages
+    .map((stage) => ({ ...stage, target: stageCategoryFor(categories, stage.kind) }))
+    .filter((stage) => stage.target && stage.target.id !== category.id);
+}
+
+/** Only the numbered rungs know which run they are in; `memory.md` beside them is the run's own, not a stage. */
+function withRun(group) {
+  return group.files.map((file) =>
+    file.step === null ? file : { ...file, runPath: group.relPath, runTitle: group.title },
+  );
+}
+
+function indexRung(root, group, stage) {
+  if (stage.isDirectory) {
+    stage.target.groups.push(
+      groupFor(root, join(root, stage.relPath), { relPath: stage.relPath, title: group.title }),
+    );
+  } else {
+    const file = group.files.find((candidate) => candidate.relPath === stage.relPath);
+    if (file) stage.target.items.push(file);
+  }
+  recountCategory(stage.target);
+}
+
 /** Root-level markdown (roadmap.md, API notes) folded into one Docs category. */
 function rootDocs(root, names) {
   const items = [];
@@ -349,6 +521,33 @@ function rootDocs(root, names) {
   };
 }
 
+/**
+ * Who names what, read backwards.
+ *
+ * A rung says which artifact it read (`**Input:**`, `spec:`), and that is one direction of the pipeline: a plan
+ * points at the analysis it came from, never the other way round. So an analysis on its own page looked like the
+ * end of the chain it began. The reverse index is the other direction of the same edges — every path becomes the
+ * artifacts that named it — which is what lets a reader walk the pipeline from any of its stages, in either
+ * direction.
+ *
+ * A path that leads nowhere was never a link (`resolveLink`), so nothing here points at a file this project does
+ * not hold.
+ */
+function referencesIn(root, categories) {
+  const references = {};
+  const remember = (from, target) => {
+    if (target === from) return;
+    references[target] = [...(references[target] ?? []), from];
+  };
+  for (const category of categories) {
+    for (const file of category.items) for (const link of file.links) remember(file.relPath, link.path);
+    for (const group of category.groups) {
+      for (const file of group.files) for (const link of file.links) remember(file.relPath, link.path);
+    }
+  }
+  return references;
+}
+
 export function scanRoot(root, meta = {}) {
   const entries = readdirSync(root, { withFileTypes: true }).filter((entry) => !entry.name.startsWith('.'));
   const categories = [];
@@ -369,6 +568,9 @@ export function scanRoot(root, meta = {}) {
   const docs = rootDocs(root, rootFiles);
   if (docs) categories.push(docs);
 
+  // Before the sort, so a category a run named lands in its registry order along with the ones read from disk.
+  indexRunStages(root, categories);
+  const references = referencesIn(root, categories);
   categories.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
 
   const totals = categories.reduce(
@@ -395,6 +597,8 @@ export function scanRoot(root, meta = {}) {
     source: meta.source ?? 'path',
     scannedAt: new Date().toISOString(),
     totals,
+    /** Every path that is named by some artifact, and the artifacts that named it — the links read backwards. */
+    references,
     categories,
   };
 }

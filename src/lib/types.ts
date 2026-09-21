@@ -41,6 +41,29 @@ export interface FileRef {
   progress: Progress | null;
   status: Status;
   truncated: boolean;
+  /** The `E<nn>` this artifact carries inside its run, or null for anything the run did not number. */
+  step: number | null;
+  /** The run an artifact is a stage of — set where the artifact is read outside its own run. */
+  runPath?: string | null;
+  runTitle?: string | null;
+  /** The artifacts this one names by path, and only the ones the repository actually holds. */
+  links: ArtifactLink[];
+}
+
+/** One artifact naming another: the field it was named in, and the path it named. */
+export interface ArtifactLink {
+  label: string;
+  path: string;
+  name: string;
+}
+
+/** One rung of a run: what it numbered, what kind of stage it is, and whether that stage is a file or a folder. */
+export interface Stage {
+  step: number;
+  kind: string;
+  name: string;
+  relPath: string;
+  isDirectory: boolean;
 }
 
 export interface Group {
@@ -52,6 +75,8 @@ export interface Group {
   date: string | null;
   state: RunState | null;
   files: FileRef[];
+  /** A run's stages, in the order the run built them — `E00`, `E01`, `E02` … */
+  stages: Stage[];
   fileCount: number;
   progress: Progress | null;
   status: Status;
@@ -68,6 +93,8 @@ export interface Category {
   /** Every folder folded into it: `anal` and `analysis` are one category read from two directories. */
   dirs: string[];
   relPath: string;
+  /** True for a category a run's stages named rather than a folder this repository has. */
+  fromRuns?: boolean;
   counts: { groups: number; items: number; files: number };
   groups: Group[];
   items: FileRef[];
@@ -92,6 +119,8 @@ export interface Project {
   source: 'orca' | 'path';
   scannedAt: string;
   totals: { groups: number; items: number; files: number };
+  /** Every path some artifact names, and the artifacts that named it — the links read backwards; see `chain.mjs`. */
+  references: Record<string, string[]>;
   categories: Category[];
 }
 
@@ -128,7 +157,8 @@ export interface Snapshot {
   orders: BoardOrders;
   /** The items the reader archived: hidden from the board, still in the repository. */
   deletions: BoardDeletions;
-  boardFile: string;
+  /** Where each project keeps its decisions: `<projectId>` → `<root>/board.json` inside that project's `.x-skills`. */
+  boardFiles: Record<string, string>;
 }
 
 /** What the Orca IDE contributed, so "is the sync working?" is answerable from the screen. */

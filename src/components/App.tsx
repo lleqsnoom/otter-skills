@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createResource, createSignal, For, Match, on, onCleanup, onMount, Show, Switch, type JSX } from 'solid-js';
 
 import { deleteItem, fetchSnapshot, moveItem, refreshSnapshot } from '../lib/api';
+import { replaceProject } from '../lib/board.mjs';
 import { BoardProvider } from '../lib/board-context';
 import type { WorkItem } from '../lib/items';
 import { current, href, linkProps, navigate, routeCategory, routeFilePath, routeGroupPath, routeProject } from '../lib/router';
@@ -71,30 +72,42 @@ export default function App() {
   });
 
   /**
-   * Filing a card, and sorting the lane it was filed into. Both are the reader's, so both are written beside the app
-   * rather than into the repository — and the only things that change in the snapshot are the moves and the orders,
-   * so those are the only things replaced. A drag must not cost a re-scan of nine repositories.
+   * Filing a card, and sorting the lane it was filed into. Both are the reader's, and both are written into the
+   * project's own `.x-skills/board.json` — the repository the card is about, not this app's — so the only things that
+   * change in the snapshot are the moves and the orders, replaced for that one project (`replaceProject`). An entry a
+   * write removed has to disappear here as well, which a merge into the map could not do. A drag must not cost a
+   * re-scan of nine repositories.
    */
   const move = async (item: WorkItem, column: BoardColumn | null, order: BoardOrder | null) => {
     try {
       const answer = await moveItem(item.projectId, item.relPath, column, order);
       if (!answer.ok) return;
-      mutate((current) => (current ? { ...current, board: answer.board, orders: answer.orders } : current));
+      mutate((current) =>
+        current
+          ? {
+              ...current,
+              board: replaceProject(current.board, item.projectId, answer.board),
+              orders: replaceProject(current.orders, item.projectId, answer.orders),
+            }
+          : current,
+      );
     } catch {
       /* the board on screen is still the last good one */
     }
   };
 
   /**
-   * Archiving an item, or bringing it back. One write for both directions, like a card's filing: the same
-   * decision, written to the same file, and the only thing that changes in the snapshot is the map of decisions.
-   * Nothing in the repository moves, so a delete must not cost a re-scan of nine repositories.
+   * Archiving an item, or bringing it back. One write for both directions, like a card's filing: the same decision,
+   * in the same project file, and the only thing that changes in the snapshot is that project's slice of the
+   * decisions. Nothing in the repository moves, so a delete must not cost a re-scan of nine repositories.
    */
   const removeAt = async (projectId: string, relPath: string, deleted: boolean) => {
     try {
       const answer = await deleteItem(projectId, relPath, deleted);
       if (!answer.ok) return;
-      mutate((current) => (current ? { ...current, deletions: answer.deletions } : current));
+      mutate((current) =>
+        current ? { ...current, deletions: replaceProject(current.deletions, projectId, answer.deletions) } : current,
+      );
     } catch {
       /* the board on screen is still the last good one */
     }

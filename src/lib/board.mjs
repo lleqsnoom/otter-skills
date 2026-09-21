@@ -1,5 +1,5 @@
 /**
- * Archiving an item, and the order a lane was left in.
+ * Archiving an item, the order a lane was left in, and one card per path.
  *
  * A board card is only one of the ways a reader meets an item: search finds the artifacts inside a collection, a
  * collection's page lists them, and an artifact has a page of its own. So "is this archived?" is one question asked
@@ -8,7 +8,8 @@
  * decision, which is why the list a reader unarchives from holds the entries and not the files they hide.
  *
  * The order a lane reads in is answered here for the same reason: the board draws it, the tests can call it without
- * a browser, and what a stored order *means* — named cards first, in the order they were named — is one rule.
+ * a browser, and what a stored order *means* — named cards first, in the order they were named — is one rule. One
+ * card per path is a rule of the same kind: an artifact read in two places is still one artifact.
  */
 
 /**
@@ -66,6 +67,31 @@ export function orderedLane(items, key, orders) {
 }
 
 /**
+ * One project's slice of a decisions map, replaced by what a write answered with.
+ *
+ * A project's decisions come from its own `<root>/board.json` and go back into a map that covers every project, so a
+ * write answers with the whole of one project's board — and that answer has to *replace* the slice rather than be
+ * merged into it: filing a card back home deletes an entry, and a merge cannot express a deletion.
+ *
+ * The key is what says which entries are whose: `<projectId>:<relPath>` for moves and archives, `<projectId>:<column>`
+ * for a lane's order. One rule covers all three because the project is the part in front either way.
+ *
+ * @template T
+ * @param {Record<string, T>} map
+ * @param {string} projectId
+ * @param {Record<string, T> | null | undefined} entries  That project's decisions, as the write left them.
+ * @returns {Record<string, T>}
+ */
+export function replaceProject(map, projectId, entries) {
+  const prefix = `${projectId}:`;
+  const rest = {};
+  for (const [key, value] of Object.entries(map || {})) {
+    if (!key.startsWith(prefix)) rest[key] = value;
+  }
+  return { ...rest, ...(entries || {}) };
+}
+
+/**
  * Whether an item is hidden: an entry names the item itself, or a collection it lives inside.
  *
  * @param {BoardItem} item
@@ -94,6 +120,29 @@ export function isDeleted(item, deletions) {
 export function liveItems(items, deletions) {
   if (!deletions || !Object.keys(deletions).length) return items;
   return items.filter((item) => !isDeleted(item, deletions));
+}
+
+/**
+ * One card per path, the first reading kept.
+ *
+ * A run's stage is read in two places — the category of its kind, and the run that numbered it — and search looks
+ * at both, so the same file arrives twice. Two cards for one artifact is two hits, two links and two archive
+ * buttons for one thing, which is why the board asks this before it draws a list.
+ *
+ * The order of the list is what decides which reading is kept, so the caller puts the board's own cards first: a
+ * path found as a board card reads as that card rather than as a file inside a collection.
+ *
+ * @template {{ relPath: string }} T
+ * @param {T[]} items
+ * @returns {T[]}
+ */
+export function onePerPath(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    if (seen.has(item.relPath)) return false;
+    seen.add(item.relPath);
+    return true;
+  });
 }
 
 /**
