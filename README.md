@@ -96,9 +96,9 @@ as skipped, not as an error; only a path someone asked for *by name* earns a war
 A path is accepted either as the repository or as the `.x-skills` directory itself. `--config <file>` points at a
 different config, and `$OTTER_PM_CONFIG` does the same.
 
-The tree is read. Two things are written: `board.json` beside the config, which holds the reader's own decisions (a
-card dragged to a lane and a place in it, the order each lane was left in, and an item archived), and an artifact
-the reader edits in the app itself — see *Reading and editing* below.
+The tree is read. Two things are written: `.x-skills/board.json` **inside the project**, which holds the reader's own
+decisions (a card dragged to a lane and a place in it, the order each lane was left in, and an item archived), and an
+artifact the reader edits in the app itself — see *Reading and editing* below.
 
 ## Making a project
 
@@ -215,9 +215,55 @@ rules, with the extension deciding first and its own text only when the extensio
 | Progress | the `- [x]` / `- [ ]` checklist, as `done/total` |
 | State | a run's `state.json`: skill, node, guards, events, questions, options, decision |
 | Status | finished node → done; some boxes ticked → in progress; none → to do; nothing counted → unsorted |
+| Stage | the `E<nn>` a run numbered an artifact with: `E00-plan.md` is rung 0, `E02-tasks/` is rung 2 |
+| Named in | the `**Input:**` / `Spec:` / `Plan:` paths an artifact names, when the path leads somewhere |
 
 A run (a folder with `state.json`) and a task group (a folder of task files) are the same thing to the UI: a
 collection with a head and a body of artifacts.
+
+## Runs and their stages
+
+The skills write one run folder per topic and number everything in it in the order they built it —
+`E00-plan.md`, `E01-epic.md`, `E02-tasks/` — so a run is a chain of rungs and the folder name is the topic. That is
+the right unit to work in and the wrong one to find things in: an analysis that has to be found inside a run is not
+in **Analysis**, and the category that names it looks like a folder nothing has written to since the skills moved
+into run folders.
+
+So every rung is read **in the category that names its kind as well as in its run**. `E00-analysis.md` is a card
+under Analysis and a file of the run that wrote it; `E01-epic.md` is under Epics; a `E02-tasks/` folder
+(x-decompose writes a folder, not a file) is a collection under **Tasks**, with its task files and their progress.
+Nothing is copied — a stage keeps the path it came from, so it is the same file in two places, and the card says
+`in shared-media-kms-key-staging-sandbox` rather than leaving you to guess which of nine same-named files it is.
+
+Which category that is falls out of the kind and what the repository has: `analysis` is Analysis, `epic` is
+**Epics**, and `plan` is **Plan** where `plan/` exists and **Plans** where only `plans/` does. A kind no folder
+claims (a summary, a critique, a repro script) is read where it was written. A kind the registry knows and the
+repository has never used — **Triage**, in a tree with no `triage/` — gets its category from the registry, and the
+category's own page says it was named by the runs rather than read from a folder. A run that is *already* filed in
+the category its own stage belongs to (a session living in `anal/`) is not listed twice.
+
+**The chain is one panel, and every view of a piece of work shows the same one.** A rung is a chain by construction
+and a named path is another edge, so the pipeline a reader thinks in — analysis, plan, epic, tasks — is the component
+those edges connect, and it is usually **two runs**: `x-analyze` writes the analysis into its own run and `x-plan`
+opens the next one, so the analysis and the plan that read it are joined by one written path and nothing else.
+
+**Related** draws that whole component (`chain.mjs`), from wherever you are:
+
+- **Run** — the run the artifact belongs to, when it belongs to one.
+- **Chain** — the run's rungs in `E<nn>` order, then the runs it reached, with the artifact you are reading marked
+  rather than linked. A folder rung carries the files it is made of — `E02-tasks/` lists its task files — and a rung
+  that has no collection of its own (a run filed inside the category its stage belongs to) opens the run instead.
+- **Each line says how it was reached** — `named Input by E00-plan.md` — because that is what says which way the work
+  flowed.
+
+The edges are walked in both directions, which is why `scan.mjs` also publishes every path read backwards
+(`references`): an epic names the plan and the plan names the analysis, but an analysis names nothing at all, so
+following only what an artifact points at left the analysis looking like the end of the chain it began. From the
+analysis you now see the plan run; from the epic you see the analysis. Only paths the repository actually holds are
+edges at all: a skeleton's `<run folder>/E00-plan.md` placeholder and a mistyped path lead nowhere and stay text.
+
+The same panel is on a run's own page and on every artifact's page, so "what else is part of this?" is answered
+wherever you happen to be reading.
 
 ## The board
 
@@ -228,23 +274,39 @@ says decides its lane — a finished run is done, a partly ticked checklist is i
   30 days. A finished item inside the window is *Closed*; an older one is *Done*, which is the archive. "all" puts
   every finished item in Closed and leaves Done empty, which is what that choice means.
 - **A card can be filed by hand**, by dragging it onto a lane or pressing `Alt + ←` / `Alt + →` on a focused card.
-  That is a decision *about* someone else's document rather than a change to it, so it is written to `board.json`
-  **beside `otter-pm.config.json`** (or wherever `$OTTER_PM_BOARD` points) and never into the repository. A
-  filed card says `moved`, and dropping it on the lane its data already gives it removes the entry rather than
-  storing a preference that says nothing.
+  That is a decision *about* someone else's document rather than a change to it, so it is written to
+  **`.x-skills/board.json` in the project the card belongs to** — a file beside the app's own config looked like
+  per-machine state and was in fact per-checkout, so switching branch or serving a worktree hid everything a reader
+  had filed. A filed card says `moved`, and dropping it on the lane its data already gives it removes the entry
+  rather than storing a preference that says nothing.
 - **A card can be sorted within its lane**, and the sort is kept. A drag carries a card to a lane *and* to a place
   in it — the slot that opens between two cards, the size of the card in hand — and letting go writes that lane, top
-  to bottom, into `board.json`. So the order survives a reload, a rescan and a restart, and a card dropped on the
-  lane its own data gives it keeps its place even though it stops saying `moved`: the place was the decision, and the
-  column never was. A card that turns up later — a new run, or one that was filtered off the board when the drop
-  happened — is drawn after the ones the lane names. `Alt + ←/→` names a lane and no place, so a card filed that way
-  lands where its own data would put it.
+  to bottom, into the project's `board.json`. So the order survives a reload, a rescan and a restart, and a card
+  dropped on the lane its own data gives it keeps its place even though it stops saying `moved`: the place was the
+  decision, and the column never was. A card that turns up later — a new run, or one that was filtered off the board
+  when the drop happened — is drawn after the ones the lane names. `Alt + ←/→` names a lane and no place, so a card
+  filed that way lands where its own data would put it.
 - **A card can be archived**, and that is a soft delete: the artifact is untouched, the board simply stops drawing
   it, and the `Archived` list at the bottom of the project page brings it back. Archiving a collection takes
   everything inside it off the board, while that list holds the entry the reader made rather than one line per file
   it covers; an artifact whose own entry was not made says it is inside an archived collection. Filing, sorting and
-  archiving are three decisions in the same `board.json`, so none of them clears the others: an unarchive lands in
+  archiving are three decisions in the same project file, so none of them clears the others: an unarchive lands in
   the column and the place it was filed into, and unarchiving removes the entry rather than storing a `false`.
+
+One file per project, keyed by that project's own paths, because that is where a decision belongs: the repository is
+the thing that has branches and worktrees, so filing a card once files it everywhere. The project that filed nothing
+has no file. Whether it is committed is the repository's own business — commit it and the filing travels with the
+clone, ignore it and it stays local, and the only thing that changes either way is who else sees it.
+
+**An older board moves house with one command.** Every decision used to live in one `board.json` beside
+`otter-pm.config.json`, keyed `<projectId>:<path>`; nothing reads that file now. Point the import at it once:
+
+```bash
+node scripts/import-board.mjs --from <old board.json> [--dry-run]
+```
+
+It reports per project what it took, fills in what a project does not already say, and never overwrites a decision
+made since — a card filed in the new store after the change stays exactly as it is.
 
 A lane shows twelve cards and folds the rest behind `+ N more`; while a card is being dragged every lane opens,
 because the card you are carrying has to be droppable where you mean it.
@@ -259,8 +321,8 @@ Three ways in, and they are deliberately different widths:
 
 | | What it covers |
 |---|---|
-| The rail's search box (⌘K / ctrl-K) | **Everything** — every collection *and every artifact inside one*. A file name is a hit even when the run it lives in says nothing about it, and the result says which collection it came from (`in cdk-high-traffic-security`). |
-| A category's board (Runs, Tasks, …) | One card per collection, plus the documents loose in that folder. A collection is the unit of work, so it is the board's unit; the artifacts inside are not separate cards. |
+| The rail's search box (⌘K / ctrl-K) | **Everything** — every collection *and every artifact inside one*. A file name is a hit even when the run it lives in says nothing about it, and the result says which collection it came from (`in cdk-high-traffic-security`). A stage found twice — under Analysis and inside its run — is one hit, because the first reading is kept. |
+| A category's board (Runs, Tasks, …) | One card per collection, plus the documents loose in that folder. A collection is the unit of work, so it is the board's unit; the artifacts inside are not separate cards. A category of a stage kind also draws the runs' stages of that kind, each saying which run it came from. |
 | A collection's page | Its workflow state, and its artifact list — every file, in the order the run produced them (`E00`, `E01`, …, then the session's own notes). |
 
 Search is a screen rather than a dropdown, and following a result clears the box: while it is up, every card is
@@ -308,6 +370,7 @@ otter-pm/
 │   ├── categories.mjs   # the category registry, add one here or merge two folders into one
 │   ├── create.mjs       # making a project: temp tree, git, gh, through one run seam
 │   ├── roots.mjs        # adding a folder that exists: the picker's listing, the scaffold, the config line
+│   ├── board.mjs        # the reader's own decisions: one board file per project, and the import of the old one
 │   ├── parse.mjs        # headings, bold fields, checklists, dates, artifact kinds
 │   ├── highlight.mjs    # shiki, the two-theme wiring, and the dialect detector
 │   ├── scan.mjs         # .x-skills root to project model, with an mtime-keyed cache
@@ -315,17 +378,19 @@ otter-pm/
 ├── src/pages/api/       # GET /api/snapshot, GET|POST /api/file, POST /api/refresh, /api/project, /api/roots
 ├── src/pages/           # the shell, for / and for every other path
 ├── src/ui/              # shared primitives: Button, Input, Badge, ToggleGroup, cn
-├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail
-├── src/lib/             # types, the API client, the router, the work-item model
+├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail, Related
+├── src/lib/             # types, the API client, the router, the work-item model, the chain (chain.mjs)
 ├── src/styles.css       # Orca's tokens, base, and the markdown an artifact is read in
 ├── src/tailwind.css     # Tailwind wired to those tokens
-├── scripts/             # dev.mjs, serve.mjs: the ports, the foreground, the spawn
+├── scripts/             # dev.mjs, serve.mjs, import-board.mjs: the ports, the foreground, the migration
 ├── public/favicon.svg   # the app icon, see brand/README.md
 ├── brand/               # the mark's sources: the EPS, the traces, the proposals
 ├── skills/              # the skills themselves: what writes the trees this app reads
 ├── test/                # the app's tests, over a fixture .x-skills tree
 └── otter-pm.config.json # which repositories a machine reads
 ```
+
+Every project is read from its own `<repo>/.x-skills`, and the one thing written there is `board.json`.
 
 **Stack.** Astro serves the shell and the API routes (one process, `@astrojs/node` standalone); SolidJS renders
 the app in the browser and owns the routing; Tailwind v4 is wired to the app's own CSS variables in
@@ -401,8 +466,8 @@ Nothing in the app imports them, and `files` keeps them out of the published pac
 | `POST /api/project` | make a project — name, about, directory, visibility, license, icon — and answer what it made |
 | `GET /api/browse?path=<dir>` | one level of folders for the picker, directories only; no path starts at the home directory, and every answer carries its own `parent` |
 | `POST /api/roots` | add a folder that already exists — `{ path }` — giving it an empty `.x-skills/tasks/` when it has no tree, and answer the id it was added as; 400 for a path that is missing or not a folder, 409 for one already read or whose id is taken |
-| `POST /api/move` | file a card into a lane, and answer with the whole board |
-| `POST /api/delete` | archive or unarchive an item, and answer with the deletions map |
+| `POST /api/move` | file a card into a lane, and answer with that project's board and lanes |
+| `POST /api/delete` | archive or unarchive an item, and answer with that project's deletions |
 | `GET /api/asset?project=<id>&path=<relPath>` | an image a project carries, as bytes; raster types only, and nothing outside the project's root |
 
 The snapshot is cached for four seconds and each parsed file is cached by `mtime` + size, so a reload of the UI

@@ -4,7 +4,7 @@ import { basename, dirname, extname, join, normalize, resolve, sep } from 'node:
 import { Marked } from 'marked';
 
 import { resolveRoots } from './config.mjs';
-import { readBoard } from './board.mjs';
+import { boardForProject } from './board.mjs';
 import { highlightCode, highlightFence, languageForFile } from './highlight.mjs';
 import { clearParseCache, scanRoot, TEXT_EXTENSIONS } from './scan.mjs';
 
@@ -27,7 +27,9 @@ export function getSnapshot({ force = false } = {}) {
   }
   projects.sort((a, b) => a.name.localeCompare(b.name));
 
-  const board = readBoard();
+  // One board file per project, read from inside the project: a decision belongs to the repository it is about, so
+  // it survives the branch, the worktree and the checkout the board is served from. See `board.mjs`.
+  const boards = projects.map((project) => boardForProject({ root: project.root, projectId: project.id }));
 
   const value = {
     generatedAt: new Date().toISOString(),
@@ -38,12 +40,13 @@ export function getSnapshot({ force = false } = {}) {
     failures,
     orca,
     /** The reader's own column moves, keyed `<projectId>:<relPath>`; see `board.mjs`. */
-    board: board.moves,
+    board: Object.assign({}, ...boards.map((board) => board.moves)),
     /** The order each lane was left in, keyed `<projectId>:<column>`. */
-    orders: board.orders,
+    orders: Object.assign({}, ...boards.map((board) => board.orders)),
     /** The items the reader archived, by the same key: off the board, and still on disk. */
-    deletions: board.deleted,
-    boardFile: board.file,
+    deletions: Object.assign({}, ...boards.map((board) => board.deleted)),
+    /** Where each project keeps its decisions: `<root>/board.json` inside its own `.x-skills`. */
+    boardFiles: Object.fromEntries(projects.map((project, index) => [project.id, boards[index].file])),
   };
   cache = { at: now, value };
   return value;

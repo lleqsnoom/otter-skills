@@ -53,3 +53,21 @@ export function categoryForDir(dirName) {
   if (!entry) return { id: dirName, label: titleCase(dirName), order: 50, merge: [] };
   return { id: entry.id, label: entry.label, order: entry.order, hint: entry.hint, merge: entry.merge ?? [] };
 }
+
+/**
+ * The category that answers for a stage's kind, so an artifact a run produced is readable where a reader looks for
+ * that sort of thing. The skills name the kind in the artifact (`E00-analysis.md`, `E02-tasks/`) and the folder it
+ * belongs in is usually the plural of that name: `epic` is **Epics**, and `plan` is **Plan** in one tree and
+ * **Plans** in another.
+ *
+ * `null` for a kind no category claims — a summary, a critique, a repro script have no folder of their own, so they
+ * are read where they were written. That is a fact about the registry, not a failure here.
+ */
+export function categoryForStageKind(kind) {
+  const names = new Set([kind, `${kind}s`, kind.replace(/s$/, '')]);
+  for (const entry of CATEGORY_REGISTRY) {
+    if (!names.has(entry.id)) continue;
+    return { id: entry.id, label: entry.label, order: entry.order, hint: entry.hint, merge: entry.merge ?? [] };
+  }
+  return null;
+}

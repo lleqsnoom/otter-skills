@@ -95,9 +95,11 @@ const ARTIFACT_KINDS = [
   [/^E\d+-summary/i, 'summary'],
   [/^E\d+-reflection/i, 'reflection'],
   [/^E\d+[-_]/i, 'artifact'],
-  // A task file is `task-1.2-…` where a run named it, and `1.2-…` where `x-decompose` did.
+  // A task file is `task-1.2-…` where a run named it, `1.2-…` where x-decompose did, and `L0-0.1-…` where it
+  // numbered the layer into the name.
   [/^task[-_]/i, 'task'],
   [/^\d+(\.\d+)?[-_]/, 'task'],
+  [/^L\d+[-_]\d/, 'task'],
   [/^state\.json$/i, 'state'],
   [/^memory\.md$/i, 'memory'],
   [/^questions\.md$/i, 'questions'],
@@ -108,6 +110,72 @@ export function artifactKind(name) {
     if (pattern.test(name)) return kind;
   }
   return 'doc';
+}
+
+/**
+ * The `E<nn>` a run numbered an artifact with. The skills write every artifact of a run as
+ * `E<nn>-<kind>.md` or `E<nn>-<kind>/` in execution order (`x-plan`: "a plain name sort lists the run in the
+ * order it was built"), so the number is the rung an artifact occupies and the kind is which rung it is. Anything
+ * without a number — `memory.md`, a bench note — is not part of the ladder and reads here as `null`.
+ */
+export function stageStep(name) {
+  const match = name.match(/^E(\d+)[-_]/i);
+  return match ? Number(match[1]) : null;
+}
+
+/**
+ * The fields an artifact may name another artifact in. The skills hand a path forward rather than a copy — x-plan
+ * passes `E00-plan.md` to x-epic, x-epic writes `spec: <run folder>/E00-plan.md`, and an analysis routed onward is
+ * named in the artifact it fed (`**Input:**`). Reading them is what turns "the plan came from this analysis" into
+ * something a reader can follow, so the keys are listed rather than guessed at.
+ */
+const LINK_FIELDS = new Map([
+  ['input', 'Input'],
+  ['spec', 'Spec'],
+  ['plan', 'Plan'],
+  ['epic', 'Epic'],
+  ['tasks', 'Tasks'],
+  ['analysis', 'Analysis'],
+  ['source', 'Source'],
+  ['from', 'From'],
+]);
+
+/**
+ * A path, as an artifact writes one: a file this app reads, or a folder a run numbered. `**Goal:** one shared
+ * KMS key …` is prose about the work, so it is not a link; `E00-analysis.md` under a run folder is.
+ */
+const LINK_VALUE = /(?:^|\/)[\w.-]+\.(?:md|markdown|json|txt|ya?ml|js|mjs|cjs|ts|tsx|py|sh|toml|csv)$|^[\w./-]+\/$/i;
+
+function cleanLinkValue(value) {
+  return value
+    .trim()
+    // A path is written in backticks, in quotes, or bare, and a note may follow it after a dash.
+    .replace(/^[`'"]+/, '')
+    .split(/[`'"]/)[0]
+    .split(/\s+[—–]\s+|\s+-\s+/)[0]
+    .trim();
+}
+
+/**
+ * The artifacts one document names, in the order they were written: `{ label, value }` with the value as the
+ * document spelled it. Whether the path leads anywhere is the caller's question — it is the one holding the root.
+ */
+export function linkFields(markdown) {
+  const found = [];
+  const seen = new Set();
+  // The header is where a stage names its input; a `Plan:` further down is prose about a plan.
+  const lines = markdown.split('\n').slice(0, 60);
+  for (const line of lines) {
+    const match = line.match(/^\s*(?:\*\*)?([A-Za-z][A-Za-z /_-]*?)(?:\*\*)?:\s*(?:\*\*)?\s*(.+)$/);
+    if (!match) continue;
+    const label = LINK_FIELDS.get(match[1].trim().toLowerCase().replace(/\s+/g, '-'));
+    if (!label) continue;
+    const value = cleanLinkValue(match[2]);
+    if (!value || !LINK_VALUE.test(value) || seen.has(value)) continue;
+    seen.add(value);
+    found.push({ label, value });
+  }
+  return found;
 }
 
 export function excerpt(markdown, limit = 240) {

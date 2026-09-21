@@ -1,36 +1,30 @@
 import type { APIRoute } from 'astro';
 
-import { readBoard, writeDeletion } from '../../server/board.mjs';
-import { invalidateSnapshot } from '../../server/snapshot.mjs';
+import { writeDeletion } from '../../server/board.mjs';
+import { boardAfterWrite, json, readBody, readTarget } from './_decide';
 
 /**
- * Archiving an item, or bringing it back — the second write this app makes, and a local preference like the
- * first: the artifact keeps saying whatever it says, and the board stops drawing it. `deleted: false` unarchives it.
- * The answer is the board as the file now reads, so the screen and the file cannot disagree — the same reason the
- * move write answers with its own file rather than with a scan of every root.
+ * Archiving an item, or bringing it back — the second write this app makes, and a decision of the same kind as the
+ * first: the artifact keeps saying whatever it says, the board stops drawing it, and the entry lands in the
+ * project's own `.x-skills/board.json` beside a card's column and a lane's order. `deleted: false` unarchives it.
  */
+interface DeleteBody {
+  deleted?: boolean;
+}
+
 export const POST: APIRoute = async ({ request }) => {
-  let body: { project?: string; path?: string; deleted?: boolean };
-  try {
-    body = await request.json();
-  } catch {
-    return json({ ok: false, error: 'expected a JSON body' }, 400);
-  }
+  const body = await readBody<DeleteBody>(request);
+  if (body instanceof Response) return body;
+  const target = readTarget(body);
+  if (target instanceof Response) return target;
 
-  const project = typeof body.project === 'string' ? body.project : '';
-  const path = typeof body.path === 'string' ? body.path : '';
-  if (!project || !path) return json({ ok: false, error: 'project and path are required' }, 400);
-
-  const written = writeDeletion({ projectId: project, relPath: path, deleted: body.deleted !== false });
+  const written = writeDeletion({
+    root: target.project.root,
+    relPath: target.path,
+    deleted: body.deleted !== false,
+  });
   if (!written.ok) return json(written, 400);
 
-  invalidateSnapshot();
-  return json({ ok: true, file: written.file, deletions: readBoard().deleted });
+  const board = boardAfterWrite(target.project);
+  return json({ ok: true, file: written.file, project: target.project.id, deletions: board.deleted });
 };
-
-function json(payload: unknown, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
-  });
-}

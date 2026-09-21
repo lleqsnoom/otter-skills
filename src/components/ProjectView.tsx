@@ -104,6 +104,9 @@ function ProjectHeader(props: {
                   )}
                 </For>
               </Show>
+              {/* A category no folder was read for is named by what the runs wrote; saying "read from `analysis`"
+                  over it would point at a directory nothing looked in. */}
+              <Show when={active().fromRuns}> · named by this project's runs, not by a folder of its own</Show>
             </p>
             <Show when={active().hint}>
               <p class="m-0 text-chrome text-muted-foreground">{active().hint}</p>

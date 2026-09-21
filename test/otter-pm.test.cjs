@@ -181,6 +181,310 @@ test('a task file carries its layer, effort and checklist progress', async () =>
   assert.equal(group.status, 'active', 'a collection is in progress while any of its boxes is not ticked');
 });
 
+/**
+ * The tree the pipeline writes: one run folder per topic, every artifact numbered in the order it was built, and
+ * the rung it read named by path in the artifact it produced. This is the shape `x-analyze → x-plan → x-epic →
+ * x-decompose` leaves on disk, and the one a reader has to be able to walk.
+ */
+function pipeline() {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-pipeline-'));
+  const root = path.join(repo, '.x-skills');
+  const analysisRun = 'runs/2026-09-21-0748-R01-shared-key-rotation';
+  const planRun = 'runs/2026-09-21-0832-R01-shared-media-kms-key';
+
+  writeFile(
+    path.join(root, analysisRun, 'state.json'),
+    JSON.stringify({ skill: 'x-analyze', slug: 'shared-key-rotation', node: 'plan', stops: ['plan', 'tasks'], route: 'plan', report: 'E00-analysis.md' }),
+  );
+  writeFile(path.join(root, analysisRun, 'E00-analysis.md'), '# Analysis — shared key rotation\n\n**Date:** 2026-09-21 07:48\n\nThesis\n');
+
+  writeFile(
+    path.join(root, planRun, 'state.json'),
+    JSON.stringify({ skill: 'x-plan', slug: 'shared-media-kms-key', node: 'handoff', stops: ['handoff'], report: 'E00-plan.md' }),
+  );
+  writeFile(
+    path.join(root, planRun, 'E00-plan.md'),
+    `# Spec — shared media KMS key
+
+**Date:** 2026-09-21 08:32
+**Input:** \`./${analysisRun}/E00-analysis.md\`
+**Source:** \`.x-skills/runs/never-written/E00-analysis.md\`
+**Branch:** lleqsnoom/shared-kms
+
+---
+
+contract:     the construct imports a key when one is named
+`,
+  );
+  writeFile(path.join(root, planRun, 'E01-epic.md'), '# Epic — shared media KMS key\n\nspec: <run folder>/E00-plan.md\n');
+  writeFile(path.join(root, planRun, 'E02-tasks', 'L0-0.1-config-table.md'), '# Task: config table\n\n**Layer:** 0\n**Effort:** 2h\n\n- [x] schema\n- [ ] wiring\n');
+  writeFile(path.join(root, planRun, 'E02-tasks', 'L1-1.1-real-arns.md'), '# Task: real ARNs\n\n**Layer:** 1\n');
+
+  // A run whose stages have no folder of their own in this repository: Triage is a category the registry knows
+  // and this tree has never written to.
+  writeFile(path.join(root, 'runs', '2026-09-22-0900-R01-media-tile-gaps', 'E00-triage.md'), '# Triage — media tile gaps\n\n**Platform:** web\n');
+
+  // A run filed *inside* its own category — the older shape, where the session lives in `anal/`.
+  writeFile(path.join(root, 'anal', 'session-a', 'state.json'), JSON.stringify({ skill: 'x-analyze', slug: 'session-a', node: 'route', stops: ['route'] }));
+  writeFile(path.join(root, 'anal', 'session-a', 'E00-analysis.md'), '# Analysis — session a\n');
+
+  return { repo, root, analysisRun, planRun };
+}
+
+async function scanPipeline() {
+  const built = pipeline();
+  const scan = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'scan.mjs')).href);
+  scan.clearParseCache();
+  return { ...built, project: scan.scanRoot(built.root) };
+}
+
+const fileAt = (category_, relPath) => category_.items.find((item) => item.relPath === relPath);
+
+test('a run\'s stages also land in the category that names their kind', async () => {
+  const { project, analysisRun, planRun } = await scanPipeline();
+  const runs = category(project, 'runs');
+
+  for (const [id, relPath] of [
+    ['analysis', `${analysisRun}/E00-analysis.md`],
+    ['plan', `${planRun}/E00-plan.md`],
+    ['epics', `${planRun}/E01-epic.md`],
+  ]) {
+    const stage = fileAt(category(project, id), relPath);
+    assert.ok(stage, `${id} reads the stage its run wrote`);
+    assert.equal(stage.runPath, relPath.slice(0, relPath.lastIndexOf('/')), 'a stage says which run it belongs to');
+  }
+
+  assert.equal(fileAt(category(project, 'plan'), `${planRun}/E00-plan.md`).runTitle, 'shared-media-kms-key');
+  assert.equal(
+    runs.groups.find((group) => group.relPath === planRun).files.filter((file) => file.step !== null).length,
+    2,
+    'the run still holds its own stages — the same files in two places, not moved',
+  );
+});
+
+test('a stage is not listed twice in the category it already sits in', async () => {
+  const { project } = await scanPipeline();
+  const analysis = category(project, 'analysis');
+
+  assert.deepEqual(
+    analysis.groups.map((group) => group.relPath),
+    ['anal/session-a'],
+    'the session is a collection of Analysis, as it always was',
+  );
+  assert.equal(
+    analysis.items.filter((item) => item.relPath.startsWith('anal/')).length,
+    0,
+    'and its own analysis is not then listed again as a document of the same category',
+  );
+});
+
+test("a kind no folder claims gets its category from the registry", async () => {
+  const { project } = await scanPipeline();
+  const triage = category(project, 'triage');
+
+  assert.ok(triage, 'Triage appears for a run that triaged something even though no `triage/` folder exists');
+  assert.equal(triage.label, 'Triage');
+  assert.equal(triage.fromRuns, true, 'and it says it was named by the runs rather than read from a folder');
+  assert.deepEqual(triage.dirs, [], 'no directory was read for it');
+  assert.deepEqual(triage.items.map((item) => item.name), ['E00-triage.md']);
+});
+
+test("a run's tasks folder is a collection in Tasks", async () => {
+  const { project, planRun } = await scanPipeline();
+  const group = category(project, 'tasks').groups.find((candidate) => candidate.relPath === `${planRun}/E02-tasks`);
+
+  assert.ok(group, 'the tasks rung lands in Tasks');
+  assert.equal(group.title, 'shared-media-kms-key', 'titled by the run that wrote it, not by the first task in it');
+  assert.equal(group.state, null, 'the folder itself is not a run');
+  assert.deepEqual(group.files.map((file) => file.name).sort(), ['L0-0.1-config-table.md', 'L1-1.1-real-arns.md']);
+  assert.deepEqual(group.progress, { done: 1, total: 2, ratio: 0.5 }, 'its checklists are the collection\'s progress');
+});
+
+test('the stages of a run are the ladder it built', async () => {
+  const { project, planRun } = await scanPipeline();
+  const run = category(project, 'runs').groups.find((group) => group.relPath === planRun);
+
+  assert.deepEqual(
+    run.stages.map((stage) => [stage.step, stage.kind]),
+    [
+      [0, 'plan'],
+      [1, 'epic'],
+      [2, 'tasks'],
+    ],
+    'E00 plan, E01 epic, E02 tasks — numbered in the order they were written',
+  );
+  assert.equal(run.stages[2].isDirectory, true, 'a stage can be a folder');
+  assert.equal(run.stages[2].name, 'E02-tasks', 'and it is named for the entry it came from, counted by the collection it became');
+  assert.deepEqual(
+    run.files.map((file) => file.step),
+    [0, 1, null, null],
+    'every numbered artifact carries its rung, and a task file is not a rung of the run',
+  );
+});
+
+test('an artifact names the one it read, and a path that leads nowhere is not a link', async () => {
+  const { project, planRun } = await scanPipeline();
+  const plan = fileAt(category(project, 'plan'), `${planRun}/E00-plan.md`);
+
+  assert.deepEqual(plan.links, [
+    {
+      label: 'Input',
+      path: 'runs/2026-09-21-0748-R01-shared-key-rotation/E00-analysis.md',
+      name: 'E00-analysis.md',
+    },
+  ], 'the analysis this plan came from, and not the path that was never written');
+
+  const epic = fileAt(category(project, 'epics'), `${planRun}/E01-epic.md`);
+  assert.deepEqual(epic.links, [], 'a skeleton placeholder is not a link either');
+});
+
+test('one artifact read in two places is one hit in search', async () => {
+  const { onePerPath } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
+
+  const card = { relPath: 'runs/x/E00-plan.md', title: 'the card' };
+  const inside = { relPath: 'runs/x/E00-plan.md', title: 'the same file, read inside its run' };
+  assert.deepEqual(onePerPath([card, inside]), [card], 'the first reading is kept');
+  assert.deepEqual(onePerPath([card, { relPath: 'runs/x/E01-epic.md' }]).length, 2);
+});
+
+test('an artifact is read with the chain it is part of, in both views', () => {
+  const file = source(path.join('components', 'FileView.tsx'));
+  const group = source(path.join('components', 'GroupDetail.tsx'));
+
+  assert.match(file, /<Related project=\{props\.project\} path=\{props\.path\} \/>/, 'the file page draws it');
+  assert.match(
+    group,
+    /<Related project=\{props\.project\} path=\{match\(\)\.group\.relPath\} \/>/,
+    'and a collection is its own view of the same chain',
+  );
+});
+
+/**
+ * The tree the pipeline leaves: an analysis in its own run, and the plan run that read it. Two runs, one written
+ * path between them — which is the case a chain has to walk backwards as well as forwards.
+ */
+function chainedRuns() {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-chain-'));
+  const root = path.join(repo, '.x-skills');
+  const analysisRun = 'runs/2026-01-01-0900-R01-shared-key-rotation';
+  const planRun = 'runs/2026-01-02-0832-R01-shared-media-kms-key';
+
+  writeFile(path.join(root, analysisRun, 'state.json'), JSON.stringify({ skill: 'x-analyze', slug: 'shared-key-rotation', node: 'plan', stops: ['plan'] }));
+  writeFile(path.join(root, analysisRun, 'E00-analysis.md'), '# Analysis — shared key rotation\n\nThesis\n');
+  // The plan names the analysis it read; the epic names the plan; the tasks land in a folder of the same run.
+  writeFile(
+    path.join(root, planRun, 'E00-plan.md'),
+    `# Spec — shared media KMS key\n\n**Input:** \`.x-skills/${analysisRun}/E00-analysis.md\`\n`,
+  );
+  writeFile(path.join(root, planRun, 'E01-epic.md'), `# Epic — shared media KMS key\n\nspec: ${planRun}/E00-plan.md\n`);
+  writeFile(path.join(root, planRun, 'E02-tasks', 'L0-0.1-config-table.md'), '# Task: config table\n\n- [ ] schema\n');
+  writeFile(path.join(root, planRun, 'E02-tasks', 'L1-1.1-real-arns.md'), '# Task: real ARNs\n');
+  writeFile(path.join(root, planRun, 'state.json'), JSON.stringify({ skill: 'x-plan', slug: 'shared-media-kms-key', node: 'handoff', stops: ['handoff'] }));
+  return { root, analysisRun, planRun };
+}
+
+async function chainOf(relPath) {
+  const { root, analysisRun, planRun } = chainedRuns();
+  const scan = await serverModule('scan');
+  scan.clearParseCache();
+  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
+  return { chain: chainFor(scan.scanRoot(root), relPath), root, analysisRun, planRun };
+}
+
+test("the chain from an epic is the whole pipeline, including the analysis another run holds", async () => {
+  const { chain, analysisRun, planRun } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key/E01-epic.md');
+
+  assert.deepEqual(
+    chain.entries.map((entry) => [entry.step, entry.kind]),
+    [
+      [0, 'plan'],
+      [1, 'epic'],
+      [2, 'tasks'],
+      [0, 'analysis'],
+    ],
+    'the run\'s rungs in order, then the analysis the plan read',
+  );
+  assert.equal(chain.entries[1].current, true, 'the artifact being read is marked, not linked');
+  assert.equal(chain.entries[3].path, `${analysisRun}/E00-analysis.md`);
+  assert.equal(chain.entries[3].relation, 'Input', 'and how it was reached: the field the plan named it in');
+  assert.equal(chain.entries[3].from, `${planRun}/E00-plan.md`, 'by the plan');
+  assert.deepEqual(
+    chain.entries[2].children.map((file) => file.name),
+    ['L0-0.1-config-table.md', 'L1-1.1-real-arns.md'],
+    'a folder rung carries the files it is made of, which is what "all the tasks" means',
+  );
+  assert.equal(chain.run.title, 'shared-media-kms-key');
+  assert.equal(chain.hidden, 0);
+});
+
+test('the chain from the analysis walks the same pipeline the other way', async () => {
+  const { chain, planRun } = await chainOf('runs/2026-01-01-0900-R01-shared-key-rotation/E00-analysis.md');
+
+  assert.deepEqual(
+    chain.entries.map((entry) => entry.path),
+    [
+      'runs/2026-01-01-0900-R01-shared-key-rotation/E00-analysis.md',
+      `${planRun}/E00-plan.md`,
+      `${planRun}/E01-epic.md`,
+      `${planRun}/E02-tasks`,
+    ],
+    'an analysis names nothing, so only the reverse edge can reach the work it led to',
+  );
+  assert.equal(chain.entries[0].current, true);
+  assert.equal(chain.entries[1].relation, 'Input', 'the plan is reached as the artifact that named it');
+});
+
+test('the chain from a run, or from a file of its own, is the same work', async () => {
+  const { chain: fromRun } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key');
+  const { chain: fromTask } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key/E02-tasks/L0-0.1-config-table.md');
+
+  const paths = (chain) => chain.entries.filter((entry) => entry.kind !== 'task').map((entry) => entry.path);
+  assert.deepEqual(
+    paths(fromRun),
+    paths(fromTask),
+    'every view of one piece of work lists the same artifacts',
+  );
+  assert.equal(fromTask.entries.some((entry) => entry.current && entry.kind === 'task'), true, 'and marks the file being read');
+});
+
+test('an artifact nothing relates to has no chain, and that is not a panel', async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-loose-'));
+  const root = path.join(repo, '.x-skills');
+  writeFile(path.join(root, 'analysis', 'loose.md'), '# Analysis — loose\n');
+  const scan = await serverModule('scan');
+  scan.clearParseCache();
+  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
+  const chain = chainFor(scan.scanRoot(root), 'analysis/loose.md');
+
+  assert.equal(chain.run, null);
+  assert.deepEqual(chain.entries.map((entry) => entry.current), [true], 'only itself, which the panel then does not draw');
+});
+
+test('a stage folder with no collection of its own is still a rung, and opens the run', async () => {
+  // A run filed inside the category its own stage belongs to: `tasks/<run>/E00-tasks/` is skipped where it would be
+  // the same work listed twice, so the rung has no collection — and a chain that dropped it would misreport the
+  // order the run was built in.
+  const { root, scan } = await load();
+  const session = path.join(root, 'tasks', '2026-01-01-session');
+  writeFile(path.join(session, 'state.json'), JSON.stringify({ skill: 'x-decompose', slug: 'session', node: 'handoff', stops: ['handoff'] }));
+  writeFile(path.join(session, 'E00-tasks', 'L0-0.1-a.md'), '# Task: a\n');
+  scan.clearParseCache();
+
+  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
+  const project = scan.scanRoot(root);
+  const chain = chainFor(project, 'tasks/2026-01-01-session');
+  const rung = chain.entries.find((entry) => entry.step === 0);
+
+  assert.equal(rung.kind, 'tasks');
+  assert.equal(rung.path, 'tasks/2026-01-01-session/E00-tasks');
+  assert.equal(rung.open, 'tasks/2026-01-01-session', 'and it opens the run, which is where its files are listed');
+  assert.equal(
+    category(project, 'tasks').groups.some((group) => group.relPath === rung.path),
+    false,
+    'no collection was ever created for it',
+  );
+});
+
 test('the snapshot exposes the fixture repository, and file content is rendered or refused', async () => {
   const { root, snapshot } = await load();
   const snap = snapshot.getSnapshot({ force: true });
@@ -353,143 +657,347 @@ test('the Orca icon and badge colour are carried through unchanged', async () =>
   assert.equal(project.source, 'orca');
 });
 
-test('a column move is written, read back, and cleared by moving the card home', async () => {
-  const { root } = await load();
-  const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-board-'));
-  const env = { OTTER_PM_BOARD: path.join(configDir, 'board.json') };
-  const { readBoard, writeMove, BOARD_COLUMNS } = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
+/**
+ * A board store of one's own: a project's board lives in its `.x-skills`, so a test needs a root and an id — and a
+ * config path that does not exist, so the file this app used to write is never found by accident.
+ */
+function boardFixture(prefix) {
+  const root = path.join(fs.mkdtempSync(path.join(os.tmpdir(), prefix)), '.x-skills');
+  fs.mkdirSync(root, { recursive: true });
+  return { root, id: path.basename(path.dirname(root)) };
+}
 
-  assert.deepEqual(readBoard(env).moves, {}, 'no file yet is an empty board, not an error');
+const boardModule = () => import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
 
-  const key = `fixture:runs/x`;
-  const written = writeMove({ projectId: 'fixture', relPath: 'runs/x', column: 'closed', env });
+test('a column move is written into the project, read back, and cleared by moving the card home', async () => {
+  const { root, id } = boardFixture('xskills-board-');
+  const { boardForProject, writeMove, BOARD_COLUMNS } = await boardModule();
+  const board = () => boardForProject({ root, projectId: id });
+
+  assert.deepEqual(board().moves, {}, 'a project nothing has been filed in has no board, not an error');
+
+  const written = writeMove({ root, relPath: 'runs/x', column: 'closed' });
   assert.equal(written.ok, true);
-  assert.deepEqual(readBoard(env).moves[key], { column: 'closed', at: readBoard(env).moves[key].at });
-  assert.match(readBoard(env).moves[key].at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(written.file, path.join(root, 'board.json'), 'the decision is written inside the project it is about');
 
-  const cleared = writeMove({ projectId: 'fixture', relPath: 'runs/x', column: null, env });
+  const key = `${id}:runs/x`;
+  assert.deepEqual(board().moves[key], { column: 'closed', at: board().moves[key].at });
+  assert.match(board().moves[key].at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(root, 'board.json'), 'utf8')).moves,
+    { 'runs/x': { column: 'closed', at: board().moves[key].at } },
+    'and the file itself is keyed by the artifact path: one file is already about one project',
+  );
+
+  const cleared = writeMove({ root, relPath: 'runs/x', column: null });
   assert.equal(cleared.ok, true);
-  assert.deepEqual(readBoard(env).moves, {}, 'filing a card home removes the preference instead of storing a no-op');
+  assert.deepEqual(board().moves, {}, 'filing a card home removes the preference instead of storing a no-op');
 
-  const bad = writeMove({ projectId: 'fixture', relPath: 'runs/x', column: 'sideways', env });
+  const bad = writeMove({ root, relPath: 'runs/x', column: 'sideways' });
   assert.equal(bad.ok, false);
   assert.match(bad.error, /unknown column/);
-  assert.deepEqual(readBoard(env).moves, {});
+  assert.deepEqual(board().moves, {});
 
   assert.deepEqual(BOARD_COLUMNS, ['todo', 'active', 'unknown', 'done', 'closed']);
-  assert.ok(root);
 });
 
-test('the board file is read beside the config, and a corrupt one is an empty board', async () => {
-  const { boardFile, readBoard } = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
-  assert.match(boardFile({ OTTER_PM_BOARD: '/tmp/elsewhere.json' }), /elsewhere\.json$/);
-  assert.match(boardFile({}), /board\.json$/, 'defaults to a file beside otter-pm.config.json');
+test('two projects keep two boards, and neither sees the other', async () => {
+  const first = boardFixture('xskills-board-a-');
+  const second = boardFixture('xskills-board-b-');
+  const { boardForProject, writeMove } = await boardModule();
 
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-board-bad-'));
-  writeFile(path.join(dir, 'board.json'), 'not json at all');
-  assert.deepEqual(readBoard({ OTTER_PM_BOARD: path.join(dir, 'board.json') }).moves, {});
+  writeMove({ root: first.root, relPath: 'runs/x', column: 'done' });
+  writeMove({ root: second.root, relPath: 'runs/x', column: 'closed' });
 
-  writeFile(path.join(dir, 'board.json'), JSON.stringify({ moves: { 'p:a': { column: 'nonsense' }, 'p:b': { column: 'done' } } }));
-  assert.deepEqual(Object.keys(readBoard({ OTTER_PM_BOARD: path.join(dir, 'board.json') }).moves), ['p:b']);
+  const a = boardForProject({ root: first.root, projectId: first.id });
+  const b = boardForProject({ root: second.root, projectId: second.id });
+  assert.deepEqual(Object.keys(a.moves), [`${first.id}:runs/x`]);
+  assert.deepEqual(Object.keys(b.moves), [`${second.id}:runs/x`]);
+  assert.equal(a.moves[`${first.id}:runs/x`].column, 'done');
+  assert.equal(b.moves[`${second.id}:runs/x`].column, 'closed');
+});
+
+test('an import moves the old shared board into each project it holds decisions for', async () => {
+  const first = boardFixture('xskills-board-import-');
+  const second = boardFixture('xskills-board-import-');
+  const { importLegacyBoard, boardForProject } = await boardModule();
+  const file = path.join(os.tmpdir(), `xskills-legacy-${Date.now()}.json`);
+  writeFile(
+    file,
+    JSON.stringify({
+      moves: {
+        [`${first.id}:runs/x`]: { column: 'closed', at: '2026-01-01T00:00:00.000Z' },
+        [`${second.id}:runs/y`]: { column: 'done', at: null },
+      },
+      deleted: { [`${first.id}:runs/z`]: { at: '2026-01-02T00:00:00.000Z' } },
+      orders: { [`${first.id}:closed`]: ['runs/x'], [`${second.id}:done`]: ['runs/y'] },
+    }),
+  );
+
+  const report = importLegacyBoard({
+    file,
+    projects: [
+      { id: first.id, root: first.root },
+      { id: second.id, root: second.root },
+      { id: 'never-filed', root: path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-empty-')), '.x-skills') },
+    ],
+  });
+
+  assert.equal(report.exists, true);
+  assert.deepEqual(
+    report.projects.map((entry) => [entry.id, entry.status]),
+    [
+      [first.id, 'imported'],
+      [second.id, 'imported'],
+      ['never-filed', 'empty'],
+    ],
+    'a project the file holds nothing for is not a project to write a board into',
+  );
+  assert.deepEqual(report.projects[0].counts, { moves: 1, deleted: 1, orders: 1 });
+
+  assert.deepEqual(boardForProject({ root: first.root, projectId: first.id }), {
+    file: path.join(first.root, 'board.json'),
+    moves: { [`${first.id}:runs/x`]: { column: 'closed', at: '2026-01-01T00:00:00.000Z' } },
+    deleted: { [`${first.id}:runs/z`]: { at: '2026-01-02T00:00:00.000Z' } },
+    orders: { [`${first.id}:closed`]: ['runs/x'] },
+  });
+  assert.deepEqual(
+    Object.keys(boardForProject({ root: second.root, projectId: second.id }).moves),
+    [`${second.id}:runs/y`],
+    'and each project got only its own',
+  );
+  assert.equal(
+    fs.existsSync(path.join(report.projects[2].file)),
+    false,
+    'no empty board was written for the project that had nothing filed in it',
+  );
+});
+
+test('an import fills in a project that has filed since, and overwrites nothing it already says', async () => {
+  const { root, id } = boardFixture('xskills-board-import-merged-');
+  const { importLegacyBoard, writeMove, boardForProject } = await boardModule();
+  writeMove({ root, relPath: 'runs/filed-since', column: 'active' });
+
+  const file = path.join(os.tmpdir(), `xskills-legacy-merged-${Date.now()}.json`);
+  writeFile(
+    file,
+    JSON.stringify({
+      moves: {
+        [`${id}:runs/x`]: { column: 'closed', at: null },
+        // The same card, decided differently before the change: the project's own file was written later.
+        [`${id}:runs/filed-since`]: { column: 'done', at: '2026-01-01T00:00:00.000Z' },
+      },
+      orders: { [`${id}:closed`]: ['runs/x'] },
+    }),
+  );
+
+  const report = importLegacyBoard({ file, projects: [{ id, root }] });
+  assert.equal(report.projects[0].status, 'merged', 'the project has a board of its own, and it keeps it');
+  assert.equal(report.projects[0].added, 2, 'two entries the project does not already answer for');
+
+  const board = boardForProject({ root, projectId: id });
+  assert.equal(board.moves[`${id}:runs/filed-since`].column, 'active', 'the decision made since wins');
+  assert.equal(board.moves[`${id}:runs/x`].column, 'closed', 'and what was filed before the change arrives');
+  assert.deepEqual(board.orders[`${id}:closed`], ['runs/x']);
+
+  const again = importLegacyBoard({ file, projects: [{ id, root }] });
+  assert.equal(again.projects[0].added, 0, 'a second run has nothing left to take');
+});
+
+test('a dry run reports what it would take and writes nothing', async () => {
+  const { root, id } = boardFixture('xskills-board-import-dry-');
+  const { importLegacyBoard } = await boardModule();
+  const file = path.join(os.tmpdir(), `xskills-legacy-dry-${Date.now()}.json`);
+  writeFile(file, JSON.stringify({ moves: { [`${id}:runs/x`]: { column: 'closed', at: null } } }));
+
+  const report = importLegacyBoard({ file, projects: [{ id, root }], dryRun: true });
+  assert.equal(report.projects[0].status, 'imported');
+  assert.equal(fs.existsSync(path.join(root, 'board.json')), false, 'nothing was written');
+
+  const missing = importLegacyBoard({ file: path.join(os.tmpdir(), 'xskills-nothing-here.json'), projects: [{ id, root }] });
+  assert.equal(missing.exists, false);
+  assert.deepEqual(missing.projects.map((entry) => entry.status), ['empty'], 'a file that is not there holds nothing to take');
+});
+
+test('a project board that cannot be read is an empty board, never a failed snapshot', async () => {
+  const { root, id } = boardFixture('xskills-board-bad-');
+  const { boardForProject, projectBoardFile, legacyBoardFile } = await boardModule();
+
+  assert.match(projectBoardFile(root), /\.x-skills[/\\]board\.json$/);
+  assert.match(legacyBoardFile({ OTTER_PM_BOARD: '/tmp/elsewhere.json' }), /elsewhere\.json$/,
+    'the old file is still nameable, which is how the import is pointed at one');
+  assert.match(legacyBoardFile({}), /board\.json$/, 'and it defaults to the one beside otter-pm.config.json');
+
+  writeFile(path.join(root, 'board.json'), 'not json at all');
+  assert.deepEqual(boardForProject({ root, projectId: id }).moves, {});
+
+  writeFile(
+    path.join(root, 'board.json'),
+    JSON.stringify({ moves: { 'runs/a': { column: 'nonsense' }, 'runs/b': { column: 'done' } } }),
+  );
+  assert.deepEqual(Object.keys(boardForProject({ root, projectId: id }).moves), [`${id}:runs/b`]);
 });
 
 test('an item is archived and brought back, in the same file as a move', async () => {
-  const { readBoard, writeDeletion, writeMove } = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-delete-'));
-  const env = { OTTER_PM_BOARD: path.join(dir, 'board.json') };
+  const { root, id } = boardFixture('xskills-delete-');
+  const { boardForProject, writeDeletion, writeMove } = await boardModule();
+  const board = () => boardForProject({ root, projectId: id });
+  const key = `${id}:runs`;
 
-  assert.deepEqual(readBoard(env).deleted, {}, 'nothing deleted before anything is');
+  assert.deepEqual(board().deleted, {}, 'nothing deleted before anything is');
 
-  const written = writeDeletion({ projectId: 'fixture', relPath: 'runs', deleted: true, env });
+  const written = writeDeletion({ root, relPath: 'runs', deleted: true });
   assert.equal(written.ok, true);
-  assert.match(readBoard(env).deleted['fixture:runs'].at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(board().deleted[key].at, /^\d{4}-\d{2}-\d{2}T/);
 
-  writeMove({ projectId: 'fixture', relPath: 'runs', column: 'done', env });
-  assert.equal(readBoard(env).moves['fixture:runs'].column, 'done', 'filing and archiving are two decisions, and neither clears the other');
-  assert.ok(readBoard(env).deleted['fixture:runs']);
+  writeMove({ root, relPath: 'runs', column: 'done' });
+  assert.equal(board().moves[key].column, 'done', 'filing and archiving are two decisions, and neither clears the other');
+  assert.ok(board().deleted[key]);
 
-  const restored = writeDeletion({ projectId: 'fixture', relPath: 'runs', deleted: false, env });
+  const restored = writeDeletion({ root, relPath: 'runs', deleted: false });
   assert.equal(restored.ok, true);
-  assert.deepEqual(readBoard(env).deleted, {}, 'an unarchive removes the entry rather than storing a false');
-  assert.equal(readBoard(env).moves['fixture:runs'].column, 'done', 'and the filing it had is still there');
+  assert.deepEqual(board().deleted, {}, 'an unarchive removes the entry rather than storing a false');
+  assert.equal(board().moves[key].column, 'done', 'and the filing it had is still there');
 });
 
-test('a malformed deletion entry is dropped, not read as a deletion', async () => {
-  const { readBoard } = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-delete-bad-'));
-  const file = path.join(dir, 'board.json');
-  writeFile(file, JSON.stringify({ deleted: { 'p:a': 'yes', 'p:b': null, 'p:c': { at: 5 } } }));
+test('the import command says per project what it took, and exits non-zero when there is nothing to take', async () => {
+  const { spawnSync } = require('node:child_process');
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-import-'));
+  const root = path.join(repo, '.x-skills');
+  // A root is a `.x-skills` with a tree in it — `runs/` is what says so, and an empty directory is not a project.
+  fs.mkdirSync(path.join(root, 'runs'), { recursive: true });
+  const id = path.basename(repo).toLowerCase().replace(/[^a-z0-9_.-]+/g, '-');
 
-  const read = readBoard({ OTTER_PM_BOARD: file });
-  assert.deepEqual(Object.keys(read.deleted), ['p:c'], 'only an entry that is an object is a deletion');
-  assert.equal(read.deleted['p:c'].at, null, 'an `at` that is not a time is no time');
+  const legacy = path.join(repo, 'legacy.json');
+  writeFile(
+    legacy,
+    JSON.stringify({ moves: { [`${id}:runs/x`]: { column: 'closed', at: null } }, orders: { 'other:done': ['runs/y'] } }),
+  );
+
+  // The two env names the resolver reads: this repository is the only root, and the IDE's own list stays out of it.
+  const run = (args) =>
+    spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'import-board.mjs'), ...args], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        OTTER_PM_ROOTS: repo,
+        OTTER_PM_CONFIG: path.join(repo, 'no-such-config.json'),
+        OTTER_PM_ORCA: '0',
+      },
+    });
+
+  const imported = run(['--from', legacy]);
+  assert.equal(imported.status, 0, imported.stderr);
+  assert.match(imported.stdout, new RegExp(`${id}: 1 moves`), 'the report counts what it took, per project');
+  assert.match(imported.stdout, /1 decision into 1 project/);
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(root, 'board.json'), 'utf8')).moves,
+    { 'runs/x': { column: 'closed', at: null } },
+    'and the decision is in the project',
+  );
+
+  const nothingLeft = run(['--from', legacy]);
+  assert.equal(nothingLeft.status, 1, 'a second run has nothing to do, and says so by failing');
+  assert.match(nothingLeft.stdout, /nothing to import/);
+
+  const missing = run(['--from', path.join(repo, 'nope.json')]);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /is not there/);
+
+  const dry = run(['--from', path.join(repo, 'nope.json'), '--dry-run']);
+  assert.match(dry.stdout + dry.stderr, /not there/);
+
+  const bad = run(['--sideways']);
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /Unknown argument/);
+  assert.ok(root);
+});
+
+test('a write answers with one project’s decisions, and the client replaces that project’s slice', async () => {
+  const { replaceProject } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
+  const before = { 'a:runs/x': { column: 'done' }, 'b:runs/x': { column: 'closed' } };
+
+  assert.deepEqual(
+    replaceProject(before, 'a', { 'a:runs/y': { column: 'todo' } }),
+    { 'b:runs/x': { column: 'closed' }, 'a:runs/y': { column: 'todo' } },
+    'the slice is replaced, so an entry a write removed disappears here as well',
+  );
+  assert.deepEqual(replaceProject(before, 'a', {}), { 'b:runs/x': { column: 'closed' } }, 'filing a card home leaves nothing');
+  assert.deepEqual(
+    replaceProject({ 'a:closed': ['runs/x'], 'b:done': ['runs/y'] }, 'a', { 'a:closed': ['runs/y', 'runs/x'] }),
+    { 'b:done': ['runs/y'], 'a:closed': ['runs/y', 'runs/x'] },
+    "and it is one rule for a lane's order too",
+  );
+});
+
+
+test('a malformed deletion entry is dropped, not read as a deletion', async () => {
+  const { root, id } = boardFixture('xskills-delete-bad-');
+  const { boardForProject } = await boardModule();
+  writeFile(
+    path.join(root, 'board.json'),
+    JSON.stringify({ deleted: { 'runs/a': 'yes', 'runs/b': null, 'runs/c': { at: 5 } } }),
+  );
+
+  const read = boardForProject({ root, projectId: id });
+  assert.deepEqual(Object.keys(read.deleted), [`${id}:runs/c`], 'only an entry that is an object is a deletion');
+  assert.equal(read.deleted[`${id}:runs/c`].at, null, 'an `at` that is not a time is no time');
 });
 
 test('a drop records the place a card landed in, and the lane is where the order is kept', async () => {
-  const { orderKey, readBoard, writeMove } = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-order-'));
-  const env = { OTTER_PM_BOARD: path.join(dir, 'board.json') };
+  const { root, id } = boardFixture('xskills-order-');
+  const { orderKey } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
+  const { boardForProject, writeMove } = await boardModule();
+  const board = () => boardForProject({ root, projectId: id });
+  const move = (relPath, column, order) => writeMove({ root, relPath, column, order });
 
-  assert.deepEqual(readBoard(env).orders, {}, 'no file yet is no order, not an error');
+  assert.deepEqual(board().orders, {}, 'no file yet is no order, not an error');
   assert.equal(orderKey('fixture', 'todo'), 'fixture:todo');
 
-  const written = writeMove({
-    projectId: 'fixture',
-    relPath: 'runs/b',
-    column: 'todo',
-    order: { column: 'todo', paths: ['runs/a', 'runs/b', 'runs/c'] },
-    env,
-  });
+  const written = move('runs/b', 'todo', { column: 'todo', paths: ['runs/a', 'runs/b', 'runs/c'] });
   assert.equal(written.ok, true);
-  assert.deepEqual(readBoard(env).orders['fixture:todo'], ['runs/a', 'runs/b', 'runs/c']);
-
-  writeMove({
-    projectId: 'fixture',
-    relPath: 'runs/d',
-    column: 'done',
-    order: { column: 'done', paths: ['runs/e', 'runs/d'] },
-    env,
-  });
+  assert.deepEqual(board().orders[`${id}:todo`], ['runs/a', 'runs/b', 'runs/c']);
   assert.deepEqual(
-    readBoard(env).orders['fixture:todo'],
+    JSON.parse(fs.readFileSync(path.join(root, 'board.json'), 'utf8')).orders,
+    { todo: ['runs/a', 'runs/b', 'runs/c'] },
+    'the lane is stored under its own column, because the file is already one project',
+  );
+
+  move('runs/d', 'done', { column: 'done', paths: ['runs/e', 'runs/d'] });
+  assert.deepEqual(
+    board().orders[`${id}:todo`],
     ['runs/a', 'runs/b', 'runs/c'],
     'another lane is another order, and writing one leaves the other alone',
   );
 
   // Sorting inside the lane a card's own data already gives it clears the move and keeps the order: the column was
   // never in question, and the place is what the reader decided.
-  writeMove({
-    projectId: 'fixture',
-    relPath: 'runs/b',
-    column: null,
-    order: { column: 'todo', paths: ['runs/b', 'runs/a', 'runs/c'] },
-    env,
-  });
-  assert.equal(readBoard(env).moves['fixture:runs/b'], undefined, 'a card put back where its data has it keeps no move');
-  assert.equal(readBoard(env).moves['fixture:runs/d'].column, 'done', 'and the move it did not touch is still there');
-  assert.deepEqual(readBoard(env).orders['fixture:todo'], ['runs/b', 'runs/a', 'runs/c'], 'while the lane reads the way it was left');
+  move('runs/b', null, { column: 'todo', paths: ['runs/b', 'runs/a', 'runs/c'] });
+  assert.equal(board().moves[`${id}:runs/b`], undefined, 'a card put back where its data has it keeps no move');
+  assert.equal(board().moves[`${id}:runs/d`].column, 'done', 'and the move it did not touch is still there');
+  assert.deepEqual(board().orders[`${id}:todo`], ['runs/b', 'runs/a', 'runs/c'], 'while the lane reads the way it was left');
 
-  writeMove({ projectId: 'fixture', relPath: 'runs/b', column: null, order: { column: 'todo', paths: ['runs/a', 7, '', 'runs/a', 'runs/b'] }, env });
-  assert.deepEqual(readBoard(env).orders['fixture:todo'], ['runs/a', 'runs/b'], 'a path is in a lane once, and only a path is a place');
+  move('runs/b', null, { column: 'todo', paths: ['runs/a', 7, '', 'runs/a', 'runs/b'] });
+  assert.deepEqual(board().orders[`${id}:todo`], ['runs/a', 'runs/b'], 'a path is in a lane once, and only a path is a place');
 
-  writeMove({ projectId: 'fixture', relPath: 'runs/b', column: null, order: { column: 'todo', paths: [] }, env });
-  assert.equal(readBoard(env).orders['fixture:todo'], undefined, 'an emptied lane stores no order to contradict the empty lane it is');
+  move('runs/b', null, { column: 'todo', paths: [] });
+  assert.equal(board().orders[`${id}:todo`], undefined, 'an emptied lane stores no order to contradict the empty lane it is');
 
-  const bad = writeMove({ projectId: 'fixture', relPath: 'runs/b', column: null, order: { column: 'sideways', paths: ['runs/b'] }, env });
+  const bad = move('runs/b', null, { column: 'sideways', paths: ['runs/b'] });
   assert.equal(bad.ok, false);
   assert.match(bad.error, /unknown column/);
 });
 
 test('a malformed order is dropped rather than half-read', async () => {
-  const { readBoard } = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'board.mjs')).href);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xskills-order-bad-'));
-  const file = path.join(dir, 'board.json');
-  writeFile(file, JSON.stringify({ orders: { 'p:todo': 'runs/a', 'p:done': null, 'p:active': [] } }));
+  const { root, id } = boardFixture('xskills-order-bad-');
+  const { boardForProject } = await boardModule();
+  const orders = () => boardForProject({ root, projectId: id }).orders;
 
-  assert.deepEqual(readBoard({ OTTER_PM_BOARD: file }).orders, {}, 'an order is a list with something in it, or it is not an order');
+  writeFile(path.join(root, 'board.json'), JSON.stringify({ orders: { todo: 'runs/a', done: null, active: [] } }));
+  assert.deepEqual(orders(), {}, 'an order is a list with something in it, or it is not an order');
 
-  writeFile(file, JSON.stringify({ orders: { 'p:todo': ['runs/a', 7, '', 'runs/a', 'runs/b'] } }));
-  assert.deepEqual(readBoard({ OTTER_PM_BOARD: file }).orders['p:todo'], ['runs/a', 'runs/b'], 'and reading it back keeps only the places in it');
+  writeFile(path.join(root, 'board.json'), JSON.stringify({ orders: { todo: ['runs/a', 7, '', 'runs/a', 'runs/b'] } }));
+  assert.deepEqual(orders()[`${id}:todo`], ['runs/a', 'runs/b'], 'and reading it back keeps only the places in it');
 });
 
 test('a lane reads in the order the reader left it, and anything the order does not name follows', async () => {
@@ -555,6 +1063,8 @@ test('a card can be sorted inside a lane, and the place survives the drop', () =
   const app = source(path.join('components', 'App.tsx'));
   const styles = fs.readFileSync(path.join(APP_SRC, 'styles.css'), 'utf8');
   const route = fs.readFileSync(path.join(APP_SRC, 'pages', 'api', 'move.ts'), 'utf8');
+  // The two decisions this app writes share one file, so what they have in common is pinned where it now lives.
+  const decide = fs.readFileSync(path.join(APP_SRC, 'pages', 'api', '_decide.ts'), 'utf8');
   const types = source(path.join('lib', 'types.ts'));
 
   assert.match(board, /orderedLane\(/, 'a lane is drawn in the order the reader left it');
@@ -576,9 +1086,12 @@ test('a card can be sorted inside a lane, and the place survives the drop', () =
   assert.match(board, /props\.onDragStart\?\.\(props\.item, \(event\.currentTarget as HTMLElement\)\.offsetHeight\)/, 'the height is read off the card when it is picked up, because that is the only moment the card is still the card');
   assert.match(view, /column === own \? null : column, order/, 'putting a card back where its data has it clears the move and keeps the place — the column was never the decision');
   assert.match(api, /order: BoardOrder \| null = null/, 'the client sends the place with the filing, in one write');
-  assert.match(app, /orders: answer\.orders/, 'and replaces the orders with the ones the server answered, so the screen and the file cannot disagree');
-  assert.match(route, /const \{ moves, orders \} = readBoard\(\)/, 'the answer is the board as the file now reads, not a re-scan of every root the drop never touched');
-  assert.doesNotMatch(route, /getSnapshot/, 'so a drop pays for its own write and for nothing else');
+  assert.match(app, /board: replaceProject\(current\.board, item\.projectId, answer\.board\)/, 'the snapshot replaces what the server answered for that project');
+  assert.match(app, /orders: replaceProject\(current\.orders, item\.projectId, answer\.orders\)/, 'because an entry a write removed has to disappear here too, and a merge cannot remove');
+  assert.match(decide, /boardForProject\(\{ root: project\.root, projectId: project\.id \}\)/, 'the answer is that project’s board as its file now reads, not a re-scan of every root the drop never touched');
+  assert.match(decide, /const project = findProject\(id\)/, 'and the write resolves the project, because only the tree knows where its decisions live');
+  assert.match(route, /root: target\.project\.root/, 'which is inside the repository the card is about');
+  assert.doesNotMatch(route + decide, /getSnapshot/, 'so a drop pays for its own write and for nothing else');
   assert.match(types, /BoardOrders = Record<string, string\[\]>/, 'the stored order is a lane of paths, keyed by the lane');
 
   // The board's own look, which is the one thing a reader never sees asserted anywhere else: a lane is a surface
@@ -819,10 +1332,11 @@ test('an item is archived and brought back from the page it is read on', () => {
   const types = source(path.join('lib', 'types.ts'));
 
   assert.match(route, /export const POST/, 'the write is its own route, beside the one that reads an artifact');
-  assert.match(route, /deletions: readBoard\(\)\.deleted/, 'and the answer is the board as the file now reads, not a re-scan of every root the archive never touched');
+  assert.match(route, /deletions: board\.deleted/, 'and the answer is that project’s board as its file now reads, not a re-scan of every root the archive never touched');
+  assert.match(route, /root: target\.project\.root/, 'written into the project the artifact belongs to');
   assert.match(api, /export function deleteItem\(project: string, path: string, deleted: boolean\)/, 'the client names the direction');
   assert.match(app, /const remove = async \(item: WorkItem, deleted: boolean\)/, 'one handler for both directions, like a card’s filing');
-  assert.match(app, /mutate\(\(current\) => \(current \? \{ \.\.\.current, deletions: answer\.deletions \} : current\)\)/, 'and only the reader’s decisions change in the snapshot, not a re-scan');
+  assert.match(app, /deletions: replaceProject\(current\.deletions, projectId, answer\.deletions\)/, 'and only that project’s decisions change in the snapshot, not a re-scan');
   assert.match(types, /BoardDeletions = Record<string, \{ at: string \| null \}>/);
 
   assert.match(artifact, /const own = \(\) => Boolean\(props\.deletions\[boardKey\(props\.project, props\.path\)\]\)/, 'an artifact knows whether it is the thing that was archived');

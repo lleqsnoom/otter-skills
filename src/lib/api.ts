@@ -44,8 +44,11 @@ export function saveFile(project: string, path: string, content: string): Promis
 /**
  * The one write: the column a reader filed a card into, and the lane it was let go in. `null` puts the card back to
  * the column its own data gives it, while the order still records where it was dropped — the place is a decision
- * even when the column is not. The answer carries the whole board and every order, so the screen and the file
- * cannot disagree.
+ * even when the column is not.
+ *
+ * The answer carries *that project's* whole board, because its decisions live in its own `.x-skills/board.json`; the
+ * caller replaces that project's slice of the snapshot with it (`replaceProject`), which is what lets a write remove
+ * an entry here as well as add one.
  */
 export function moveItem(
   project: string,
@@ -61,9 +64,8 @@ export function moveItem(
 }
 
 /**
- * Archiving an item, or bringing it back: `true` hides it from the board, `false` unarchives it. The file itself
- * is never touched — this is the reader's decision, kept beside the app like a card's column — so the answer
- * carries every decision and the snapshot replaces its own map rather than re-reading nine repositories.
+ * Archiving an item, or bringing it back: `true` hides it from the board, `false` unarchives it. The file itself is
+ * never touched — this is the reader's decision about it, kept in the project beside a card's column.
  */
 export function deleteItem(project: string, path: string, deleted: boolean): Promise<{ ok: boolean; deletions: BoardDeletions; error?: string }> {
   return fetch('/api/delete', {

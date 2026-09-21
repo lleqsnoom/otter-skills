@@ -4,6 +4,7 @@ import { locateFile } from '../lib/items';
 import type { Project } from '../lib/types';
 import { Artifact } from './Artifact';
 import { Breadcrumbs, rootCrumb, type Crumb } from './Breadcrumbs';
+import { Related } from './Related';
 
 /**
  * One artifact, on its own address.
@@ -11,6 +12,9 @@ import { Breadcrumbs, rootCrumb, type Crumb } from './Breadcrumbs';
  * The trail is resolved from the snapshot rather than from the path string: `/f/<project>/<path>` knows the file,
  * and `locateFile` says which category and which collection it came from — so a file opened straight from a search
  * result still shows the run it belongs to, which is the one thing the address alone cannot say.
+ *
+ * Below the document, `Related` answers the two questions the trail cannot: which run numbered this artifact and
+ * which rungs sit beside it, and which artifacts this one names.
  */
 export function FileView(props: { project: Project; path: string; onSaved?: () => void }) {
   const located = createMemo(() => locateFile(props.project, props.path));
@@ -46,6 +50,8 @@ export function FileView(props: { project: Project; path: string; onSaved?: () =
       </Show>
 
       <Artifact project={props.project.id} path={props.path} onSaved={props.onSaved} />
+
+      <Related project={props.project} path={props.path} />
     </div>
   );
 }
