@@ -1,7 +1,7 @@
 ---
 name: x-implement
 description: Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work, red-green-refactor per task, verify with x-review + x-fix, gate on plan completion
-version: 1.1.0
+version: 1.2.0
 author: Community
 tags: [tdd, implementation, test-driven, red-green-refactor, production-code, parallel, ui]
 user-invocable: true
@@ -54,7 +54,7 @@ Implement tasks in dependency order. When two or more tasks can run independentl
    ```
    x-parallel gives each task an isolated worktree and a full background agent, retries failures, and merges committed results back into your branch.
 4. Tasks that depend on one another stay in the inline TDD loop below, in dependency order.
-5. After an x-parallel batch merges, run the full test suite, then VERIFY (step 4) on the merged changes before updating the plan.
+5. After an x-parallel batch merges, run the full test suite, then VERIFY (step 4) on the merged changes before the status update in step 7.
 
 ## Frontend Work Uses X-UI
 
@@ -80,11 +80,23 @@ For each task file in `<run folder>/E<nn>-tasks/`:
    - Repeat x-review + x-fix until the plan has no unresolved issues and all tests are green.
 5. **SYNC DOCS** — Update the spec (`<run folder>/E00-plan.md`) if it exists; otherwise update living docs (README, comments) directly.
 6. **COMMIT** — Run `node <path-to-commit.mjs> "<message>"` from the x-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If x-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
-7. **UPDATE PLAN** — Change `- [ ]` to `- [x]` for this task. Do not start the next task without this edit.
+7. **UPDATE STATUS — the task, then the epic.** Two files, and neither write is optional:
+   - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
+   - **The epic** — the epic cannot see the task files, so derive it:
+     ```bash
+     node <skill>/scripts/status.mjs <run folder>
+     ```
+     It ticks the `**Definition of Done:**` of every layer whose tasks are all done, and refreshes the epic's `**Status:**` line with the task and layer tally. It never unticks, and never asserts what a task list cannot prove. `--dry-run` prints what it would write.
+   Do not start the next task without this.
 
 All tasks `- [x]` and green → close the run:
 
 8. **CLOSE THE RUN** — With every task `[x]`:
+   - **The epic's own definition of done** — once you have verified what it asks for (the full suite green across every layer, the docs updated), tick it:
+     ```bash
+     node <skill>/scripts/status.mjs <run folder> --epic-done
+     ```
+     Those boxes are the epic's acceptance criteria rather than a count of tasks, so they are ticked on your word and not on arithmetic — and only when no task is still open, because a status the tasks contradict is worse than no status.
    - Write `<run folder>/E<nn>-summary.md`: the epic's `goal:`, one line per completed task, and the test results.
    - Run `x-roast` on the summary, then `x-humanize` on it; each appends its own `E<nn>` artifact beside it.
    - Rewrite the summary from the humanized text.
