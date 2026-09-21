@@ -31,6 +31,12 @@
   /* The states a work item can be in, from the palette Orca paints status with. Light-theme steps clear 4.5:1
      on both white and the badge's own 10% tint, which is where a status is usually read. */
   --good: #007956; --fair: #953d01; --weak: #bf000f; --unknown: #6b6b73;
+  /* The epic palette: one categorical colour per epic, so two epics are told apart at a glance. Eight hues around
+     the wheel, each dark enough to clear 4.5:1 on white and on the badge's own 10% tint of itself — which is where
+     an epic's name is read. Which index an epic is painted with is `src/lib/epics.mjs`'s question; the value is the
+     theme's. */
+  --epic-0: #0a61b8; --epic-1: #6a2bd9; --epic-2: #bd0f77; --epic-3: #c61a3f;
+  --epic-4: #a94a04; --epic-5: #866000; --epic-6: #076b45; --epic-7: #04687f;
   --link: #0969da;
   --scroll: #c2c7d1; --scroll-track: #f0f0f0;
   --radius: .625rem;
@@ -51,6 +57,10 @@
     --border: #ffffff12; --input: #ffffff26; --ring: #737373;
     --sidebar: #171717; --sidebar-border: #ffffff12;
     --good: #86efac; --fair: #ffd236; --weak: #ff6568; --unknown: #a1a1a1;
+    /* The same eight hues, stepped up in lightness for a card that is `#171717`: a colour that reads on white is
+       unreadable on the dark surface, and one palette cannot serve both. */
+    --epic-0: #84bdf5; --epic-1: #bda9f7; --epic-2: #f59cd3; --epic-3: #f79aab;
+    --epic-4: #f8b077; --epic-5: #efd264; --epic-6: #6bdfa9; --epic-7: #6fd7ea;
     --link: #58a6ff;
     --scroll: #3f3f46; --scroll-track: #141414;
   }

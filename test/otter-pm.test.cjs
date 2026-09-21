@@ -2090,3 +2090,193 @@ test('adding an existing project is written down where the next reader looks', (
   assert.match(readme, /POST \/api\/roots/, 'and the two routes it uses');
   assert.match(readme, /GET \/api\/browse/, 'including the one the picker reads');
 });
+
+/**
+ * An epic and the work it was split into are two documents in two folders, and neither names the other. The link
+ * between them is in the tree, and it is read by `epics.mjs`: the run and the rung they are both stages of, or the
+ * slug they were both given. Everything the board says about an epic — which tasks are inside it, how far along it
+ * is — rests on this, so the rules are pinned here rather than through a screen.
+ */
+test('an epic and the work it was split into are found by the rung they share, or the slug', async () => {
+  const { epicSlug, epicIndex, epicOfSelf, epicOfTasks, epicColorIndex, epicColor, EPIC_PALETTE } = await import(
+    pathToFileURL(path.join(ROOT, 'src', 'lib', 'epics.mjs')).href
+  );
+
+  // Every spelling a repository has used for the stamp in front of a slug: two for the day-first folders, a colon
+  // and a hyphen for the clock, and the two older year-first names.
+  assert.equal(epicSlug('01-09-2026-11:23-segmentation-webcodecs-proxy-upload.md'), 'segmentation-webcodecs-proxy-upload');
+  assert.equal(epicSlug('16-07-2026-14-35-media-library-event-listener-reduction'), 'media-library-event-listener-reduction');
+  assert.equal(epicSlug('2026-07-13T1042-media-library-delta-cache'), 'media-library-delta-cache');
+  assert.equal(epicSlug('2026-07-13-media-library-proxy-sse-update.md'), 'media-library-proxy-sse-update');
+  assert.equal(epicSlug('01-09-2026-11:23-segmentation-webcodecs-proxy-upload.md'), epicSlug('01-09-2026-11:26-segmentation-webcodecs-proxy-upload'), 'a stamp is not part of the slug: the epic is written at 11:23 and its tasks at 11:26');
+  assert.equal(epicSlug('loose-task.md'), 'loose-task', 'a name with no stamp is its own slug');
+
+  const run = 'runs/2026-01-02-1015-R01-sample';
+  const categories = [
+    {
+      id: 'runs',
+      work: null,
+      groups: [{ name: '2026-01-02-1015-R01-sample', title: 'sample', relPath: run, runPath: null, step: null }],
+      items: [],
+    },
+    {
+      id: 'epics',
+      work: 'epic',
+      groups: [],
+      items: [
+        // Two epics in one run: `E09` was written later and is a second piece of work, not a revision of `E02`.
+        { name: 'E02-epic.md', title: 'first epic', relPath: `${run}/E02-epic.md`, runPath: run, step: 2 },
+        { name: 'E09-epic.md', title: 'second epic', relPath: `${run}/E09-epic.md`, runPath: run, step: 9 },
+        { name: '2026-01-01-sample.md', title: 'sample', relPath: 'epics/2026-01-01-sample.md' },
+      ],
+    },
+    {
+      id: 'tasks',
+      work: 'task',
+      groups: [
+        { name: 'E03-tasks', title: 'sample', relPath: `${run}/E03-tasks`, runPath: run, step: 3 },
+        { name: '2026-01-03-sample', title: 'first', relPath: 'tasks/2026-01-03-sample', runPath: null, step: null },
+      ],
+      items: [],
+    },
+  ];
+
+  const index = epicIndex(categories);
+  assert.equal(index.size, 3, 'the category that declares itself an epic is what an epic is read from, and nothing else is one');
+  assert.equal(epicIndex([{ id: 'epics', groups: [], items: [{ name: 'x.md', title: 'x', relPath: 'epics/x.md' }] }]).size, 0, 'so a folder merely named `epics` does not make one');
+
+  assert.equal(epicOfSelf(index, { runPath: run, step: 9, name: 'E09-epic.md' }).title, 'second epic', 'an epic is itself, by its rung in its run');
+  assert.equal(epicOfTasks(index, { name: '2026-01-03-sample' }).title, 'sample', 'a stamped folder in `tasks/` belongs to the epic whose stamp differs and whose slug does not');
+  assert.equal(
+    epicOfTasks(index, { runPath: run, step: 3, name: 'E03-tasks' }).title,
+    'first epic',
+    'and a run’s tasks belong to the epic at the rung above them, not to every epic the run holds',
+  );
+  assert.equal(epicOfTasks(index, { runPath: 'runs/some-other-run', step: 3, name: 'E03-tasks' }), null, 'a run with no epic above the tasks claims nothing');
+
+  assert.equal(epicColorIndex('slug:sample'), epicColorIndex('slug:sample'), 'a colour is stable for a key');
+  assert.ok(epicColorIndex('slug:sample') < EPIC_PALETTE && epicColorIndex('slug:sample') >= 0, 'and comes from the palette');
+  assert.equal(epicColor('slug:sample'), `var(--epic-${epicColorIndex('slug:sample')})`, 'which is the theme’s own value, so both themes are painted');
+});
+
+test('a run’s numbered tasks folder carries the run and the rung it was filed out of', async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-epic-'));
+  const root = path.join(repo, '.x-skills');
+  // A run the way the skills write one: the plan, the epic, and the tasks the epic was decomposed into a rung later.
+  writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E01-plan.md'), '# Plan — sample\n');
+  writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E02-epic.md'), '# Epic — sample\n');
+  writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E03-tasks', '0.1-one.md'), '# Task: one\n');
+  writeFile(path.join(root, 'tasks', '2026-01-03-sample', '0.1-skeleton.md'), '# Task: skeleton\n');
+  writeFile(path.join(root, 'plan', '2026-01-04-sample', 'E00-plan.md'), '# Plan — its own name\n');
+
+  const { scanRoot } = await serverModule('scan');
+  const { epicIndex, epicOfTasks } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'epics.mjs')).href);
+  const project = scanRoot(root, { name: 'epic-fixture' });
+  const tasks = category(project, 'tasks');
+  const run = category(project, 'runs');
+
+  assert.equal(run.groups[0].runPath, null, 'a run is not a stage of anything');
+  const stage = tasks.groups.find((group) => group.relPath === 'runs/2026-01-02-1015-R01-sample/E03-tasks');
+  assert.equal(
+    stage.runPath,
+    'runs/2026-01-02-1015-R01-sample',
+    'but the tasks folder read outside its run says which run numbered it, which is the one thing its path cannot say there',
+  );
+  assert.equal(stage.step, 3, 'and the rung it holds there, so the epic above it can be found');
+  const epic = category(project, 'epics').items[0];
+  assert.equal(epic.runPath, 'runs/2026-01-02-1015-R01-sample', 'the epic beside it is the same run’s');
+  assert.equal(epic.step, 2, 'at the rung above the tasks, which is what pairs them');
+  assert.equal(epicOfTasks(epicIndex(project.categories), stage).relPath, epic.relPath, 'so the tasks resolve to that epic, off the real scanner rather than a fixture');
+
+  const collection = tasks.groups.find((group) => group.relPath === 'tasks/2026-01-03-sample');
+  assert.equal(
+    collection.title,
+    '2026-01-03-sample',
+    'a folder of tasks is named by its own name: its first file’s heading is a task’s title, and wearing it made the folder read as one of the tasks inside',
+  );
+  assert.equal(
+    category(project, 'plan').groups[0].title,
+    'its own name',
+    'while every other collection is still named by the document it opens with',
+  );
+  assert.equal(collection.step, null, 'a folder no run numbered holds no rung');
+});
+
+test('the board draws tasks one at a time, and an epic holds the ones that belong to it', () => {
+  const items = source(path.join('lib', 'items.ts'));
+  const board = source(path.join('components', 'Board.tsx'));
+  const card = source(path.join('components', 'Card.tsx'));
+  const view = source(path.join('components', 'FileView.tsx'));
+  const epics = source(path.join('lib', 'epics.mjs'));
+  const css = fs.readFileSync(path.join(APP_SRC, 'styles.css'), 'utf8');
+
+  assert.match(epics, /const STAMPS = \[/, 'the stamps a slug hides behind are listed, not guessed at');
+  assert.match(epics, /export function epicOfTasks\(/, 'and which epic a task belongs to is one function, so the two sides cannot disagree');
+  assert.match(epics, /epic\.step < subject\.step/, 'which pairs a run’s tasks with the epic at the rung above them, not with every epic the run holds');
+  assert.match(epics, /export function epicIndex\(/, 'with the epics resolved from the category that declares itself one, not from a file name');
+  assert.match(epics, /category\.work !== 'epic'/, 'which is the registry’s own word, so this module does not hardcode a folder name either');
+  assert.match(items, /if \(role === 'task'\) items\.push\(\.\.\.taskItems\(/, 'a task folder is expanded into one card per task: its old card wore the first task’s title and read as a duplicate of the epic beside it');
+  assert.match(items, /function withTasks/, 'and every epic is given the tasks inside it');
+  assert.match(items, /const linked = withTasks\(items\)[\s\S]*?return linked\.filter/, 'and the link is made before the caller’s filter, so an epic page — which draws one category — still holds its tasks');
+  assert.match(items, /parentTitle: parent/, 'a task’s parent is the epic that claims it, not the folder title, which is the first task’s own heading');
+  assert.match(card, /export function EpicPill/, 'the epic a task belongs to is drawn as a pill');
+  assert.match(card, /color: props\.epic\.color/, 'in the epic’s own colour, from the theme');
+  assert.match(board, /<Show when=\{!props\.item\.isEpic && props\.item\.epic\}>/, 'on every task card, and not on the epic’s own');
+  assert.match(board, /as=\{holds\(\) \? 'article' : 'a'\}/, 'a card that holds tasks is not a link, because a link inside a link is not one');
+  assert.match(board, /border-inline-start-color/, 'an epic’s card carries its colour down the leading edge, so two epics are told apart at a glance');
+  assert.match(board, /if \(item\.epic\) return null/, 'and a task does not repeat its epic in the footer, which was half of why the two categories read alike');
+  assert.match(board, /<Show when=\{whereabouts\(props\.item\)\}>/, 'so the line is left out rather than drawn empty');
+  assert.match(board, /TASK_PREVIEW = 8/, 'the card lists a few tasks and counts the rest, so one epic cannot make a card taller than its lane');
+  assert.match(view, /<TaskList tasks=\{tasks\(\)\} \/>/, 'an epic’s own page lists every task it holds');
+  assert.match(view, /const epic = createMemo\(\(\) => \(card\(\)\?\.isEpic \? null : \(card\(\)\?\.epic \?\? null\)\)\)/, 'and a task’s page names its epic rather than its own');
+});
+
+/**
+ * The palette, measured rather than eyeballed: an epic's name is read in its own colour, on the card's surface and
+ * tinted with 10% of itself — the badge recipe every status in this app is drawn with. A colour is a label here and
+ * never the only signal (the pill carries the name as text), but a label nobody can read is not one.
+ */
+test('every epic colour can be read on the surface it is drawn on', () => {
+  const css = fs.readFileSync(path.join(APP_SRC, 'styles.css'), 'utf8');
+  const [light, dark] = css.split('@media (prefers-color-scheme: dark)');
+
+  for (const [theme, block] of [['light', light], ['dark', dark]]) {
+    const value = (name) => block.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6}|#[0-9a-f]{3})`, 'i'))?.[1] ?? null;
+    assert.notEqual(value('card'), null, `the ${theme} theme has a card surface to draw a pill on`);
+    for (let index = 0; index < 8; index += 1) {
+      const colour = value(`epic-${index}`);
+      assert.notEqual(colour, null, `the ${theme} theme has --epic-${index}`);
+      for (const surface of ['card', 'muted']) {
+        const ratio = contrast(mix(hexToRgb(colour), hexToRgb(value(surface)), 0.1), hexToRgb(colour));
+        assert.ok(ratio >= 4.5, `--epic-${index} on --${surface} reads at ${ratio.toFixed(2)}:1 in the ${theme} theme, which is under 4.5:1`);
+      }
+    }
+  }
+
+  assert.match(css, /--epic-0: #[0-9a-f]{6}; --epic-1: #[0-9a-f]{6}; --epic-2: #[0-9a-f]{6}; --epic-3: #[0-9a-f]{6};/, 'the palette is one list per theme, so a value cannot be added to one and missed in the other');
+});
+
+/** `#rrggbb` or the `#rgb` shorthand, as three channels. */
+function hexToRgb(hex) {
+  const digits = hex.slice(1);
+  const full = digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits;
+  return [0, 2, 4].map((at) => Number.parseInt(full.slice(at, at + 2), 16));
+}
+
+/** One colour over another: what the badge recipe paints, where `weight` is how much of the top colour there is. */
+function mix(top, under, weight) {
+  return top.map((channel, at) => Math.round(channel * weight + under[at] * (1 - weight)));
+}
+
+/** WCAG relative luminance, and the contrast ratio between two colours. */
+function contrast(a, b) {
+  const luminance = ([r, g, bl]) => {
+    const channel = (value) => {
+      const scaled = value / 255;
+      return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(bl);
+  };
+  const [high, low] = [luminance(a), luminance(b)].sort((left, right) => right - left);
+  return (high + 0.05) / (low + 0.05);
+}

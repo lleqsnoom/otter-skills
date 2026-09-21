@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js';
 
 import { landingBoundary, leftLane, liveItems, orderKey, orderedLane, placeAtPointer } from '../lib/board.mjs';
 import {
@@ -9,6 +9,8 @@ import {
   columnTone,
   isMoved,
   relativeTime,
+  STATUS_LABELS,
+  statusTone,
   type ClosedWindow,
   type WorkItem,
 } from '../lib/items';
@@ -16,7 +18,7 @@ import { linkProps } from '../lib/router';
 import type { BoardColumn, BoardDeletions, BoardMoves, BoardOrder, BoardOrders } from '../lib/types';
 import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
-import { Card, CardHead, Chip, ProgressBar, StatusBadge } from './Card';
+import { Card, CardHead, Chip, EpicPill, ProgressBar, StatusBadge } from './Card';
 
 /** Where an item's own page is: a collection opens as a group, a document as a file. */
 export function routeFor(item: WorkItem) {
@@ -45,16 +47,19 @@ export function WorkCard(props: {
     props.onKeyMove?.(props.item, event.key === 'ArrowLeft' ? -1 : 1);
   };
 
+  // A card is one link, and a link inside a link is not one — so a card holding tasks is not a link itself. Its
+  // title is, and so is each task under it, which is the only way the tasks can be reached from where they are read.
+  const holds = () => props.item.tasks.length > 0;
+  const link = () => linkProps(routeFor(props.item));
+
   return (
     <Card
-      as="a"
-      {...linkProps(routeFor(props.item))}
-      label={`${props.item.categoryLabel}: ${props.item.title}`}
-      title={
-        props.onKeyMove ? 'Drag to a column and a place in it, or Alt + ← / → to file it' : undefined
-      }
+      as={holds() ? 'article' : 'a'}
+      {...(holds() ? {} : link())}
+      label={holds() ? undefined : `${props.item.categoryLabel}: ${props.item.title}`}
+      title={props.onKeyMove ? 'Drag to a column and a place in it, or Alt + ← / → to file it' : undefined}
       class={cn(props.dragging && 'opacity-40 shadow-none rotate-[-1.2deg]')}
-      style={props.order === undefined ? undefined : { order: props.order }}
+      style={cardStyle(props.item, props.order)}
       draggable={Boolean(props.onDragStart)}
       onDragStart={(event) => {
         // Firefox will not start a drag without data on the transfer, even though the board keeps the item itself.
@@ -68,6 +73,7 @@ export function WorkCard(props: {
     >
       <CardHead>
         <StatusBadge status={props.item.status} />
+        <Show when={!props.item.isEpic && props.item.epic}>{(epic) => <EpicPill epic={epic()} />}</Show>
         <Show when={props.moved}>
           <Chip title="A column you set; the item's own data still says otherwise" class="text-fair">
             moved
@@ -79,7 +85,13 @@ export function WorkCard(props: {
         </span>
       </CardHead>
 
-      <h3 class="break-anywhere m-0 text-body font-semibold">{props.item.title}</h3>
+      <h3 class="break-anywhere m-0 text-body font-semibold">
+        <Show when={holds()} fallback={props.item.title}>
+          <a {...link()} class="text-foreground">
+            {props.item.title}
+          </a>
+        </Show>
+      </h3>
 
       <Show when={props.item.excerpt}>
         <p class="m-0 line-clamp-2 text-chrome text-muted-foreground">{props.item.excerpt}</p>
@@ -95,6 +107,10 @@ export function WorkCard(props: {
         <ProgressBar progress={props.item.progress} />
       </Show>
 
+      <Show when={holds()}>
+        <TaskList tasks={props.item.tasks} limit={TASK_PREVIEW} class="border-t border-border pt-1.5" />
+      </Show>
+
       <footer class="flex flex-wrap items-center gap-x-2 text-chrome text-muted-foreground">
         <Show when={props.showProject}>
           <span class="break-anywhere">{props.item.projectId}</span>
@@ -104,14 +120,86 @@ export function WorkCard(props: {
         <Show when={props.item.kind === 'group'}>
           <span class="break-anywhere">{props.item.relPath.split('/').pop()}</span>
         </Show>
-        <span class="ml-auto break-anywhere">
-          <Show when={props.item.parentTitle} fallback={`${props.item.fileCount} ${props.item.fileCount === 1 ? 'file' : 'files'}`}>
-            in {props.item.parentTitle}
-          </Show>
-        </span>
+        <Show when={whereabouts(props.item)}>
+          <span class="ml-auto break-anywhere">{whereabouts(props.item)}</span>
+        </Show>
       </footer>
     </Card>
   );
+}
+
+/**
+ * What a card's own line says about where the thing sits: the tasks it holds, the collection holding it, or how many
+ * files there are. Work read under an epic says nothing, because the pill already names it.
+ */
+function whereabouts(item: WorkItem): string | null {
+  if (item.tasks.length) return `${item.tasks.length} ${item.tasks.length === 1 ? 'task' : 'tasks'}`;
+  if (item.epic) return null;
+  if (item.parentTitle) return `in ${item.parentTitle}`;
+  return `${item.fileCount} ${item.fileCount === 1 ? 'file' : 'files'}`;
+}
+
+/**
+ * A card's own styling: the place a lane put it in, and — when it is an epic — the palette's colour down its leading
+ * edge. The edge is what tells two epics apart at a glance on a board of cards rather than one at a time.
+ */
+function cardStyle(item: WorkItem, order: number | undefined): JSX.CSSProperties | undefined {
+  const style: JSX.CSSProperties = {};
+  if (order !== undefined) style.order = order;
+  if (item.isEpic && item.epic) {
+    style['border-inline-start-color'] = item.epic.color;
+    style['border-inline-start-width'] = '3px';
+  }
+  return Object.keys(style).length ? style : undefined;
+}
+
+/**
+ * How many tasks an epic's card lists before it counts the rest.
+ *
+ * An epic of thirty tasks would make one card taller than the lane it sits in, and the lane's own fold is per card.
+ * The first few are what a reader scans; the count says how many there are, and the epic's own page holds every one
+ * of them.
+ */
+const TASK_PREVIEW = 8;
+
+/**
+ * The tasks inside an epic.
+ *
+ * On the epic's card they are what the card is for, so the list is capped at `TASK_PREVIEW` and the rest counted;
+ * on the epic's own page they are the page, and `limit` is left off. One shape either way, because they are one
+ * thing read in two places.
+ */
+export function TaskList(props: { tasks: WorkItem[]; limit?: number; class?: string }) {
+  const shown = () => props.tasks.slice(0, props.limit ?? props.tasks.length);
+  const rest = () => props.tasks.length - shown().length;
+  return (
+    <ul class={cn('m-0 grid list-none gap-0 p-0', props.class)}>
+      <For each={shown()}>
+        {(task) => (
+          <li>
+            <a
+              {...linkProps(routeFor(task))}
+              title={task.title}
+              class="flex items-center gap-2 rounded-sm px-1 py-1 text-foreground no-underline hover:bg-muted"
+            >
+              <span class={cn('shrink-0 text-chrome', statusTone(task.status))}>{STATUS_LABELS[task.status]}</span>
+              <span class="min-w-0 flex-1 truncate text-chrome">{task.title}</span>
+              <Show when={taskCount(task)}>
+                <span class="shrink-0 text-chrome text-muted-foreground tabular-nums">{taskCount(task)}</span>
+              </Show>
+            </a>
+          </li>
+        )}
+      </For>
+      <Show when={rest() > 0}>
+        <li class="px-1 py-0.5 text-chrome text-muted-foreground">+ {rest()} more</li>
+      </Show>
+    </ul>
+  );
+}
+
+function taskCount(task: WorkItem): string {
+  return task.progress?.total ? `${task.progress.done}/${task.progress.total}` : '';
 }
 
 /**

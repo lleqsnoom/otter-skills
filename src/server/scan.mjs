@@ -317,8 +317,12 @@ function groupFor(root, dir, meta = {}) {
   return {
     id: relPath,
     name,
-    title: meta.title ?? state?.slug ?? firstMarkdown?.title ?? name,
+    title: meta.title ?? state?.slug ?? (meta.ownName ? name : firstMarkdown?.title) ?? name,
     relPath,
+    /** The run this collection is a stage of, when it is one — see `indexRung`. */
+    runPath: meta.runPath ?? null,
+    /** The rung it holds there: `E02-tasks/` is rung 2. */
+    step: meta.step ?? null,
     mtime: stat ? new Date(stat.mtimeMs).toISOString() : null,
     date: dateFrom(state?.updatedAt || name),
     state,
@@ -344,7 +348,11 @@ function categoryFor(root, dirName) {
   for (const entry of entries) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      groups.push(groupFor(root, path));
+      // A folder of tasks is named by its stamp and nothing else, and its first file's heading is a *task's* name:
+      // read as the folder's it made a card say `Tasks: Extract SSE parser into sse-parser.ts`, a task's title worn
+      // by the folder holding it. Every other collection is named by its own first document, which is the plan or
+      // the session it opens with.
+      groups.push(groupFor(root, path, descriptor.work === 'task' ? { ownName: true } : {}));
       continue;
     }
     const extension = extname(entry.name).toLowerCase();
@@ -489,8 +497,16 @@ function withRun(group) {
 
 function indexRung(root, group, stage) {
   if (stage.isDirectory) {
+    // The run and the rung travel with the stage it was filed out of: `E02-tasks/` is a collection of its own once
+    // it is read in **Tasks**, and the run's epic at the rung above it is the one it was decomposed from — which its
+    // own path cannot say from there.
     stage.target.groups.push(
-      groupFor(root, join(root, stage.relPath), { relPath: stage.relPath, title: group.title }),
+      groupFor(root, join(root, stage.relPath), {
+        relPath: stage.relPath,
+        title: group.title,
+        runPath: group.relPath,
+        step: stage.step,
+      }),
     );
   } else {
     const file = group.files.find((candidate) => candidate.relPath === stage.relPath);
