@@ -1,9 +1,11 @@
 import { createMemo, Show } from 'solid-js';
 
-import { locateFile } from '../lib/items';
+import { itemsForProject, locateFile } from '../lib/items';
 import type { Project } from '../lib/types';
 import { Artifact } from './Artifact';
+import { TaskList } from './Board';
 import { Breadcrumbs, rootCrumb, type Crumb } from './Breadcrumbs';
+import { EpicPill } from './Card';
 import { Related } from './Related';
 
 /**
@@ -15,8 +17,16 @@ import { Related } from './Related';
  *
  * Below the document, `Related` answers the two questions the trail cannot: which run numbered this artifact and
  * which rungs sit beside it, and which artifacts this one names.
+ *
+ * Two facts about the document itself are read above it, because they are the questions a reader arrives with: the
+ * epic a task belongs to is the pill beside the trail, and the tasks an epic holds are listed under it. Both read
+ * the card the board draws, so a page and a board cannot disagree about whose work this is.
  */
 export function FileView(props: { project: Project; path: string; onSaved?: () => void }) {
+  const card = createMemo(() => itemsForProject(props.project).find((item) => item.relPath === props.path) ?? null);
+  const epic = createMemo(() => (card()?.isEpic ? null : (card()?.epic ?? null)));
+  const tasks = createMemo(() => (card()?.isEpic ? (card()?.tasks ?? []) : []));
+
   const located = createMemo(() => locateFile(props.project, props.path));
 
   const trail = createMemo<Crumb[]>(() => {
@@ -43,7 +53,25 @@ export function FileView(props: { project: Project; path: string; onSaved?: () =
 
   return (
     <div class="grid gap-4">
-      <Breadcrumbs trail={trail()} />
+      <div class="flex flex-wrap items-center gap-2">
+        <Breadcrumbs trail={trail()} />
+        <Show when={epic()}>{(ref) => <EpicPill epic={ref()} />}</Show>
+      </div>
+
+      <Show when={tasks().length}>
+        <section class="grid gap-1.5 rounded-lg border border-border bg-card p-2.5">
+          <h2 class="m-0 border-0 p-0 text-section font-medium">
+            Tasks <span class="text-chrome font-normal text-muted-foreground tabular-nums">{tasks().length}</span>
+            <Show when={card()?.progress?.total}>
+              <span class="text-chrome font-normal text-muted-foreground tabular-nums">
+                {' '}
+                · {card()?.progress?.done}/{card()?.progress?.total} done
+              </span>
+            </Show>
+          </h2>
+          <TaskList tasks={tasks()} />
+        </section>
+      </Show>
 
       <Show when={!located()}>
         <p class="break-anywhere m-0 text-chrome text-muted-foreground">{props.path}</p>

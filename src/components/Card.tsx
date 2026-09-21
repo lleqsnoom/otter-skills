@@ -2,7 +2,7 @@ import type { JSX } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 
 import { cn } from '../ui/cn';
-import { STATUS_LABELS, statusTone } from '../lib/items';
+import { STATUS_LABELS, statusTone, type EpicRef } from '../lib/items';
 import type { Progress, Status } from '../lib/types';
 
 /**
@@ -130,6 +130,32 @@ export function ProgressBar(props: { progress: Progress | null; class?: string }
         {props.progress.done}/{props.progress.total}
       </span>
     </div>
+  );
+}
+
+/**
+ * The epic a task belongs to, as a pill in the epic's own colour.
+ *
+ * It is a label and not a link, deliberately: a card is one link, and a link inside a link is not one. What a task
+ * needs is the answer to "which epic is this?" — the epic's own page is where its tasks are worked, and the epic's
+ * card is where they are listed.
+ */
+export function EpicPill(props: { epic: EpicRef; class?: string }) {
+  return (
+    <span
+      title={`Epic · ${props.epic.title}`}
+      class={cn(
+        'inline-flex max-w-[22ch] min-w-0 items-center rounded-sm border px-1.5 py-px text-chrome font-medium',
+        props.class,
+      )}
+      style={{
+        color: props.epic.color,
+        background: 'color-mix(in srgb, currentColor 10%, transparent)',
+        'border-color': 'color-mix(in srgb, currentColor 25%, transparent)',
+      }}
+    >
+      <span class="truncate">{props.epic.title}</span>
+    </span>
   );
 }
 

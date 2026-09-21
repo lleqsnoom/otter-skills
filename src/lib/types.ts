@@ -71,6 +71,10 @@ export interface Group {
   name: string;
   title: string;
   relPath: string;
+  /** The run this collection is a stage of, when a run wrote it: `E02-tasks/` read outside its own run. */
+  runPath: string | null;
+  /** The rung it holds in that run — the `2` of `E02-tasks/` — or `null` for a folder no run numbered. */
+  step: number | null;
   mtime: string | null;
   date: string | null;
   state: RunState | null;
@@ -88,6 +92,11 @@ export interface Category {
   order: number;
   hint?: string;
   kind: 'containers' | 'documents' | 'mixed';
+  /**
+   * What a collection in this category is to a screen: an epic, or the tasks an epic was split into. Absent for
+   * everything else, which is work in its own right. Declared by the registry in `src/server/categories.mjs`.
+   */
+  work?: 'epic' | 'task' | null;
   /** The folder this category is shown under — the one bearing its own name when there is one. */
   dir: string;
   /** Every folder folded into it: `anal` and `analysis` are one category read from two directories. */

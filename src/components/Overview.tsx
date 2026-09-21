@@ -6,7 +6,7 @@ import { itemsForProject, relativeTime, statusCounts, type WorkItem } from '../l
 import { linkProps } from '../lib/router';
 import type { BoardDeletions, Project, Snapshot } from '../lib/types';
 import { Breadcrumbs, rootCrumb } from './Breadcrumbs';
-import { Card, CardHead, Chip, Empty, Stat, StatusBadge } from './Card';
+import { Card, CardHead, Chip, Empty, EpicPill, Stat, StatusBadge } from './Card';
 import { ProjectIcon } from './ProjectIcon';
 
 /** One project: what the IDE calls it, how much is in it, and where the board stands without opening it. */
@@ -59,6 +59,7 @@ function RecentCard(props: { item: WorkItem & { projectName: string } }) {
     >
       <CardHead>
         <StatusBadge status={props.item.status} />
+        <Show when={!props.item.isEpic && props.item.epic}>{(epic) => <EpicPill epic={epic()} />}</Show>
         <span class="text-chrome text-muted-foreground">{props.item.projectName}</span>
         <span class="ml-auto text-chrome text-muted-foreground">
           {relativeTime(props.item.date || props.item.mtime)}

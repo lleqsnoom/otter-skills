@@ -216,10 +216,12 @@ rules, with the extension deciding first and its own text only when the extensio
 | State | a run's `state.json`: skill, node, guards, events, questions, options, decision |
 | Status | finished node → done; some boxes ticked → in progress; none → to do; nothing counted → unsorted |
 | Stage | the `E<nn>` a run numbered an artifact with: `E00-plan.md` is rung 0, `E02-tasks/` is rung 2 |
+| Epic | the epic a task belongs to: the run both are stages of, or the slug their folders share (see below) |
 | Named in | the `**Input:**` / `Spec:` / `Plan:` paths an artifact names, when the path leads somewhere |
 
 A run (a folder with `state.json`) and a task group (a folder of task files) are the same thing to the UI: a
-collection with a head and a body of artifacts.
+collection with a head and a body of artifacts — except that a task group's files are drawn instead of the group,
+because the folder is not the unit a reader picks up. See **Epics and their tasks**.
 
 ## Runs and their stages
 
@@ -231,7 +233,8 @@ into run folders.
 
 So every rung is read **in the category that names its kind as well as in its run**. `E00-analysis.md` is a card
 under Analysis and a file of the run that wrote it; `E01-epic.md` is under Epics; a `E02-tasks/` folder
-(x-decompose writes a folder, not a file) is a collection under **Tasks**, with its task files and their progress.
+(x-decompose writes a folder, not a file) is read under **Tasks**, where its task files are the cards and the folder
+it came from travels with it as `runPath`.
 Nothing is copied — a stage keeps the path it came from, so it is the same file in two places, and the card says
 `in shared-media-kms-key-staging-sandbox` rather than leaving you to guess which of nine same-named files it is.
 
@@ -264,6 +267,54 @@ edges at all: a skeleton's `<run folder>/E00-plan.md` placeholder and a mistyped
 
 The same panel is on a run's own page and on every artifact's page, so "what else is part of this?" is answered
 wherever you happen to be reading.
+
+## Epics and their tasks
+
+An epic and the work it was split into are written by two skills into two folders, and **neither document names the
+other**: `x-epic` writes `epics/<stamp>-<slug>.md`, `x-decompose` writes `tasks/<stamp>-<slug>/`, and the two stamps
+are minutes apart because they were written minutes apart. Read literally that is two cards with the same name under
+two categories, each with a progress bar, and nothing on either saying which is which — which is what made **Tasks**
+look like a duplicate of **Epics**.
+
+The link is in the tree, and there are exactly two ways the two meet (`src/lib/epics.mjs`):
+
+- **The same run.** A run numbers its epic `E<nn>-epic.md` and its tasks `E<nn>-tasks/`, at different rungs, so the
+  run folder is the identity both carry and the rungs are what say whose tasks they are: the tasks belong to the epic
+  *above* them. A run can number two epics — one run in this repository does, a second pass over the same topic — and
+  taking the run alone would give both of them the same list, under the wrong one's name. `scan.mjs` stamps the run
+  and the rung on the tasks folder as `runPath`/`step` when it files that folder under **Tasks**, because from there
+  its own path can no longer say either.
+- **The same slug.** `epics/01-09-2026-11:23-segmentation-webcodecs-proxy-upload.md` and
+  `tasks/01-09-2026-11:26-segmentation-webcodecs-proxy-upload/` are one epic's work: the stamps differ, the name
+  after them does not.
+
+With that read, three things change on screen:
+
+- **A task folder is not a card; its files are.** The folder that stood for it was named by the first task's heading
+  — `groupFor` falls back to the first markdown's title — so the card read `Tasks: Extract SSE parser into
+  sse-parser.ts`, a task's own name over a progress bar, beside the epic of the same name. One card per task is what
+  a reader came for, and each counts only its own checklist. The folder is named after itself too, so a breadcrumb
+  reads `Tasks / segmentation-webcodecs-proxy-upload / 0.1-segment-vlm-profile.md` rather than putting the file
+  inside a task it is not inside of.
+- **An epic holds its tasks.** Its card lists them — eight, then `+ N more`, and its own page lists all of them —
+  its progress is counted over them rather than over the epic document's own checklist, and its colour runs down the
+  card's leading edge.
+- **Every task wears its epic** as a pill in that epic's colour: on the board, in the list, in search results, in
+  **Newest across projects**, and beside the trail on the task's own page. Work no epic was written for is still
+  work, and says nothing rather than guessing at a parent.
+
+Work that is not task work is not claimed: a run is not a task, so the analysis inside it does not wear the run's
+epic. Only the work filed in **Tasks** does.
+
+The colours are a palette of eight in the theme — `--epic-0` … `--epic-7` in `src/styles.css`, one set per theme,
+each step chosen to clear 4.5:1 on the surface it is read on — and an epic is painted by hashing its key rather than
+by counting epics: a colour that moved when an unrelated epic was written would be worse than two epics sharing one,
+and with fifty epics and eight colours they do share. The pill carries the epic's name as text and the colour only
+agrees with it, which is the rule every badge here follows.
+
+Hiding **Tasks** on the board does not empty the epics: the link is read from the whole project first and the
+categories a reader asked to see are filtered out of the result, so a board drawing only **Epics** still shows what
+is inside each one.
 
 ## The board
 
@@ -322,7 +373,7 @@ Three ways in, and they are deliberately different widths:
 | | What it covers |
 |---|---|
 | The rail's search box (⌘K / ctrl-K) | **Everything** — every collection *and every artifact inside one*. A file name is a hit even when the run it lives in says nothing about it, and the result says which collection it came from (`in cdk-high-traffic-security`). A stage found twice — under Analysis and inside its run — is one hit, because the first reading is kept. |
-| A category's board (Runs, Tasks, …) | One card per collection, plus the documents loose in that folder. A collection is the unit of work, so it is the board's unit; the artifacts inside are not separate cards. A category of a stage kind also draws the runs' stages of that kind, each saying which run it came from. |
+| A category's board (Runs, Tasks, …) | One card per collection, plus the documents loose in that folder. A collection is the unit of work, so it is the board's unit; the artifacts inside are not separate cards. A category of a stage kind also draws the runs' stages of that kind, each saying which run it came from. **Tasks** is the exception: a task is what a reader picks up there, so the folder is not drawn and each task inside it is a card of its own, wearing the epic that claims it. |
 | A collection's page | Its workflow state, and its artifact list — every file, in the order the run produced them (`E00`, `E01`, …, then the session's own notes). |
 
 Search is a screen rather than a dropdown, and following a result clears the box: while it is up, every card is
@@ -367,7 +418,7 @@ around it.
 otter-pm/
 ├── src/server/          # plain Node, no framework: what reads the tree
 │   ├── config.mjs       # root resolution: flags, config, env, discovery
-│   ├── categories.mjs   # the category registry, add one here or merge two folders into one
+│   ├── categories.mjs   # the category registry: one entry per folder, and which holds the epics and which their tasks
 │   ├── create.mjs       # making a project: temp tree, git, gh, through one run seam
 │   ├── roots.mjs        # adding a folder that exists: the picker's listing, the scaffold, the config line
 │   ├── board.mjs        # the reader's own decisions: one board file per project, and the import of the old one
@@ -379,7 +430,7 @@ otter-pm/
 ├── src/pages/           # the shell, for / and for every other path
 ├── src/ui/              # shared primitives: Button, Input, Badge, ToggleGroup, cn
 ├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail, Related
-├── src/lib/             # types, the API client, the router, the work-item model, the chain (chain.mjs)
+├── src/lib/             # types, the API client, the router, the work-item model, the chain (chain.mjs), the epics (epics.mjs)
 ├── src/styles.css       # Orca's tokens, base, and the markdown an artifact is read in
 ├── src/tailwind.css     # Tailwind wired to those tokens
 ├── scripts/             # dev.mjs, serve.mjs, import-board.mjs: the ports, the foreground, the migration
@@ -477,10 +528,11 @@ does not re-read the tree and a changed file is picked up on the first request a
 
 `npm test` runs `test/*.test.cjs` over a fixture `.x-skills` tree built in a temp directory, and drives the real
 server modules the app serves — the scanner's contract (a category per directory, two spellings merging into one,
-a run's `state.json`, a task file's fields, path-escape refusal) and the rendering and decision contracts beside it
-(a named fence coloured as what it named, a `.png` refused a write, a save read back off the disk, a move and an
-archive written and cleared, the create flow driven entirely through a stubbed `run`). Nothing in the suite touches
-the network, GitHub or the Orca IDE.
+a run's `state.json`, a task file's fields, a run's tasks folder carrying the run it came from, path-escape refusal)
+and the rendering and decision contracts beside it (a named fence coloured as what it named, a `.png` refused a
+write, a save read back off the disk, a move and an archive written and cleared, the create flow driven entirely
+through a stubbed `run`, and the two ways an epic and its tasks are read as one). Nothing in the suite touches the
+network, GitHub or the Orca IDE.
 
 ## Releasing
 

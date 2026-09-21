@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
 
 import { isDeleted } from '../lib/board.mjs';
+import { epicIndex, epicOfTasks } from '../lib/epics.mjs';
 import { formatDate, relativeTime } from '../lib/items';
 import type { BoardDeletions, FileRef, Group, Project } from '../lib/types';
 import { Badge } from '../ui/Badge';
@@ -8,7 +9,7 @@ import { Button } from '../ui/Button';
 import { Artifact } from './Artifact';
 import { Breadcrumbs, rootCrumb } from './Breadcrumbs';
 import { Related } from './Related';
-import { ProgressBar, StatusBadge } from './Card';
+import { EpicPill, ProgressBar, StatusBadge } from './Card';
 
 const PREFERRED = ['plan', 'analysis', 'epic', 'summary', 'investigate', 'triage', 'review', 'reflection', 'doc'];
 
@@ -191,6 +192,16 @@ export function GroupDetail(props: {
     return null;
   });
 
+  /**
+   * The epic a task collection belongs to, when the collection is task work — the same link its own files wear, read
+   * from the folder. A run is not task work, so a run's page names no epic even when the run numbered one.
+   */
+  const epic = createMemo(() => {
+    const match = found();
+    if (match?.category.work !== 'task') return null;
+    return epicOfTasks(epicIndex(props.project.categories), match.group);
+  });
+
   // The collection itself is the entry a reader made; the artifacts inside it are only covered by it.
   const deleted = createMemo(() => isDeleted({ projectId: props.project.id, relPath: props.groupPath }, props.deletions));
 
@@ -224,6 +235,7 @@ export function GroupDetail(props: {
             />
             <div class="flex flex-wrap items-center gap-2">
               <h1 class="break-anywhere">{match().group.title}</h1>
+              <Show when={epic()}>{(ref) => <EpicPill epic={ref()} />}</Show>
               <StatusBadge status={match().group.status} />
               <Show when={match().group.state?.skill}>
                 <Badge tone="unknown">{match().group.state?.skill}</Badge>

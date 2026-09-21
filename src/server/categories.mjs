@@ -6,11 +6,15 @@
  * `merge` is how two folders become one category. A skill's output folder has been renamed more than once over
  * time, so a repository can hold both spellings — `anal/` and `analysis/` — and to a reader they are one thing:
  * work that analysed a problem. The listed names are folded into the entry that names them.
+ *
+ * `work` is what a *collection* in the category is to a screen, and only two categories have one. An **epic** is a
+ * layer plan and its tasks are what the epic was split into, and the two are read against each other wherever they
+ * appear — see `src/lib/epics.mjs`. Everything else a repository holds is work in its own right.
  */
 export const CATEGORY_REGISTRY = [
   { id: 'runs', label: 'Runs', order: 0, hint: 'One folder per workflow run, with its graph state and artifacts.' },
-  { id: 'epics', label: 'Epics', order: 1, hint: 'Layer plans produced by x-epic.' },
-  { id: 'tasks', label: 'Tasks', order: 2, hint: 'Decomposed work, grouped by run or loose in the folder.' },
+  { id: 'epics', label: 'Epics', order: 1, work: 'epic', hint: 'Layer plans produced by x-epic.' },
+  { id: 'tasks', label: 'Tasks', order: 2, work: 'task', hint: 'Decomposed work: the tasks an epic was split into, one file each.' },
   { id: 'plan', label: 'Plan', order: 3 },
   { id: 'plans', label: 'Plans', order: 4 },
   { id: 'design', label: 'Design', order: 5 },
@@ -43,6 +47,11 @@ function titleCase(value) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+/** The fields every category carries, whether the registry named it or its directory did. */
+function descriptorOf(entry) {
+  return { id: entry.id, label: entry.label, order: entry.order, hint: entry.hint, merge: entry.merge ?? [], work: entry.work ?? null };
+}
+
 /**
  * The category a directory belongs to. Two directories can name the same one — `anal` and `analysis` both answer
  * `analysis` — and the caller merges what it finds by this id, so a directory keeps its own `dir` and shares the
@@ -50,8 +59,8 @@ function titleCase(value) {
  */
 export function categoryForDir(dirName) {
   const entry = BY_DIRECTORY_NAME.get(dirName);
-  if (!entry) return { id: dirName, label: titleCase(dirName), order: 50, merge: [] };
-  return { id: entry.id, label: entry.label, order: entry.order, hint: entry.hint, merge: entry.merge ?? [] };
+  if (!entry) return { id: dirName, label: titleCase(dirName), order: 50, merge: [], work: null };
+  return descriptorOf(entry);
 }
 
 /**
@@ -67,7 +76,7 @@ export function categoryForStageKind(kind) {
   const names = new Set([kind, `${kind}s`, kind.replace(/s$/, '')]);
   for (const entry of CATEGORY_REGISTRY) {
     if (!names.has(entry.id)) continue;
-    return { id: entry.id, label: entry.label, order: entry.order, hint: entry.hint, merge: entry.merge ?? [] };
+    return descriptorOf(entry);
   }
   return null;
 }

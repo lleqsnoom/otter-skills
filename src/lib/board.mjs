@@ -112,6 +112,10 @@ export function isDeleted(item, deletions) {
 /**
  * The items a board still draws: nothing the reader archived, and nothing an archived collection covers.
  *
+ * An item that carries others — an epic holds its `tasks` — is trimmed by the same rule one level down, because a
+ * task a reader archived is not something its epic still holds. The rule is not restated anywhere: this is the one
+ * place that answers "is this archived", and everything that hides work goes through it.
+ *
  * @template {BoardItem} T
  * @param {T[]} items
  * @param {BoardDeletions | null | undefined} deletions
@@ -119,7 +123,9 @@ export function isDeleted(item, deletions) {
  */
 export function liveItems(items, deletions) {
   if (!deletions || !Object.keys(deletions).length) return items;
-  return items.filter((item) => !isDeleted(item, deletions));
+  return items
+    .filter((item) => !isDeleted(item, deletions))
+    .map((item) => (Array.isArray(item.tasks) ? { ...item, tasks: liveItems(item.tasks, deletions) } : item));
 }
 
 /**
