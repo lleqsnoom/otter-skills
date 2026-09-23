@@ -1,7 +1,7 @@
 ---
 name: x-implement
 description: Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work, red-green-refactor per task, verify with x-review + x-fix, gate on plan completion
-version: 1.2.0
+version: 1.3.0
 author: Community
 tags: [tdd, implementation, test-driven, red-green-refactor, production-code, parallel, ui]
 user-invocable: true
@@ -9,6 +9,16 @@ user-invocable: true
 
 # X-Implement — Test-Driven Implementation
 **No production code without a failing test first.** Wrote code before the test? Delete it. Rewrite from the test. Exception — confirm with a `confirm` panel (yes/no) first: prototypes, generated code, throwaway scripts.
+
+## Before the first task: read the ledger a decomposition left
+
+A run decomposed by `x-decompose` carries `<run folder>/E<nn>-triage.md` and `triage-<nn>.json`, where every candidate was decided. Two verdicts handed their work to a **child run of their own** — `plan` and `analyze` — and each of those names the layer that waits on it. A layer implemented on top of a child run that never landed is how a run ends up rebuilding what another run was meant to deliver.
+
+```bash
+node <path to x-decompose>/scripts/triage.mjs verify --dir <run folder>
+```
+
+The `receipts` array says, per child run, whether it delivered: a child that closed with `E<nn>-summary.md`, or whose own `E<nn>-tasks/` are all ticked, is delivered. This is a report, not a gate — `verify`'s exit code does not change because of it. Before starting a layer whose receipts are undelivered, stop and ask with a `confirm` panel (yes/no) whether to proceed anyway; the answer belongs in the run's notes. A run with no `E<nn>-triage.md` (decomposed before this step existed) implements exactly as it does below: no panel, no error.
 
 ## Artifact Location
 
