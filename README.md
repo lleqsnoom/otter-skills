@@ -50,6 +50,7 @@ npm run serve                # build if needed, then serve the build on the firs
 npm run serve -- --port 8080
 npm run serve -- --no-build  # serve the last build as it is
 npm run build                # build only
+npm run demo                 # write a sample tree to ./demo, so the board has something to show
 npm test                     # the app's own tests
 npm run typecheck
 ```
@@ -417,7 +418,7 @@ otter-pm/
 ├── src/lib/             # types, the API client, the router, the work-item model, the epics (epics.mjs)
 ├── src/styles.css       # Orca's tokens, base, and the markdown an artifact is read in
 ├── src/tailwind.css     # Tailwind wired to those tokens
-├── scripts/             # dev.mjs, serve.mjs, import-board.mjs: the ports, the foreground, the migration
+├── scripts/             # dev.mjs, serve.mjs, seed-demo.mjs, import-board.mjs: the ports, the foreground, the sample, the migration
 ├── public/favicon.svg   # the app icon, see brand/README.md
 ├── brand/               # the mark's sources: the EPS, the traces, the proposals
 ├── skills/              # the skills themselves: what writes the trees this app reads
