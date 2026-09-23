@@ -183,8 +183,9 @@ test('a task file carries its layer, effort and checklist progress', async () =>
 
 /**
  * The tree the pipeline writes: one run folder per topic, every artifact numbered in the order it was built, and
- * the rung it read named by path in the artifact it produced. This is the shape `x-analyze → x-plan → x-epic →
- * x-decompose` leaves on disk, and the one a reader has to be able to walk.
+ * the rung it read named by path in the artifact it produced. This is the shape `x-analyze → x-plan → x-decompose`
+ * leaves on disk, plus the `E01-epic.md` a run written before the merge still holds, and the one a reader has to be
+ * able to walk.
  */
 function pipeline() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-pipeline-'));
