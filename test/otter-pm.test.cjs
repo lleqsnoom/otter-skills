@@ -292,6 +292,13 @@ test('a legacy epic is read as the plan it was', async () => {
     'and at the plan’s rung, above the tasks it was decomposed into',
   );
   assert.equal(category(project, 'epics'), undefined, 'no `Epics` category is made for it: a folder names a category, an artifact does not');
+
+  const { epicIndex, epicOfTasks } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'epics.mjs')).href);
+  assert.equal(
+    epicOfTasks(epicIndex(project.categories), { runPath: run, step: 1, name: 'E01-tasks' }).relPath,
+    epic.relPath,
+    'and its tasks still claim it: the epic is the plan at the rung above them',
+  );
 });
 
 test('a stage is not listed twice in the category it already sits in', async () => {
