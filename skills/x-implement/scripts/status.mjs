@@ -29,7 +29,7 @@ import { pathToFileURL } from "node:url";
 
 const BOX = /^(\s*)([-*])\s+\[([ xX])\]\s*(.*)$/;
 const LAYER_FIELD = /^\*\*Layer:\*\*\s*(\d+)/;
-const LAYER_HEADING = /^##\s+Layer\s+(\d+)\b/;
+const LAYER_HEADING = /^#{2,3}\s+(?:Layer\s+(\d+)|L(\d+))\b/i;
 const EPIC_DOD_HEADING = /^##\s+Definition of Done\b/i;
 const DOD_FIELD = /^\*\*Definition of Done:\*\*/;
 const STATUS_LINE = /^\*\*Status:\*\*\s*(.*)$/;
@@ -174,7 +174,10 @@ function tick(lines, from, to) {
 }
 
 /**
- * The layer headings of an epic, with the span each one owns.
+ * The layer headings of a run's layers artifact, with the span each one owns.
+ *
+ * Both dialects count: `## Layer 0 — …`, which `x-epic` emits and its SKILL.md writes as `### Layer 0 — …`, and
+ * `### L0 — …`, which a plan's roadmap uses. The number is whichever group the heading matched.
  *
  * A layer's boxes are read from its `**Definition of Done:**` to the end of its bullet list, which is either the next
  * layer's heading or the end of the file. A layer whose field is missing is not a span, so the misses are dropped
@@ -183,7 +186,7 @@ function tick(lines, from, to) {
 function layerSpans(lines) {
   const headings = lines.flatMap((line, index) => {
     const match = line.match(LAYER_HEADING);
-    return match ? [{ number: Number(match[1]), index }] : [];
+    return match ? [{ number: Number(match[1] ?? match[2]), index }] : [];
   });
   return headings.flatMap((heading, at) => {
     const next = headings[at + 1] ?? null;
@@ -214,16 +217,22 @@ function tickEpicDefinition(lines, report, { epicDone }) {
   return ticked ? [`epic level: ${ticked} box(es) ticked`] : [];
 }
 
-/** The status line, replaced where it is or added to the end of the header block. */
+/**
+ * The status line, replaced where it is or added to the end of the header block.
+ *
+ * Only the header's line is the run's: a layer block may carry a `**Status:**` note of its own, and reading the
+ * first one in the file would overwrite that note with the whole run's tally (it did, until this was scoped).
+ */
 function rewriteStatusLine(lines, report, { epicDone }) {
   const status = statusLine(report, { epicDone });
-  const existing = lines.findIndex((line) => STATUS_LINE.test(line));
+  const limit = headerEnd(lines);
+  const existing = lines.findIndex((line, index) => index < limit && STATUS_LINE.test(line));
   if (existing !== -1) {
     if (lines[existing] === status) return [];
     lines[existing] = status;
     return ["status line updated"];
   }
-  lines.splice(headerEnd(lines), 0, status, "");
+  lines.splice(limit, 0, status, "");
   return ["status line added"];
 }
 
@@ -243,11 +252,15 @@ function applyStatus(epic, report, options = {}) {
   return { text: lines.join("\n"), changes };
 }
 
-/** The run a set of arguments names: the folder must hold an epic and a task folder. */
+/**
+ * The run a set of arguments names: the folder must hold its layers — an epic, or the plan a run was decomposed
+ * from — and a task folder. The epic wins while a run holds one, because that is the expanded form of the same
+ * roadmap; a run the pipeline decomposed straight from its plan has only the plan.
+ */
 function locate(runDir) {
   const tasksDir = path.join(runDir, artifactOf(runDir, "tasks", { directory: true }) ?? "E00-tasks");
-  const epicName = artifactOf(runDir, "epic");
-  return { tasksDir, epicPath: epicName ? path.join(runDir, epicName) : null };
+  const layersName = artifactOf(runDir, "epic") ?? artifactOf(runDir, "plan");
+  return { tasksDir, layersPath: layersName ? path.join(runDir, layersName) : null };
 }
 
 /**
@@ -288,10 +301,10 @@ function warnUnlayered(tasks) {
 }
 
 /** What the run came to, and what was written to get there. The only place this script prints. */
-function announce({ epicPath, report, changes, dryRun }) {
+function announce({ layersPath, report, changes, dryRun }) {
   for (const change of changes) process.stdout.write(`${dryRun ? "would change" : "changed"}: ${change}\n`);
   const tally = describeRun(report);
-  process.stdout.write(`${epicPath} — ${tally}${changes.length ? "" : " (already up to date)"}\n`);
+  process.stdout.write(`${layersPath} — ${tally}${changes.length ? "" : " (already up to date)"}\n`);
 }
 
 /**
@@ -299,25 +312,28 @@ function announce({ epicPath, report, changes, dryRun }) {
  * a step later, and the refusal says which one — a status written into the wrong place is worse than none.
  */
 function runFiles(run) {
-  const { tasksDir, epicPath } = locate(run);
+  const { tasksDir, layersPath } = locate(run);
   const tasks = readTasks(tasksDir);
-  if (!tasks.length) refuse(`No task files in ${tasksDir} — nothing to reflect in an epic.`, 1);
-  if (!epicPath || !fs.existsSync(epicPath)) {
-    refuse(`No epic in ${run} — write the status into the tasks, not an epic that is not there.`, 1);
+  if (!tasks.length) refuse(`No task files in ${tasksDir} — nothing to reflect in a layers artifact.`, 1);
+  if (!layersPath || !fs.existsSync(layersPath)) {
+    refuse(
+      `No layers in ${run} — neither an E<nn>-epic.md nor an E00-plan.md holds the roadmap the tasks belong to.`,
+      1,
+    );
   }
-  return { tasks, epicPath };
+  return { tasks, layersPath };
 }
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.run) refuse("Usage: node status.mjs <run folder> [--epic-done] [--dry-run]", 2);
 
-  const { tasks, epicPath } = runFiles(args.run);
+  const { tasks, layersPath } = runFiles(args.run);
   warnUnlayered(tasks);
   const report = summarise(tasks);
-  const { text, changes } = applyStatus(fs.readFileSync(epicPath, "utf8"), report, { epicDone: args.epicDone });
-  if (!args.dryRun && changes.length) fs.writeFileSync(epicPath, text, "utf8");
-  announce({ epicPath, report, changes, dryRun: args.dryRun });
+  const { text, changes } = applyStatus(fs.readFileSync(layersPath, "utf8"), report, { epicDone: args.epicDone });
+  if (!args.dryRun && changes.length) fs.writeFileSync(layersPath, text, "utf8");
+  announce({ layersPath, report, changes, dryRun: args.dryRun });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) main();
