@@ -2,7 +2,7 @@
 
 /**
  * Create .x-skills/runs/<stamp>-R<nn>-<topic>/E<nn>-tasks/ staging directory.
- * Auto-finds the matching epic by topic slug for logging.
+ * Auto-finds the plan the tasks come from, by topic slug, for logging.
  * Usage: node save-tasks.mjs --epic <slug> [--run <nn>]
  * Output (stdout): path to the created tasks directory.
  */
@@ -10,6 +10,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as shared from "./shared.mjs";
+
+/**
+ * The artifact whose layers these tasks belong to: the plan, or the epic of a run written before the merge. A
+ * run holding both is read from its plan, which is where the epic came from.
+ */
+function layersArtifact(runDir) {
+  return (
+    ["plan", "epic"]
+      .map((kind) => ({ kind, file: shared.resolveArtifact(runDir, kind, "md") }))
+      .find((candidate) => fs.existsSync(candidate.file)) ?? null
+  );
+}
 
 function main() {
   const args = shared.parseArgs(process.argv.slice(2), {
@@ -27,13 +39,12 @@ function main() {
   const slug = shared.sanitizeSlug(args.epic);
 
   const runDir = shared.resolveRunDir(slug, { run: args.run === undefined ? null : Number(args.run) });
-  const epicFullPath = shared.resolveArtifact(runDir, "epic", "md");
-  const epicPath = fs.existsSync(epicFullPath) ? path.relative(process.cwd(), epicFullPath) : null;
+  const source = layersArtifact(runDir);
 
-  if (epicPath) {
-    shared.log("x-decompose", `resolved epic path: ${epicPath}`);
+  if (source) {
+    shared.log("x-decompose", `resolved ${source.kind} path: ${path.relative(process.cwd(), source.file)}`);
   } else {
-    shared.log("x-decompose", "no epic file found for slug");
+    shared.log("x-decompose", "no plan or epic file found for slug");
   }
 
   const taskDir = shared.resolveArtifact(runDir, "tasks", "");
