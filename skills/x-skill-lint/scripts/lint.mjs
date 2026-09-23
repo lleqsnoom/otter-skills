@@ -93,6 +93,43 @@ export function fragileMainGuards(dir) {
   return scriptFiles(dir).filter((rel) => FRAGILE_MAIN_GUARD_RE.test(fs.readFileSync(path.join(dir, rel), "utf8")));
 }
 
+/** Every file under a directory, relative to it, so a rule can see `scripts/utils/` as well as `scripts/`. */
+function filesUnder(dir, prefix = "") {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const rel = prefix ? path.join(prefix, entry.name) : entry.name;
+    return entry.isDirectory() ? filesUnder(path.join(dir, entry.name), rel) : [rel];
+  });
+}
+
+const COMMONJS_RE = /\brequire\s*\(|\bmodule\.exports\b/;
+
+/** A tree whose own package.json declares ESM: a `.js` here is a module, so require and module.exports throw. */
+function isModuleRoot(root) {
+  const file = path.join(root, "package.json");
+  if (!fs.existsSync(file)) return false;
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8")).type === "module";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Skill scripts that cannot run where they are installed. The installed skill is a symlink into the tree the
+ * lint is reading, so the nearest package.json to it is this root's: a `.js` that calls require throws
+ * `ReferenceError: require is not defined in ES module scope` the moment it is executed. `.mjs` and `.cjs` say
+ * which module system they are, so they are left alone, and a root that is not a module keeps its CommonJS.
+ */
+export function commonjsScripts(dir, root) {
+  if (!isModuleRoot(root)) return [];
+  const scriptsDir = path.join(dir, "scripts");
+  return filesUnder(scriptsDir)
+    .filter((rel) => rel.endsWith(".js"))
+    .filter((rel) => COMMONJS_RE.test(fs.readFileSync(path.join(scriptsDir, rel), "utf8")))
+    .map((rel) => path.join("scripts", rel));
+}
+
 /** Accepted findings grow a skill's expectations; a file with more lines than this is a spec, not a check. */
 const MAX_EXPECTATIONS = 7;
 
@@ -258,6 +295,14 @@ export function lintRepo(root = REPO_ROOT) {
         rule: "fragile-main-guard",
         file,
         detail: "compares import.meta.url with the unresolved argv[1]; through a symlinked install main() never runs",
+      });
+    }
+    for (const file of commonjsScripts(dir, root)) {
+      violations.push({
+        skill: name,
+        rule: "commonjs-script",
+        file,
+        detail: `${file} uses require or module.exports under a "type": "module" root, so it throws before it runs; rename it to .mjs and use import and export`,
       });
     }
   }
