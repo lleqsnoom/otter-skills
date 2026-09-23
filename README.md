@@ -225,28 +225,29 @@ because the folder is not the unit a reader picks up. See **Epics and their task
 
 ## Runs and their stages
 
-The skills write one run folder per topic and number everything in it in the order they built it —
-`E00-plan.md`, `E01-epic.md`, `E02-tasks/` — so a run is a chain of rungs and the folder name is the topic. That is
-the right unit to work in and the wrong one to find things in: an analysis that has to be found inside a run is not
-in **Analysis**, and the category that names it looks like a folder nothing has written to since the skills moved
-into run folders.
+The skills write one run folder per topic and number everything in it in the order they built it — `E00-plan.md`,
+`E01-triage.md` where the decomposition triaged its candidates, `E02-tasks/` — so a run is a chain of rungs and the
+folder name is the topic. That is the right unit to work in and the wrong one to find things in: an analysis that
+has to be found inside a run is not in **Analysis**, and the category that names it looks like a folder nothing has
+written to since the skills moved into run folders.
 
 So every rung is read **in the category that names its kind as well as in its run**. `E00-analysis.md` is a card
-under Analysis and a file of the run that wrote it; `E01-epic.md` is under Epics; a `E02-tasks/` folder
-(x-decompose writes a folder, not a file) is read under **Tasks**, where its task files are the cards and the folder
+under Analysis and a file of the run that wrote it; `E00-plan.md` is under **Plan** where `plan/` exists and
+**Plans** where only `plans/` does; a `E<nn>-tasks/` folder (x-decompose writes a folder, not a file) is read under
+**Tasks**, where its task files are the cards and the folder
 it came from travels with it as `runPath`.
 Nothing is copied — a stage keeps the path it came from, so it is the same file in two places, and the card says
 `in shared-media-kms-key-staging-sandbox` rather than leaving you to guess which of nine same-named files it is.
 
-Which category that is falls out of the kind and what the repository has: `analysis` is Analysis, `epic` is
-**Epics**, and `plan` is **Plan** where `plan/` exists and **Plans** where only `plans/` does. A kind no folder
+Which category that is falls out of the kind and what the repository has: `analysis` is **Analysis**, and `plan` is
+**Plan** where `plan/` exists and **Plans** where only `plans/` does. A kind no folder
 claims (a summary, a critique, a repro script) is read where it was written. A kind the registry knows and the
 repository has never used — **Triage**, in a tree with no `triage/` — gets its category from the registry, and the
 category's own page says it was named by the runs rather than read from a folder. A run that is *already* filed in
 the category its own stage belongs to (a session living in `anal/`) is not listed twice.
 
 **The chain is one panel, and every view of a piece of work shows the same one.** A rung is a chain by construction
-and a named path is another edge, so the pipeline a reader thinks in — analysis, plan, epic, tasks — is the component
+and a named path is another edge, so the pipeline a reader thinks in — analysis, plan, tasks — is the component
 those edges connect, and it is usually **two runs**: `x-analyze` writes the analysis into its own run and `x-plan`
 opens the next one, so the analysis and the plan that read it are joined by one written path and nothing else.
 

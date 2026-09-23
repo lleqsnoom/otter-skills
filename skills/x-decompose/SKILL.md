@@ -13,7 +13,7 @@ One task file per sub-step, organized by layer. Each task is a self-contained, t
 
 ## When to use
 
-- An approved plan, or a run that holds an epic, whose `## Layers` roadmap is ready to be cut into tasks.
+- An approved plan, or an older run that holds an `E<nn>-epic.md`, whose `## Layers` roadmap is ready to be cut into tasks.
 - "Break this epic down", "what are the tasks here", "decompose this".
 - A layer that reads as several subsystems at once, so the pass has to decide which step is a task and which is a run.
 
@@ -46,7 +46,7 @@ candidate from a layer
   └─ one change, one check, ≤4h, ≤2 files, no new interface ..... task    (a file in E<nn>-tasks/)
 ```
 
-**Triage is a reading pass with a verdict — not a second epic, and not implementation.** Per candidate: read the layer entry, search the repository where the candidate lands, walk the signals in `references/triage-rules.md` in order, and stop at the first one that fires. Record the verdict with its reason; `plan` and `analyze` also cite `file:line` or URL evidence, because those two verdicts cost the user a whole run and an uncited decision is a preference.
+**Triage is a reading pass with a verdict — not a second plan, and not implementation.** Per candidate: read the layer entry, search the repository where the candidate lands, walk the signals in `references/triage-rules.md` in order, and stop at the first one that fires. Record the verdict with its reason; `plan` and `analyze` also cite `file:line` or URL evidence, because those two verdicts cost the user a whole run and an uncited decision is a preference.
 
 Two edges catch most mistakes: over the cap with no contract is several tasks (add the extra candidates), not a plan; and a `task` must be earned like any other verdict — if you cannot name the change and the check that proves it in one sentence, it is not a task yet.
 
@@ -85,7 +85,7 @@ node <x-analyze skill>/scripts/scenario.mjs start --slug leaderboard-backend
    4. **Decide** — one verdict per candidate, with its reason, before any task file is written. A candidate that was never registered cannot be decided, and a verdict can be revised by deciding again — which is also how the child run's folder gets into the report when the run was opened afterwards.
    5. **Bound the recursion** — one level. A candidate inside a child run that demands its own plan means the parent's layers were cut too coarsely: stop and say so at the gate instead of spawning a grandchild. If more than half the candidates come back `plan`, the layers were written as a component list — re-cut them, or tell the gate you are not going to and why. What the pass may not do is hand out the fleet silently.
 
-4. **Create the tasks directory and write the files** — `node <path-to-save-tasks.mjs> --epic <slug>`, then one file per `task` verdict, named after its id. See Task Format below. Each layer becomes 1-3 task files.
+4. **Create the tasks directory and write the files** — `node <path-to-save-tasks.mjs> --epic <slug>`, then one file per `task` verdict, named after its id. See Task Format below. Each layer becomes 1-3 task files. The folder is numbered one rung above the plan it was cut from (`E01-tasks/` when no triage was recorded, `E02-tasks/` after one), so the rung says which artifact the tasks came from rather than a fixed number saying it.
 5. **Verify** — record the stop:
 
 ```bash
@@ -132,7 +132,7 @@ The triage report is a live file and the script owns two blocks of it: `## Verdi
 
 ```markdown
 # Task: <descriptive name — what this task accomplishes>
-**Layer:** <N> — <layer name from epic>
+**Layer:** <N> — <layer name from the plan>
 **Effort:** <hours, e.g. "2h">
 **Files:** src/<module>/<file>.js (new), tests/<module>.test.<ext> (mod)
 ## Goal
@@ -155,7 +155,7 @@ The triage report is a live file and the script owns two blocks of it: `## Verdi
 1. **Each task = one verifiable change** — After this task, something works that didn't before (or something that was broken now works). Not "created file X" but "file X works and is tested."
 2. **A task is what triage said it was** — A `plan` candidate has no task file: it has a run. A `task` candidate has exactly one file, and its layer is finished only when its files are.
 3. **Tasks within a layer are small steps** — A layer might be 1 task (simple change) or 3 tasks (complex change broken into steps). But the layer as a whole is the increment.
-4. **First task of L0 = working prototype** — This is the most important task. It creates a project skeleton where data flows end-to-end with mocks, and a test proves it works. If this task isn't concrete enough, the epic needs more clarity.
+4. **First task of L0 = working prototype** — This is the most important task. It creates a project skeleton where data flows end-to-end with mocks, and a test proves it works. If this task isn't concrete enough, the plan needs more clarity.
 5. **Regression is a DOD item for L1+** — Every task in L1+ must verify that previous layer tests still pass. This is non-negotiable.
 6. **No cross-references between task files** — Each file is self-contained. If Task 1.2 needs context from Task 1.1, inline it. The implementer reads one file and has everything they need. A task that consumes what a child run delivers describes the resulting state (`the physics module is present and its tests pass`), never the run it came from.
 7. **Effort ≤ 4 hours per task, or the cap the plan states** — the default is a working convention, not a measurement: a change that cannot be written and verified in one sitting is exactly where an unstated interface hides, which is what triage is looking for. A plan that carries `constraint: task size ≤ <n>` overrides it. Over the cap a candidate is several tasks, or a `plan` when the size comes from an unsettled contract; triage decides which, and `references/task-rules.md` holds the gates.

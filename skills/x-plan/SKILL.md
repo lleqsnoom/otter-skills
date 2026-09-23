@@ -194,7 +194,7 @@ anywhere outside that block — above it or below it both work, and a spec body 
 
 ## Abandon
 
-If user decides not to proceed after clarification, stop. Record reason in working notes. No spec, no epic.
+If user decides not to proceed after clarification, stop. Record reason in working notes. No spec, no layer roadmap.
 
 ## Handoff Flow
 

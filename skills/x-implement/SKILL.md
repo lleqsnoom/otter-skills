@@ -25,7 +25,7 @@ The `receipts` array says, per child run, whether it delivered: a child that clo
 ```bash
 node <path-to-save-plan.mjs> --epic <slug>
 ```
-The script creates the staging directory. Read all `.md` files inside it — one file per user story.
+The flag is named for the artifact the run was decomposed from — the run's plan, or a legacy `E<nn>-epic.md` — and resolves it either way. The script creates the staging directory. Read all `.md` files inside it — one file per user story.
 
 ## Directory Organization
 Assign each responsibility to its own directory (models/, services/, controllers/, utils/, tests/). One file per concern, imports flow top-down, never cycle. See `references/dir-organization.md` for full guidance.
@@ -90,27 +90,27 @@ For each task file in `<run folder>/E<nn>-tasks/`:
    - Repeat x-review + x-fix until the plan has no unresolved issues and all tests are green.
 5. **SYNC DOCS** — Update the spec (`<run folder>/E00-plan.md`) if it exists; otherwise update living docs (README, comments) directly.
 6. **COMMIT** — Run `node <path-to-commit.mjs> "<message>"` from the x-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If x-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
-7. **UPDATE STATUS — the task, then the epic.** Two files, and neither write is optional:
+7. **UPDATE STATUS — the task, then the plan.** Two files, and neither write is optional:
    - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
-   - **The epic** — the epic cannot see the task files, so derive it:
+   - **The plan** — the layers artifact, `<run folder>/E<nn>-plan.md` (or a legacy `E<nn>-epic.md`) — cannot see the task files, so derive it:
      ```bash
      node <skill>/scripts/status.mjs <run folder>
      ```
-     It ticks the `**Definition of Done:**` of every layer whose tasks are all done, and refreshes the epic's `**Status:**` line with the task and layer tally. It never unticks, and never asserts what a task list cannot prove. `--dry-run` prints what it would write.
+     It ticks the `**Definition of Done:**` of every layer whose tasks are all done, and refreshes the plan's `**Status:**` line with the task and layer tally. It never unticks, and never asserts what a task list cannot prove. `--dry-run` prints what it would write.
    Do not start the next task without this.
 
 All tasks `- [x]` and green → close the run:
 
 8. **CLOSE THE RUN** — With every task `[x]`:
-   - **The epic's own definition of done** — once you have verified what it asks for (the full suite green across every layer, the docs updated), tick it:
+   - **The plan's own definition of done** — once you have verified what it asks for (the full suite green across every layer, the docs updated), tick it:
      ```bash
      node <skill>/scripts/status.mjs <run folder> --epic-done
      ```
-     Those boxes are the epic's acceptance criteria rather than a count of tasks, so they are ticked on your word and not on arithmetic — and only when no task is still open, because a status the tasks contradict is worse than no status.
-   - Write `<run folder>/E<nn>-summary.md`: the epic's `goal:`, one line per completed task, and the test results.
+     Those boxes are the plan's acceptance criteria rather than a count of tasks, so they are ticked on your word and not on arithmetic — and only when no task is still open, because a status the tasks contradict is worse than no status.
+   - Write `<run folder>/E<nn>-summary.md`: the plan's `goal:`, one line per completed task, and the test results.
    - Run `x-roast` on the summary, then `x-humanize` on it; each appends its own `E<nn>` artifact beside it.
    - Rewrite the summary from the humanized text.
-   - If the epic carries an `issue:` and the repo has an `origin` remote, offer to post the summary with a `confirm` panel (yes/no); on yes run `gh issue comment <n> -F <summary>`. Never invent an issue number, and never post without the panel.
+   - If the plan carries an `issue:` and the repo has an `origin` remote, offer to post the summary with a `confirm` panel (yes/no); on yes run `gh issue comment <n> -F <summary>`. Never invent an issue number, and never post without the panel.
 
 ## Gate
 
