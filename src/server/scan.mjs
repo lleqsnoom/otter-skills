@@ -567,8 +567,14 @@ export function scanRoot(root, meta = {}) {
     if (MARKDOWN_EXTENSIONS.has(extname(entry.name).toLowerCase())) rootFiles.push(entry.name);
   }
 
+  // A root can hold a `docs/` folder *and* markdown beside it, and both are the same category: folding them into one
+  // is what keeps the rail from drawing Docs twice, each answerable at the same address.
   const docs = rootDocs(root, rootFiles);
-  if (docs) categories.push(docs);
+  if (docs) {
+    const existing = categories.find((candidate) => candidate.id === docs.id);
+    if (existing) mergeCategory(existing, docs);
+    else categories.push(docs);
+  }
 
   // Before the sort, so a category a run named lands in its registry order along with the ones read from disk.
   indexRunStages(root, categories);

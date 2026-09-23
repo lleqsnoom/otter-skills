@@ -130,6 +130,36 @@ test('every directory in the root is a category, and a folder in one is a collec
   assert.equal(category(project, 'docs').items.length, 1, 'root-level markdown folds into Docs');
 });
 
+/**
+ * A root often holds both: a `docs/` folder with the notes in it, and a `roadmap.md` or a `project.md` beside it.
+ * Both are the same category, and one category is one address — two entries answering `/c/docs` would leave one of
+ * them unreachable, and the rail would show Docs twice.
+ */
+test('root-level markdown folds into a `docs/` folder rather than beside it', async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-docs-'));
+  const root = path.join(repo, '.x-skills');
+  writeFile(path.join(root, 'docs', 'CONTRIBUTING.md'), '# Contributing\n');
+  writeFile(path.join(root, 'roadmap.md'), '# Roadmap\n');
+  writeFile(path.join(root, 'project.md'), '# The project\n\n**about:** a board\n');
+
+  const { scanRoot } = await serverModule('scan');
+  const project = scanRoot(root, { name: 'docs-fixture' });
+
+  assert.equal(
+    project.categories.filter((entry) => entry.id === 'docs').length,
+    1,
+    'the folder and the loose files are one category, not two answers at one address',
+  );
+  const docs = category(project, 'docs');
+  assert.deepEqual(
+    docs.items.map((item) => item.relPath).sort(),
+    ['docs/CONTRIBUTING.md', 'project.md', 'roadmap.md'],
+    'and the loose files are read in it, beside the folder',
+  );
+  assert.equal(docs.dir, 'docs', 'the folder that bears the name is still the one the panel is shown under');
+  assert.deepEqual(docs.dirs, ['.', 'docs'], 'both were read, and both are remembered');
+});
+
 test('`anal` and `analysis` are one Analysis category, not two', async () => {
   const { root, scan } = await load();
   const project = scan.scanRoot(root);
