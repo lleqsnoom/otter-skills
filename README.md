@@ -219,6 +219,7 @@ rules, with the extension deciding first and its own text only when the extensio
 | Stage | the `E<nn>` a run numbered an artifact with: `E00-plan.md` is rung 0, `E02-tasks/` is rung 2 |
 | Epic | the epic a task belongs to: the run both are stages of, or the slug their folders share (see below) |
 | Named in | the `**Input:**` / `Spec:` / `Plan:` paths an artifact names, when the path leads somewhere — drawn as the reads row above the document |
+| Mark | `project.md` at the root: the project's about text and how it is drawn, and the one Docs card badged `mark` |
 
 A run (a folder with `state.json`) and a task group (a folder of task files) are the same thing to the UI: a
 collection with a head and a body of artifacts — except that a task group's files are drawn instead of the group,

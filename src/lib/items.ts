@@ -355,6 +355,7 @@ function fileItem(project: Project, category: Category, file: FileRef, group: Gr
     progress: file.progress,
     badges: [
       badge(file.kind),
+      ...(file.relPath === project.markPath ? ['mark'] : []),
       ...(file.step === null ? [] : [`E${String(file.step).padStart(2, '0')}`]),
       ...(file.layer !== null ? [`L${file.layer}`] : []),
       ...(effortBadge(file) ? [effortBadge(file) as string] : []),

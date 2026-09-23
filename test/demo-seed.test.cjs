@@ -98,6 +98,7 @@ test('the sample reads as one project: a mark, both analysis spellings, and a ru
   try {
     assert.equal(project.about, 'A sample tree for looking at the board without waiting on real work.');
     assert.equal(project.iconText, 'OD');
+    assert.equal(project.markPath, 'project.md', 'and the mark says which file carries it');
     assert.equal(category(project, 'analysis').items.length, 3, '`analysis/` and `anal/` are one category');
     assert.equal(category(project, 'runs').groups.length, 5);
     const runs = category(project, 'runs').groups;
@@ -108,7 +109,6 @@ test('the sample reads as one project: a mark, both analysis spellings, and a ru
   }
 });
 
-test('re-seeding overwrites rather than accumulating, and --clean removes what is gone', async () => {
 /**
  * The one edge a document writes down itself, so the sample has to write one: two runs joined by a written path, and
  * a plan filed loose that names the analysis it read. Without them the reads row has nothing to show in the sample.
@@ -137,6 +137,7 @@ test('two of the sample’s plans name the analysis they read', async () => {
   }
 });
 
+test('re-seeding overwrites rather than accumulating, and --clean removes what is gone', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-demo-'));
   try {
     execFileSync(process.execPath, [SCRIPT, '--root', dir], { cwd: ROOT });

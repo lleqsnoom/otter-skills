@@ -17,6 +17,7 @@ import {
   matches,
   relativeTime,
   routeFor,
+  routeForPath,
   searchItemsForProject,
   statusCounts,
   STATUS_LABELS,
@@ -77,6 +78,16 @@ function ProjectHeader(props: {
               <p class="break-anywhere m-0 text-chrome text-muted-foreground">{props.project.about}</p>
             </Show>
             <p class="break-anywhere m-0 text-chrome text-muted-foreground">{props.project.repoPath}</p>
+            {/* The mark is a document of the project like any other, so the page that draws what it says says where it
+                is written: one file, one address, and no need to guess which Docs card is the mark. */}
+            <Show when={props.project.markPath}>
+              {(mark) => (
+                <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <Chip to={routeForPath(props.project, mark())}>mark</Chip>
+                  <span class="break-anywhere text-chrome text-muted-foreground">{mark()}</span>
+                </p>
+              )}
+            </Show>
             <div class="flex flex-wrap gap-x-5 gap-y-2 pt-1">
               <Stat value={props.project.totals.files} label="artifacts" />
               <Stat value={props.project.totals.groups} label="collections" />

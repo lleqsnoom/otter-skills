@@ -208,11 +208,17 @@ function readState(dir) {
  * The project's own mark, when it has one: `<root>/project.md` says what the project is about and how to draw it.
  * Read here rather than through an artifact's fields, because these are fields about the project and not about a
  * file; a project without one is not a project missing something.
+ *
+ * `markPath` is the file itself, relative to the root. The same document is read as a document too — root markdown
+ * lands in **Docs** — and a card that cannot say which of its documents is the mark reads as a note beside the
+ * project rather than as the mark it is.
  */
+const MARK_FILE = 'project.md';
+
 const MARK_FIELDS = { about: 'about', icon: 'iconText', color: 'color', 'icon-url': 'iconSrc', 'icon-file': 'iconFile' };
 
 function projectMark(root) {
-  const path = join(root, 'project.md');
+  const path = join(root, MARK_FILE);
   const stat = safeStat(path);
   const fields = stat
     ? cachedParse('mark', path, () => {
@@ -225,6 +231,7 @@ function projectMark(root) {
     const raw = fields[field];
     mark[key] = raw ? String(raw) : null;
   }
+  mark.markPath = stat ? MARK_FILE : null;
   return mark;
 }
 

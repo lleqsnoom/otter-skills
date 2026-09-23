@@ -2207,6 +2207,39 @@ test('a document says what it read, where it is read', () => {
   assert.match(group, /<Reads project=\{props\.project\} file=\{file\(\)\} \/>/, 'and an artifact says it on the collection’s page that holds it');
 });
 
+/**
+ * The project's mark is a document of the project like any other — root markdown lands in **Docs** — so the file that
+ * carries it has to say so, or a reader looking at the Docs row cannot tell it from a note beside the project.
+ */
+test('the mark is the project’s own file, and says so where it is read', async () => {
+  const { scanRoot } = await serverModule('scan');
+
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-mark-'));
+  const root = path.join(repo, '.x-skills');
+  writeFile(path.join(root, 'project.md'), '# Board demo\n\n**about:** a board over .x-skills trees\n');
+  const marked = scanRoot(root, { name: 'mark-fixture' });
+
+  assert.equal(marked.markPath, 'project.md', 'the mark’s own path travels with the project that carries it');
+  assert.equal(marked.about, 'a board over .x-skills trees', 'and its fields are read exactly as before');
+  assert.ok(
+    category(marked, 'docs').items.some((item) => item.relPath === 'project.md'),
+    'the same file is a document of Docs as well, which is why the path is needed',
+  );
+
+  const bareRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-bare-')), '.x-skills');
+  fs.mkdirSync(bareRoot, { recursive: true });
+  assert.equal(scanRoot(bareRoot, { name: 'no-mark' }).markPath, null, 'a project with no mark is not a project missing one');
+
+  const items = source(path.join('lib', 'items.ts'));
+  const project = source(path.join('components', 'ProjectView.tsx'));
+  assert.match(
+    items,
+    /file\.relPath === project\.markPath \? \['mark'\] : \[\]/,
+    'the card for that file is the one badged `mark`, so the Docs row and the tile name the same document',
+  );
+  assert.match(project, /props\.project\.markPath/, 'and the project’s own page links it, so the mark has one address a reader can follow');
+});
+
 test('the board draws tasks one at a time, and an epic holds the ones that belong to it', () => {
   const items = source(path.join('lib', 'items.ts'));
   const board = source(path.join('components', 'Board.tsx'));
