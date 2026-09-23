@@ -18,9 +18,9 @@
  * Output: JSON to stdout with suggestions grouped by file.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const { findSourceFiles } = require("./utils/file-discovery");
+import fs from "node:fs";
+import path from "node:path";
+import { findSourceFiles } from "./utils/file-discovery.mjs";
 
 // ── Thresholds ────────────────────────────────────────────────────────
 

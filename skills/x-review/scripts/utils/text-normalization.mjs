@@ -25,4 +25,4 @@ function normalizeLines(source) {
     .map((line) => line.replace(/\s+/g, " ")); // collapse whitespace
 }
 
-module.exports = { stripComments, normalizeLines };
+export { stripComments, normalizeLines };

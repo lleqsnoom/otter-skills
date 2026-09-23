@@ -14,9 +14,19 @@
  * Output: JSON report of functions exceeding thresholds.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const { findSourceFiles, findTrackedSourceFiles } = require("./utils/file-discovery");
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import cp from "node:child_process";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { findSourceFiles, findTrackedSourceFiles } from "./utils/file-discovery.mjs";
+
+/** The directory this script sits in: ESM has no __dirname, and config and assets are resolved from here. */
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+/** Only the optional tree-sitter package is resolved dynamically; node's own modules are imports above. */
+const requireFromHere = createRequire(import.meta.url);
 
 // ── Thresholds (override via ASSETS_CONFIG env or defaults) ─────────
 
@@ -28,7 +38,7 @@ const DEFAULTS = {
 
 function loadConfig() {
   try {
-    const configPath = path.join(__dirname, "..", "assets", "config.json");
+    const configPath = path.join(HERE, "..", "assets", "config.json");
     return JSON.parse(fs.readFileSync(configPath, "utf-8"));
   } catch {
     return {};
@@ -47,10 +57,9 @@ let Language = null;
  */
 function getGlobalPrefix() {
   try {
-    const cp = require("node:child_process");
     return cp.execSync("npm config get prefix", { stdio: ["pipe", "pipe", "ignore"] }).toString().trim();
   } catch {
-    return path.join(require("os").homedir(), ".npm-global");
+    return path.join(os.homedir(), ".npm-global");
   }
 }
 
@@ -63,7 +72,6 @@ function getGlobalPrefix() {
 function globalModuleDirs() {
   const dirs = [];
   try {
-    const cp = require("node:child_process");
     const root = cp.execSync("npm root -g", { stdio: ["pipe", "pipe", "ignore"] }).toString().trim();
     if (root) dirs.push(root);
   } catch {}
@@ -76,7 +84,7 @@ function globalModuleDirs() {
  * Every place a package may live: the project, this skill, its parents, and the global tree.
  */
 function moduleSearchDirs() {
-  return [process.cwd(), __dirname, path.join(__dirname, "..", ".."), ...globalModuleDirs()];
+  return [process.cwd(), HERE, path.join(HERE, "..", ".."), ...globalModuleDirs()];
 }
 
 /**
@@ -88,7 +96,7 @@ function detectInstalledGrammars(extSet) {
 
   const hasParser = (() => {
     for (const dir of searchDirs) {
-      try { require.resolve("web-tree-sitter", { paths: [dir] }); return true; } catch {}
+      try { requireFromHere.resolve("web-tree-sitter", { paths: [dir] }); return true; } catch {}
     }
     return false;
   })();
@@ -100,7 +108,7 @@ function detectInstalledGrammars(extSet) {
     let found = false;
     for (const dir of searchDirs) {
       try {
-        require.resolve(`tree-sitter-${langName}/package.json`, { paths: [dir] });
+        requireFromHere.resolve(`tree-sitter-${langName}/package.json`, { paths: [dir] });
         found = true;
         break;
       } catch {}
@@ -136,11 +144,10 @@ function buildGrammarList(hasParser, hasLangs) {
  * Install grammars globally via npm. Returns the list of installed packages, or null on failure.
  */
 async function installGrammars(neededGrammars) {
-  const childProcess = require("node:child_process");
   console.error("[x-review] Installing web-tree-sitter globally for AST-based analysis...");
 
   try {
-    childProcess.execSync(
+    cp.execSync(
       `npm install -g --no-audit --no-fund ${neededGrammars.join(" ")}`,
       { stdio: "pipe" }
     );
@@ -172,8 +179,8 @@ async function ensureTreeSitterInstalled() {
     const allArgs = process.argv.slice(2).filter((a) => !a.startsWith("--"));
     for (const arg of allArgs) {
       try {
-        const stat = require("node:fs").statSync(arg);
-        if (!stat.isDirectory()) extSet.add(require("node:path").extname(arg));
+        const stat = fs.statSync(arg);
+        if (!stat.isDirectory()) extSet.add(path.extname(arg));
         else collectExtsRecursive(arg, extSet);
       } catch {}
     }
@@ -206,7 +213,7 @@ function shouldSkipDirectory(name) {
  * Extract and normalize the file extension from a filename.
  */
 function extractFileExtension(fileName) {
-  const ext = require("node:path").extname(fileName);
+  const ext = path.extname(fileName);
   return ext ? ext.toLowerCase() : null;
 }
 
@@ -214,7 +221,7 @@ function extractFileExtension(fileName) {
  * Process a single directory entry — recurse into subdirectories or extract file extensions.
  */
 function processDirEntry(entry, dir, extSet) {
-  const full = require("node:path").join(dir, entry.name);
+  const full = path.join(dir, entry.name);
   if (entry.isDirectory()) {
     if (!shouldSkipDirectory(entry.name)) {
       collectExtsRecursive(full, extSet);
@@ -227,7 +234,7 @@ function processDirEntry(entry, dir, extSet) {
 
 function collectExtsRecursive(dir, extSet) {
   try {
-    for (const entry of require("node:fs").readdirSync(dir, { withFileTypes: true })) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       processDirEntry(entry, dir, extSet);
     }
   } catch {}
@@ -238,10 +245,10 @@ try {
   const searchDirs = moduleSearchDirs();
   let resolved = null;
   for (const dir of searchDirs) {
-    try { resolved = require.resolve("web-tree-sitter", { paths: [dir] }); break; } catch {}
+    try { resolved = requireFromHere.resolve("web-tree-sitter", { paths: [dir] }); break; } catch {}
   }
   if (!resolved) throw new Error("not found");
-  const ws = require(resolved);
+  const ws = requireFromHere(resolved);
   Parser = ws.Parser;
   Language = ws.Language;
 } catch {
@@ -373,7 +380,7 @@ function findWasmFile(langName) {
   
   for (const baseDir of searchDirs) {
     try {
-      const resolvedPkg = require.resolve(`tree-sitter-${langName}/package.json`, { paths: [baseDir] });
+      const resolvedPkg = requireFromHere.resolve(`tree-sitter-${langName}/package.json`, { paths: [baseDir] });
       const dir = path.dirname(resolvedPkg);
       const wasmFiles = fs.readdirSync(dir).filter((f) => f.endsWith(".wasm"));
       if (wasmFiles.length === 0) continue;
@@ -741,8 +748,8 @@ async function initEngine() {
 
   if (!Parser || !Language) {
     try {
-      const resolved = require.resolve("web-tree-sitter", { paths: [process.cwd(), __dirname, path.join(__dirname, "..", "..")] });
-      const ws = require(resolved);
+      const resolved = requireFromHere.resolve("web-tree-sitter", { paths: [process.cwd(), HERE, path.join(HERE, "..", "..")] });
+      const ws = requireFromHere(resolved);
       Parser = ws.Parser; Language = ws.Language;
     } catch {}
   }

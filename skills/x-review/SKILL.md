@@ -20,35 +20,35 @@ All scripts self-resolve via `__dirname` — run from any working directory by p
 
 ```bash
 # Run from anywhere (use whichever script path is available):
-node <path-to>/scripts/analyze-complexity.js --all       # AST-based complexity, length, params per function
-node <path-to>/scripts/check-duplication.js --all         # duplicated blocks (>5 lines)
-node <path-to>/scripts/save-plan.js --slug <topic>   # create plan file with all analysis results
+node <path-to>/scripts/analyze-complexity.mjs --all       # AST-based complexity, length, params per function
+node <path-to>/scripts/check-duplication.mjs --all         # duplicated blocks (>5 lines)
+node <path-to>/scripts/save-plan.mjs --slug <topic>   # create plan file with all analysis results
 ```
 
-**Auto-discovery**: Scripts resolve config and sibling scripts relative to `__dirname`, so they work whether installed globally (`~/.agents/skills/x-review/scripts/`) or locally (`.agents/skills/<project>/x-review/scripts/`).
+**Auto-discovery**: Scripts resolve config and sibling scripts relative to the directory they sit in (ESM has no `__dirname`; it is derived from `import.meta.url`), so they work whether installed globally (`~/.agents/skills/x-review/scripts/`) or locally (`.agents/skills/<project>/x-review/scripts/`).
 
 **What To Do:** When invoked, determine the user's scope (single file, directory, or full project) and execute these commands. Do not ask the user what to do.
 
-1. **Create plan file with all analyses**: `node <path-to>/scripts/save-plan.js --slug <topic>` — this runs complexity analysis (AST-based via tree-sitter), duplication check, AND refactor pattern detection in one step. It writes `E<nn>-review-plan.md` into the run folder.
+1. **Create plan file with all analyses**: `node <path-to>/scripts/save-plan.mjs --slug <topic>` — this runs complexity analysis (AST-based via tree-sitter), duplication check, AND refactor pattern detection in one step. It writes `E<nn>-review-plan.md` into the run folder.
 2. The script prints the full path. Open that file with `edit` or `write`, then insert your review content directly into it using the format below.
 3. **Run the comments pass (always, using x-comments)** — apply the rules in the x-comments skill's `SKILL.md` (`~/.agents/skills/x-comments/SKILL.md` for a global install, `.agents/skills/x-comments/SKILL.md` for a local one) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Route comment issues to `x-comments` in Next Steps.
 
 The complexity script auto-installs tree-sitter if missing (global install). Each script prints JSON, and the keys mislead on first read — `functions` is nested inside a file, and `duplicatedBlocks` is a **count**, not the list:
 
 ```
-analyze-complexity.js   { files: [ { file, functionCount, functions: [ { name, line, length, complexity, paramCount, issues[] } ] } ],
+analyze-complexity.mjs   { files: [ { file, functionCount, functions: [ { name, line, length, complexity, paramCount, issues[] } ] } ],
                           summary: { totalFiles, totalFunctions, highComplexity, longFunctions, tooManyParams, language, thresholds } }
-check-duplication.js    { totalFiles, duplicatedBlocks, duplicates: [ { file, lines, occurrences[], sample } ] }
-analyze-patterns.js     { results, totalFiles, message }
+check-duplication.mjs    { totalFiles, duplicatedBlocks, duplicates: [ { file, lines, occurrences[], sample } ] }
+analyze-patterns.mjs     { results, totalFiles, message }
 ```
 
 `summary.language` says which engine ran: `tree-sitter (AST-based)` or `regex fallback`. Regex metrics have no parameter counts and approximate line numbers, so say which engine you reviewed with when it is not the AST one.
 
-A count in the plan is a measurement, and an unmeasured count is not a zero. When an analysis script fails, `save-plan.js` writes `unknown — <script> failed, so this was not measured` and an "Analysis incomplete" note naming the reason. Carry that into the review: never report a failed analysis as a clean result.
+A count in the plan is a measurement, and an unmeasured count is not a zero. When an analysis script fails, `save-plan.mjs` writes `unknown — <script> failed, so this was not measured` and an "Analysis incomplete" note naming the reason. Carry that into the review: never report a failed analysis as a clean result.
 
 For engineering principles definitions and violation patterns, see `references/principles.md`.
 
-**After running the scripts:** The plan file path is printed by `save-plan.js`. Open that file with `view` or `edit`, then write your review content directly into it using the format below. **Do not use MCP resources to read/write plan files — they don't exist.**
+**After running the scripts:** The plan file path is printed by `save-plan.mjs`. Open that file with `view` or `edit`, then write your review content directly into it using the format below. **Do not use MCP resources to read/write plan files — they don't exist.**
 
 ## Related Skills
 
@@ -68,10 +68,10 @@ For engineering principles definitions and violation patterns, see `references/p
 
 ## Output Format
 
-Produce a review and save it into the run folder. Use `save-plan.js` to create the directory and generate a numbered plan file:
+Produce a review and save it into the run folder. Use `save-plan.mjs` to create the directory and generate a numbered plan file:
 
 ```bash
-node <path-to>/scripts/save-plan.js --slug <topic>
+node <path-to>/scripts/save-plan.mjs --slug <topic>
 ```
 
 The script prints the full path. Open that file with `edit` or `write`, then insert your review content using this format:
