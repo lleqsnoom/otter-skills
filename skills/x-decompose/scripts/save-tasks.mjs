@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * Create .x-skills/runs/<stamp>-R<nn>-<epic>/E02-tasks/ staging directory.
+ * Create .x-skills/runs/<stamp>-R<nn>-<topic>/E<nn>-tasks/ staging directory.
  * Auto-finds the matching epic by topic slug for logging.
- * Usage: node save-tasks.js --epic <slug> 
+ * Usage: node save-tasks.mjs --epic <slug> [--run <nn>]
  * Output (stdout): path to the created tasks directory.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const shared = require("./shared");
+import fs from "node:fs";
+import path from "node:path";
+import * as shared from "./shared.mjs";
 
 function main() {
   const args = shared.parseArgs(process.argv.slice(2), {
@@ -20,7 +20,7 @@ function main() {
   shared.log("x-decompose", "parsing arguments");
 
   if (!args.epic) {
-    process.stderr.write("Usage: node save-tasks.js --epic <slug>\n");
+    process.stderr.write("Usage: node save-tasks.mjs --epic <slug>\n");
     process.exit(1);
   }
 

@@ -5,9 +5,9 @@
  * Each skill ships its own copy so the skills remain independent install units.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const cp = require("node:child_process");
+import fs from "node:fs";
+import path from "node:path";
+import cp from "node:child_process";
 
 // ── Logging ───────────────────────────────────────────────────────────
 
@@ -186,7 +186,7 @@ function writeFile(filePath, content) {
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-module.exports = {
+export {
   log,
   parseArgs,
   getBranch,
