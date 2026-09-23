@@ -236,8 +236,8 @@ const FILE_RANK = [
   [/^E\d+-analysis/i, 0],
   [/^E\d+-triage/i, 1],
   [/^E\d+-investigate/i, 2],
-  [/^E\d+-plan/i, 3],
-  [/^E\d+-epic/i, 4],
+  // A legacy epic is the plan under its old name, so the two are one rung rather than two.
+  [/^E\d+-(?:plan|epic)/i, 3],
   [/^E\d+-tasks/i, 5],
   [/^E\d+-repro/i, 6],
   [/^E\d+-reflection/i, 7],
@@ -483,9 +483,22 @@ function indexRunStages(root, categories) {
  */
 function rungsToIndex(categories, category, group) {
   group.files = withRun(group);
-  return group.stages
+  return withoutSupersededEpic(group.stages)
     .map((stage) => ({ ...stage, target: stageCategoryFor(categories, stage.kind) }))
     .filter((stage) => stage.target && stage.target.id !== category.id);
+}
+
+/**
+ * A run's plan is where its layers are written, and a run older than the merge wrote them as an epic: `E<nn>-epic.md`
+ * is a plan by another name (see `artifactKind`). A run holding both spellings numbered the plan twice with one
+ * document, and reading both would draw its plan twice — so the plan's own file wins and the epic beside it is left
+ * unread. Two epics and no plan is a run that numbered two pieces of work, which is not this case and is left alone.
+ */
+const LEGACY_EPIC = /^E\d+-epic/i;
+
+function withoutSupersededEpic(stages) {
+  const numbered = stages.some((stage) => artifactKind(stage.name) === 'plan' && !LEGACY_EPIC.test(stage.name));
+  return numbered ? stages.filter((stage) => !LEGACY_EPIC.test(stage.name)) : stages;
 }
 
 /** Only the numbered rungs know which run they are in; `memory.md` beside them is the run's own, not a stage. */

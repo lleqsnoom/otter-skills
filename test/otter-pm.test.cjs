@@ -247,12 +247,19 @@ test('a run\'s stages also land in the category that names their kind', async ()
   for (const [id, relPath] of [
     ['analysis', `${analysisRun}/E00-analysis.md`],
     ['plan', `${planRun}/E00-plan.md`],
-    ['epics', `${planRun}/E01-epic.md`],
   ]) {
     const stage = fileAt(category(project, id), relPath);
     assert.ok(stage, `${id} reads the stage its run wrote`);
     assert.equal(stage.runPath, relPath.slice(0, relPath.lastIndexOf('/')), 'a stage says which run it belongs to');
   }
+
+  assert.deepEqual(
+    category(project, 'plan')
+      .items.filter((item) => item.runPath === planRun)
+      .map((item) => item.name),
+    ['E00-plan.md'],
+    'and the legacy epic beside it is not read as a second plan: one document, one card',
+  );
 
   assert.equal(fileAt(category(project, 'plan'), `${planRun}/E00-plan.md`).runTitle, 'shared-media-kms-key');
   assert.equal(
@@ -260,6 +267,31 @@ test('a run\'s stages also land in the category that names their kind', async ()
     2,
     'the run still holds its own stages — the same files in two places, not moved',
   );
+});
+
+test('a legacy epic is read as the plan it was', async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-legacy-epic-'));
+  const root = path.join(repo, '.x-skills');
+  const run = 'runs/2026-01-02-1015-R01-sample';
+  writeFile(path.join(root, run, 'E00-epic.md'), '# Epic — sample\n\n### Layer 0 — x\n');
+  writeFile(path.join(root, run, 'E01-tasks', 'L0-0.1-first.md'), '# Task: first\n');
+
+  const { scanRoot } = await serverModule('scan');
+  const project = scanRoot(root, { name: 'legacy-epic' });
+  const epic = fileAt(category(project, 'plan'), `${run}/E00-epic.md`);
+
+  assert.ok(epic, 'a run folder `x-epic` already wrote is not orphaned by the skill being gone');
+  assert.equal(epic.kind, 'plan', 'the kind is the plan’s, which is the document the file holds');
+  assert.equal(epic.runPath, run, 'filed where a plan is filed, under the run that wrote it');
+  assert.deepEqual(
+    category(project, 'runs').groups[0].stages.map((stage) => [stage.step, stage.kind]),
+    [
+      [0, 'plan'],
+      [1, 'tasks'],
+    ],
+    'and at the plan’s rung, above the tasks it was decomposed into',
+  );
+  assert.equal(category(project, 'epics'), undefined, 'no `Epics` category is made for it: a folder names a category, an artifact does not');
 });
 
 test('a stage is not listed twice in the category it already sits in', async () => {
@@ -308,10 +340,10 @@ test('the stages of a run are the ladder it built', async () => {
     run.stages.map((stage) => [stage.step, stage.kind]),
     [
       [0, 'plan'],
-      [1, 'epic'],
+      [1, 'plan'],
       [2, 'tasks'],
     ],
-    'E00 plan, E01 epic, E02 tasks — numbered in the order they were written',
+    'E00 plan, E01 the same plan under its legacy name, E02 tasks — numbered in the order they were written',
   );
   assert.equal(run.stages[2].isDirectory, true, 'a stage can be a folder');
   assert.equal(run.stages[2].name, 'E02-tasks', 'and it is named for the entry it came from, counted by the collection it became');
@@ -334,7 +366,9 @@ test('an artifact names the one it read, and a path that leads nowhere is not a 
     },
   ], 'the analysis this plan came from, and not the path that was never written');
 
-  const epic = fileAt(category(project, 'epics'), `${planRun}/E01-epic.md`);
+  const epic = category(project, 'runs')
+    .groups.find((group) => group.relPath === planRun)
+    .files.find((file) => file.name === 'E01-epic.md');
   assert.deepEqual(epic.links, [], 'a skeleton placeholder is not a link either');
 });
 
@@ -398,7 +432,7 @@ test("the chain from an epic is the whole pipeline, including the analysis anoth
     chain.entries.map((entry) => [entry.step, entry.kind]),
     [
       [0, 'plan'],
-      [1, 'epic'],
+      [1, 'plan'],
       [2, 'tasks'],
       [0, 'analysis'],
     ],
@@ -2162,7 +2196,8 @@ test('an epic and the work it was split into are found by the rung they share, o
 test('a run’s numbered tasks folder carries the run and the rung it was filed out of', async () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-epic-'));
   const root = path.join(repo, '.x-skills');
-  // A run the way the skills write one: the plan, the epic, and the tasks the epic was decomposed into a rung later.
+  // A run the way the skills write one: the plan, the plan's legacy epic beside it, and the tasks it was
+  // decomposed into a rung later.
   writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E01-plan.md'), '# Plan — sample\n');
   writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E02-epic.md'), '# Epic — sample\n');
   writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E03-tasks', '0.1-one.md'), '# Task: one\n');
@@ -2183,10 +2218,14 @@ test('a run’s numbered tasks folder carries the run and the rung it was filed 
     'but the tasks folder read outside its run says which run numbered it, which is the one thing its path cannot say there',
   );
   assert.equal(stage.step, 3, 'and the rung it holds there, so the epic above it can be found');
-  const epic = category(project, 'epics').items[0];
-  assert.equal(epic.runPath, 'runs/2026-01-02-1015-R01-sample', 'the epic beside it is the same run’s');
-  assert.equal(epic.step, 2, 'at the rung above the tasks, which is what pairs them');
-  assert.equal(epicOfTasks(epicIndex(project.categories), stage).relPath, epic.relPath, 'so the tasks resolve to that epic, off the real scanner rather than a fixture');
+  const epic = category(project, 'plan').items.find((item) => item.name === 'E01-plan.md');
+  assert.equal(epic.runPath, 'runs/2026-01-02-1015-R01-sample', 'the plan beside it is the same run’s');
+  assert.equal(epic.step, 1, 'at the rung above the tasks, which is what pairs them');
+  assert.equal(
+    epicOfTasks(epicIndex(project.categories), stage).relPath,
+    epic.relPath,
+    'so the tasks resolve to that plan, off the real scanner rather than a fixture',
+  );
 
   const collection = tasks.groups.find((group) => group.relPath === 'tasks/2026-01-03-sample');
   assert.equal(

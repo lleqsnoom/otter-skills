@@ -86,7 +86,9 @@ export function dateFrom(value) {
 const ARTIFACT_KINDS = [
   [/^E\d+-analysis/i, 'analysis'],
   [/^E\d+-plan/i, 'plan'],
-  [/^E\d+-epic/i, 'epic'],
+  // `E<nn>-epic.md` is the plan under the name the retired `x-epic` gave it, so it reads where the plan reads: a run
+  // folder holding one is not orphaned by the skill being gone.
+  [/^E\d+-epic/i, 'plan'],
   [/^E\d+-tasks/i, 'tasks'],
   [/^E\d+-triage/i, 'triage'],
   [/^E\d+-repro/i, 'repro'],
@@ -125,9 +127,11 @@ export function stageStep(name) {
 
 /**
  * The fields an artifact may name another artifact in. The skills hand a path forward rather than a copy — x-plan
- * passes `E00-plan.md` to x-epic, x-epic writes `spec: <run folder>/E00-plan.md`, and an analysis routed onward is
+ * passes `E00-plan.md` to the run that decomposes it, and an analysis routed onward is
  * named in the artifact it fed (`**Input:**`). Reading them is what turns "the plan came from this analysis" into
- * something a reader can follow, so the keys are listed rather than guessed at.
+ * something a reader can follow, so the keys are listed rather than guessed at — including the keys only a legacy
+ * artifact wrote (`spec:` was the handshake the retired `x-epic` used; `epic:` is what a legacy document was named
+ * back by).
  */
 const LINK_FIELDS = new Map([
   ['input', 'Input'],
