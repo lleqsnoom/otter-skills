@@ -279,8 +279,8 @@ function analyzeFile(filePath, thresholds) {
 // ── Main ──────────────────────────────────────────────────────────────
 
 function main() {
-  const { fileArgs, thresholds } = parseArgs(process.argv);
-  const files = findSourceFiles(fileArgs);
+  const { thresholds } = parseArgs(process.argv);
+  const files = findSourceFiles(process.argv.slice(2));
 
   if (files.length === 0) {
     console.log(JSON.stringify({ results: [], totalFiles: 0, message: "No source files found." }, null, 2));
