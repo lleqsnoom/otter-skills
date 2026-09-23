@@ -389,141 +389,27 @@ test('one artifact read in two places is one hit in search', async () => {
   assert.deepEqual(onePerPath([card, { relPath: 'runs/x/E01-epic.md' }]).length, 2);
 });
 
-test('an artifact is read with the chain it is part of, in both views', () => {
-  const file = source(path.join('components', 'FileView.tsx'));
-  const group = source(path.join('components', 'GroupDetail.tsx'));
 
-  assert.match(file, /<Related project=\{props\.project\} path=\{props\.path\} \/>/, 'the file page draws it');
-  assert.match(
-    group,
-    /<Related project=\{props\.project\} path=\{match\(\)\.group\.relPath\} \/>/,
-    'and a collection is its own view of the same chain',
-  );
-});
-
-/**
- * The tree the pipeline leaves: an analysis in its own run, and the plan run that read it. Two runs, one written
- * path between them — which is the case a chain has to walk backwards as well as forwards.
- */
-function chainedRuns() {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-chain-'));
-  const root = path.join(repo, '.x-skills');
-  const analysisRun = 'runs/2026-01-01-0900-R01-shared-key-rotation';
-  const planRun = 'runs/2026-01-02-0832-R01-shared-media-kms-key';
-
-  writeFile(path.join(root, analysisRun, 'state.json'), JSON.stringify({ skill: 'x-analyze', slug: 'shared-key-rotation', node: 'plan', stops: ['plan'] }));
-  writeFile(path.join(root, analysisRun, 'E00-analysis.md'), '# Analysis — shared key rotation\n\nThesis\n');
-  // The plan names the analysis it read; the epic names the plan; the tasks land in a folder of the same run.
-  writeFile(
-    path.join(root, planRun, 'E00-plan.md'),
-    `# Spec — shared media KMS key\n\n**Input:** \`.x-skills/${analysisRun}/E00-analysis.md\`\n`,
-  );
-  writeFile(path.join(root, planRun, 'E01-epic.md'), `# Epic — shared media KMS key\n\nspec: ${planRun}/E00-plan.md\n`);
-  writeFile(path.join(root, planRun, 'E02-tasks', 'L0-0.1-config-table.md'), '# Task: config table\n\n- [ ] schema\n');
-  writeFile(path.join(root, planRun, 'E02-tasks', 'L1-1.1-real-arns.md'), '# Task: real ARNs\n');
-  writeFile(path.join(root, planRun, 'state.json'), JSON.stringify({ skill: 'x-plan', slug: 'shared-media-kms-key', node: 'handoff', stops: ['handoff'] }));
-  return { root, analysisRun, planRun };
-}
-
-async function chainOf(relPath) {
-  const { root, analysisRun, planRun } = chainedRuns();
-  const scan = await serverModule('scan');
-  scan.clearParseCache();
-  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
-  return { chain: chainFor(scan.scanRoot(root), relPath), root, analysisRun, planRun };
-}
-
-test("the chain from an epic is the whole pipeline, including the analysis another run holds", async () => {
-  const { chain, analysisRun, planRun } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key/E01-epic.md');
-
-  assert.deepEqual(
-    chain.entries.map((entry) => [entry.step, entry.kind]),
-    [
-      [0, 'plan'],
-      [1, 'plan'],
-      [2, 'tasks'],
-      [0, 'analysis'],
-    ],
-    'the run\'s rungs in order, then the analysis the plan read',
-  );
-  assert.equal(chain.entries[1].current, true, 'the artifact being read is marked, not linked');
-  assert.equal(chain.entries[3].path, `${analysisRun}/E00-analysis.md`);
-  assert.equal(chain.entries[3].relation, 'Input', 'and how it was reached: the field the plan named it in');
-  assert.equal(chain.entries[3].from, `${planRun}/E00-plan.md`, 'by the plan');
-  assert.deepEqual(
-    chain.entries[2].children.map((file) => file.name),
-    ['L0-0.1-config-table.md', 'L1-1.1-real-arns.md'],
-    'a folder rung carries the files it is made of, which is what "all the tasks" means',
-  );
-  assert.equal(chain.run.title, 'shared-media-kms-key');
-  assert.equal(chain.hidden, 0);
-});
-
-test('the chain from the analysis walks the same pipeline the other way', async () => {
-  const { chain, planRun } = await chainOf('runs/2026-01-01-0900-R01-shared-key-rotation/E00-analysis.md');
-
-  assert.deepEqual(
-    chain.entries.map((entry) => entry.path),
-    [
-      'runs/2026-01-01-0900-R01-shared-key-rotation/E00-analysis.md',
-      `${planRun}/E00-plan.md`,
-      `${planRun}/E01-epic.md`,
-      `${planRun}/E02-tasks`,
-    ],
-    'an analysis names nothing, so only the reverse edge can reach the work it led to',
-  );
-  assert.equal(chain.entries[0].current, true);
-  assert.equal(chain.entries[1].relation, 'Input', 'the plan is reached as the artifact that named it');
-});
-
-test('the chain from a run, or from a file of its own, is the same work', async () => {
-  const { chain: fromRun } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key');
-  const { chain: fromTask } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key/E02-tasks/L0-0.1-config-table.md');
-
-  const paths = (chain) => chain.entries.filter((entry) => entry.kind !== 'task').map((entry) => entry.path);
-  assert.deepEqual(
-    paths(fromRun),
-    paths(fromTask),
-    'every view of one piece of work lists the same artifacts',
-  );
-  assert.equal(fromTask.entries.some((entry) => entry.current && entry.kind === 'task'), true, 'and marks the file being read');
-});
-
-test('an artifact nothing relates to has no chain, and that is not a panel', async () => {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-loose-'));
-  const root = path.join(repo, '.x-skills');
-  writeFile(path.join(root, 'analysis', 'loose.md'), '# Analysis — loose\n');
-  const scan = await serverModule('scan');
-  scan.clearParseCache();
-  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
-  const chain = chainFor(scan.scanRoot(root), 'analysis/loose.md');
-
-  assert.equal(chain.run, null);
-  assert.deepEqual(chain.entries.map((entry) => entry.current), [true], 'only itself, which the panel then does not draw');
-});
-
-test('a stage folder with no collection of its own is still a rung, and opens the run', async () => {
+test('a stage folder with no collection of its own is still a rung of the run that owns it', async () => {
   // A run filed inside the category its own stage belongs to: `tasks/<run>/E00-tasks/` is skipped where it would be
-  // the same work listed twice, so the rung has no collection — and a chain that dropped it would misreport the
-  // order the run was built in.
+  // the same work listed twice, so the rung has no collection — and a run that dropped it would misreport the order
+  // it was built in.
   const { root, scan } = await load();
   const session = path.join(root, 'tasks', '2026-01-01-session');
   writeFile(path.join(session, 'state.json'), JSON.stringify({ skill: 'x-decompose', slug: 'session', node: 'handoff', stops: ['handoff'] }));
   writeFile(path.join(session, 'E00-tasks', 'L0-0.1-a.md'), '# Task: a\n');
   scan.clearParseCache();
 
-  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
   const project = scan.scanRoot(root);
-  const chain = chainFor(project, 'tasks/2026-01-01-session');
-  const rung = chain.entries.find((entry) => entry.step === 0);
+  const run = category(project, 'tasks').groups.find((group) => group.relPath === 'tasks/2026-01-01-session');
+  const rung = run.stages.find((stage) => stage.relPath === 'tasks/2026-01-01-session/E00-tasks');
 
-  assert.equal(rung.kind, 'tasks');
-  assert.equal(rung.path, 'tasks/2026-01-01-session/E00-tasks');
-  assert.equal(rung.open, 'tasks/2026-01-01-session', 'and it opens the run, which is where its files are listed');
+  assert.equal(rung.kind, 'tasks', 'the run numbers the folder as a stage of its own');
+  assert.equal(rung.isDirectory, true);
   assert.equal(
-    category(project, 'tasks').groups.some((group) => group.relPath === rung.path),
+    category(project, 'tasks').groups.some((group) => group.relPath === 'tasks/2026-01-01-session/E00-tasks'),
     false,
-    'no collection was ever created for it',
+    'and no collection was ever created for it, so the run is the page it is read on',
   );
 });
 
@@ -1327,7 +1213,7 @@ test('the edit surface offers only what the server would accept', () => {
     /<Artifact project=\{props\.project\.id\} path=\{file\(\)\.relPath\} onSaved=\{props\.onSaved\} canArchive=\{false\} \/>|<Artifact\s+project=\{props\.project\.id\}\s+path=\{file\(\)\.relPath\}\s+onSaved=\{props\.onSaved\}\s+canArchive=\{false\}\s+\/>/,
     'a collection’s page offers no per-file archive: its header carries the only one',
   );
-  assert.match(source(path.join('components', 'App.tsx')), /<FileView project=\{active\(\)\} path=\{routeFilePath\(\)\} onSaved=\{props\.onRefresh\} \/>/);
+  assert.match(source(path.join('components', 'App.tsx')), /<FilePage\b[\s\S]*?path=\{routeFilePath\(\)\}/, 'and a file’s address is answered by the one component that decides whether it has a page of its own');
   assert.match(fs.readFileSync(path.join(APP_SRC, 'server', 'snapshot.mjs'), 'utf8'), /editable: TEXT_EXTENSIONS\.has\(extension\) && !truncated/, 'and that flag is decided where the text set lives');
 });
 
@@ -2247,6 +2133,23 @@ test('a run’s numbered tasks folder carries the run and the rung it was filed 
     'while every other collection is still named by the document it opens with',
   );
   assert.equal(collection.step, null, 'a folder no run numbered holds no rung');
+});
+
+test('an artifact inside a collection is read on the collection’s page, not on an address of its own', () => {
+  const items = source(path.join('lib', 'items.ts'));
+  const router = source(path.join('lib', 'router.ts'));
+  const app = source(path.join('components', 'App.tsx'));
+  const group = source(path.join('components', 'GroupDetail.tsx'));
+
+  assert.match(items, /export function routeFor\(item: WorkItem\): Route/, 'where an item is read is one rule, in the module that reads items');
+  assert.match(items, /if \(item\.groupRelPath\) return \{ name: 'group'[\s\S]*?file: item\.relPath \}/, 'a document inside a collection opens that collection with itself selected');
+  assert.match(router, /route\.file \? `\/\$\{encodeURIComponent\(route\.file\)\}` : ''/, 'so a collection’s address can name the artifact it has open');
+  assert.match(router, /const file = parts\.slice\(4\)\.join\('\/'\)/, 'and that artifact travels as one encoded segment, the way a group’s path does');
+  assert.doesNotMatch(app, /import .*Related/, 'and nothing draws a “related” panel beside it: the trail and the artifact list already say where the document sits');
+  assert.match(app, /export function FilePage|function FilePage\(/, 'a file’s address is answered by one component');
+  assert.match(app, /navigate\(\{ name: 'group', project: props\.project\.id, group: found\.relPath, file: props\.path \}, \{ replace: true \}\)/, 'which replaces the address with the collection’s, so the second address does not survive being followed');
+  assert.doesNotMatch(group, /createSignal/, 'and the collection keeps its selection in the address rather than in a signal beside it');
+  assert.match(group, /navigate\(\{ name: 'group', project: props\.project\.id, group: props\.groupPath, file: file\.relPath \}, \{ replace: true \}\)/, 'choosing another artifact replaces the address, so the back button returns to the page rather than to the last artifact');
 });
 
 test('the board draws tasks one at a time, and an epic holds the ones that belong to it', () => {

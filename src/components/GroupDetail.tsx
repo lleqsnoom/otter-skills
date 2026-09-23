@@ -1,14 +1,14 @@
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { createMemo, For, Show } from 'solid-js';
 
 import { isDeleted } from '../lib/board.mjs';
 import { epicIndex, epicOfTasks } from '../lib/epics.mjs';
 import { formatDate, relativeTime } from '../lib/items';
+import { navigate, routeGroupFile } from '../lib/router';
 import type { BoardDeletions, FileRef, Group, Project } from '../lib/types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Artifact } from './Artifact';
 import { Breadcrumbs, rootCrumb } from './Breadcrumbs';
-import { Related } from './Related';
 import { EpicPill, ProgressBar, StatusBadge } from './Card';
 
 const PREFERRED = ['plan', 'analysis', 'epic', 'summary', 'investigate', 'triage', 'review', 'reflection', 'doc'];
@@ -152,7 +152,7 @@ function ArtifactList(props: {
               >
                 <span class="break-anywhere text-body">{file.name}</span>
                 <span class="flex flex-wrap items-center justify-end gap-1">
-                  {/* The rung before the kind: `E00` and `plan` together are what makes the chain read in order. */}
+                  {/* The rung before the kind: `E00` and `plan` together are what makes the run read in order. */}
                   <Show when={file.step !== null}>
                     <Badge tone="unknown">E{String(file.step).padStart(2, '0')}</Badge>
                   </Show>
@@ -180,6 +180,8 @@ function ArtifactList(props: {
 export function GroupDetail(props: {
   project: Project;
   groupPath: string;
+  /** The artifact to open, when the caller already knows it — a file's old address answered as the page that holds it. */
+  file?: string;
   onSaved?: () => void;
   deletions: BoardDeletions;
   onDelete?: (relPath: string, deleted: boolean) => void;
@@ -205,14 +207,27 @@ export function GroupDetail(props: {
   // The collection itself is the entry a reader made; the artifacts inside it are only covered by it.
   const deleted = createMemo(() => isDeleted({ projectId: props.project.id, relPath: props.groupPath }, props.deletions));
 
-  const [selectedPath, setSelectedPath] = createSignal<string | null>(null);
+  /**
+   * What the panel has open: the artifact the address names, or the one the collection leads with. The address is the
+   * only place the choice is kept, so what a reader copies is what they were reading, and the back button returns to
+   * the page they arrived from rather than to the artifact they had open on the way.
+   */
   const selected = createMemo(() => {
     const match = found();
     if (!match) return null;
-    const chosen = selectedPath();
-    if (chosen) return match.group.files.find((file) => file.relPath === chosen) ?? null;
+    const named = props.file ?? routeGroupFile();
+    if (named) return match.group.files.find((file) => file.relPath === named) ?? null;
     return preferredFirst(match.group.files)[0] ?? match.group.files[0] ?? null;
   });
+
+  /**
+   * The address names the artifact on screen, because a collection's page is the only address an artifact inside it
+   * has. Replacing rather than pushing keeps the back button on the page the reader arrived from instead of on every
+   * artifact they clicked through on the way.
+   */
+  const choose = (file: FileRef) => {
+    navigate({ name: 'group', project: props.project.id, group: props.groupPath, file: file.relPath }, { replace: true });
+  };
 
   return (
     <Show
@@ -268,7 +283,7 @@ export function GroupDetail(props: {
           <div class="grid items-start gap-5 xl:grid-cols-[22rem_minmax(0,1fr)]">
             <div class="grid content-start gap-4">
               <RunStatePanel group={match().group} />
-              <ArtifactList group={match().group} selected={selected()?.relPath ?? null} onSelect={(file) => setSelectedPath(file.relPath)} />
+              <ArtifactList group={match().group} selected={selected()?.relPath ?? null} onSelect={choose} />
             </div>
 
             <div class="grid content-start gap-4">
@@ -279,10 +294,6 @@ export function GroupDetail(props: {
                   <Artifact project={props.project.id} path={file().relPath} onSaved={props.onSaved} canArchive={false} />
                 )}
               </Show>
-
-              {/* The same chain a file's own page draws, from the run rather than from one of its rungs: a run is
-                  where a reader lands, and what it read and what it led to is what they ask next. */}
-              <Related project={props.project} path={match().group.relPath} />
             </div>
           </div>
         </div>

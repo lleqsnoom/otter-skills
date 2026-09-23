@@ -128,8 +128,6 @@ export interface Project {
   source: 'orca' | 'path';
   scannedAt: string;
   totals: { groups: number; items: number; files: number };
-  /** Every path some artifact names, and the artifacts that named it — the links read backwards; see `chain.mjs`. */
-  references: Record<string, string[]>;
   categories: Category[];
 }
 

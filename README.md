@@ -246,28 +246,12 @@ repository has never used — **Triage**, in a tree with no `triage/` — gets i
 category's own page says it was named by the runs rather than read from a folder. A run that is *already* filed in
 the category its own stage belongs to (a session living in `anal/`) is not listed twice.
 
-**The chain is one panel, and every view of a piece of work shows the same one.** A rung is a chain by construction
-and a named path is another edge, so the pipeline a reader thinks in — analysis, plan, tasks — is the component
-those edges connect, and it is usually **two runs**: `x-analyze` writes the analysis into its own run and `x-plan`
-opens the next one, so the analysis and the plan that read it are joined by one written path and nothing else.
-
-**Related** draws that whole component (`chain.mjs`), from wherever you are:
-
-- **Run** — the run the artifact belongs to, when it belongs to one.
-- **Chain** — the run's rungs in `E<nn>` order, then the runs it reached, with the artifact you are reading marked
-  rather than linked. A folder rung carries the files it is made of — `E02-tasks/` lists its task files — and a rung
-  that has no collection of its own (a run filed inside the category its stage belongs to) opens the run instead.
-- **Each line says how it was reached** — `named Input by E00-plan.md` — because that is what says which way the work
-  flowed.
-
-The edges are walked in both directions, which is why `scan.mjs` also publishes every path read backwards
-(`references`): an epic names the plan and the plan names the analysis, but an analysis names nothing at all, so
-following only what an artifact points at left the analysis looking like the end of the chain it began. From the
-analysis you now see the plan run; from the epic you see the analysis. Only paths the repository actually holds are
-edges at all: a skeleton's `<run folder>/E00-plan.md` placeholder and a mistyped path lead nowhere and stay text.
-
-The same panel is on a run's own page and on every artifact's page, so "what else is part of this?" is answered
-wherever you happen to be reading.
+**One address per piece of work.** The related panel is gone, and with it the second way into a document. An artifact
+filed inside a collection is read on that collection's page, with itself selected, and the address says which artifact
+is open — `/p/<repo>/g/<run folder>/<file>` — so a link can be sent to someone. Only a document the tree files on its
+own, a loose analysis or a plan in `plan/`, has a page of its own, at `/f/<repo>/<path>`. Which run numbered an
+artifact is the pill on its card and the trail above it; the paths an artifact names are still read into the snapshot
+(`links`), and no screen draws them.
 
 ## Epics and their tasks
 
@@ -429,8 +413,8 @@ otter-pm/
 ├── src/pages/api/       # GET /api/snapshot, GET|POST /api/file, POST /api/refresh, /api/project, /api/roots
 ├── src/pages/           # the shell, for / and for every other path
 ├── src/ui/              # shared primitives: Button, Input, Badge, ToggleGroup, cn
-├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail, Related
-├── src/lib/             # types, the API client, the router, the work-item model, the chain (chain.mjs), the epics (epics.mjs)
+├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail, FileView
+├── src/lib/             # types, the API client, the router, the work-item model, the epics (epics.mjs)
 ├── src/styles.css       # Orca's tokens, base, and the markdown an artifact is read in
 ├── src/tailwind.css     # Tailwind wired to those tokens
 ├── scripts/             # dev.mjs, serve.mjs, import-board.mjs: the ports, the foreground, the migration

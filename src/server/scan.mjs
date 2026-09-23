@@ -550,33 +550,6 @@ function rootDocs(root, names) {
   };
 }
 
-/**
- * Who names what, read backwards.
- *
- * A rung says which artifact it read (`**Input:**`, `spec:`), and that is one direction of the pipeline: a plan
- * points at the analysis it came from, never the other way round. So an analysis on its own page looked like the
- * end of the chain it began. The reverse index is the other direction of the same edges — every path becomes the
- * artifacts that named it — which is what lets a reader walk the pipeline from any of its stages, in either
- * direction.
- *
- * A path that leads nowhere was never a link (`resolveLink`), so nothing here points at a file this project does
- * not hold.
- */
-function referencesIn(root, categories) {
-  const references = {};
-  const remember = (from, target) => {
-    if (target === from) return;
-    references[target] = [...(references[target] ?? []), from];
-  };
-  for (const category of categories) {
-    for (const file of category.items) for (const link of file.links) remember(file.relPath, link.path);
-    for (const group of category.groups) {
-      for (const file of group.files) for (const link of file.links) remember(file.relPath, link.path);
-    }
-  }
-  return references;
-}
-
 export function scanRoot(root, meta = {}) {
   const entries = readdirSync(root, { withFileTypes: true }).filter((entry) => !entry.name.startsWith('.'));
   const categories = [];
@@ -599,7 +572,6 @@ export function scanRoot(root, meta = {}) {
 
   // Before the sort, so a category a run named lands in its registry order along with the ones read from disk.
   indexRunStages(root, categories);
-  const references = referencesIn(root, categories);
   categories.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
 
   const totals = categories.reduce(
@@ -626,8 +598,6 @@ export function scanRoot(root, meta = {}) {
     source: meta.source ?? 'path',
     scannedAt: new Date().toISOString(),
     totals,
-    /** Every path that is named by some artifact, and the artifacts that named it — the links read backwards. */
-    references,
     categories,
   };
 }

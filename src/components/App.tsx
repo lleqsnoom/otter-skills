@@ -4,8 +4,9 @@ import { deleteItem, fetchSnapshot, moveItem, refreshSnapshot } from '../lib/api
 import { replaceProject } from '../lib/board.mjs';
 import { BoardProvider } from '../lib/board-context';
 import type { WorkItem } from '../lib/items';
+import { locateFile } from '../lib/items';
 import { current, href, linkProps, navigate, routeCategory, routeFilePath, routeGroupPath, routeProject } from '../lib/router';
-import type { BoardColumn, BoardDeletions, BoardOrder, Snapshot } from '../lib/types';
+import type { Project, BoardColumn, BoardDeletions, BoardOrder, Snapshot } from '../lib/types';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { CloseIcon, SearchIcon } from './icons';
@@ -264,6 +265,47 @@ function Rail(props: {
 }
 
 /**
+ * One artifact's address.
+ *
+ * A document the tree files on its own — a loose analysis, a plan filed straight into a category — is a page of its
+ * own. One that lives inside a collection is answered with the collection's page instead, because that page already
+ * draws the artifact and everything it belongs to, and two addresses for one document is one address too many. The
+ * address is replaced rather than kept, so what a reader can copy is the one that names the artifact.
+ */
+function FilePage(props: {
+  project: Project;
+  path: string;
+  deletions: BoardDeletions;
+  onDelete: (relPath: string, deleted: boolean) => void;
+  onSaved: () => void;
+}) {
+  const group = createMemo(() => locateFile(props.project, props.path)?.group ?? null);
+
+  createEffect(() => {
+    const found = group();
+    if (found) navigate({ name: 'group', project: props.project.id, group: found.relPath, file: props.path }, { replace: true });
+  });
+
+  return (
+    <Show
+      when={group()}
+      fallback={<FileView project={props.project} path={props.path} onSaved={props.onSaved} />}
+    >
+      {(found) => (
+        <GroupDetail
+          project={props.project}
+          groupPath={found().relPath}
+          file={props.path}
+          onSaved={props.onSaved}
+          deletions={props.deletions}
+          onDelete={props.onDelete}
+        />
+      )}
+    </Show>
+  );
+}
+
+/**
  * The screen the address asks for, and the only place the routes are listed.
  *
  * The category route has no branch of its own: `ProjectView` takes a `category` and draws itself either way, so the
@@ -329,7 +371,13 @@ function Screen(props: {
                     />
                   </Match>
                   <Match when={current().name === 'file'}>
-                    <FileView project={active()} path={routeFilePath()} onSaved={props.onRefresh} />
+                    <FilePage
+                      project={active()}
+                      path={routeFilePath()}
+                      deletions={props.deletions}
+                      onDelete={(relPath, deleted) => props.onDeleteAt(active().id, relPath, !deleted)}
+                      onSaved={props.onRefresh}
+                    />
                   </Match>
                   <Match when={true}>
                     <ProjectView

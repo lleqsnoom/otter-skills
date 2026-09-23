@@ -6,7 +6,6 @@ import { Artifact } from './Artifact';
 import { TaskList } from './Board';
 import { Breadcrumbs, rootCrumb, type Crumb } from './Breadcrumbs';
 import { EpicPill } from './Card';
-import { Related } from './Related';
 
 /**
  * One artifact, on its own address.
@@ -14,9 +13,6 @@ import { Related } from './Related';
  * The trail is resolved from the snapshot rather than from the path string: `/f/<project>/<path>` knows the file,
  * and `locateFile` says which category and which collection it came from — so a file opened straight from a search
  * result still shows the run it belongs to, which is the one thing the address alone cannot say.
- *
- * Below the document, `Related` answers the two questions the trail cannot: which run numbered this artifact and
- * which rungs sit beside it, and which artifacts this one names.
  *
  * Two facts about the document itself are read above it, because they are the questions a reader arrives with: the
  * epic a task belongs to is the pill beside the trail, and the tasks an epic holds are listed under it. Both read
@@ -78,8 +74,6 @@ export function FileView(props: { project: Project; path: string; onSaved?: () =
       </Show>
 
       <Artifact project={props.project.id} path={props.path} onSaved={props.onSaved} />
-
-      <Related project={props.project} path={props.path} />
     </div>
   );
 }
