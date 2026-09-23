@@ -1,6 +1,8 @@
 {
   "note": "Per-machine roots. `orca: true` keeps the list in step with the Orca IDE: every repository it knows about is read from its own profile store, and each one's .x-skills tree is shown. Add a `roots` entry only for a repository the IDE does not have; both are used.",
   "orca": true,
-  "roots": [],
+  "roots": [
+    "/Users/tomaszkwiatek/Documents/GitHub/Synetic_Studio"
+  ],
   "autoDiscover": []
 }
