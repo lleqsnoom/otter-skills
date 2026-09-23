@@ -66,13 +66,21 @@ describe("the lint refuses CommonJS under a module root", () => {
     assert.match(result.commonjs[0].detail, /\.mjs/);
   });
 
+  it("ignores the words require and module.exports inside strings and comments", () => {
+    fixtureModuleRoot();
+    write("skills/x-probe/scripts/quotes.js", 'const hint = "run node -e \\"require(x)\\"";\n// require("node:fs") is only prose here\nconsole.log(hint);\n');
+
+    const result = lintOn(root);
+    assert.deepEqual(result.commonjs, []);
+    assert.equal(result.code, 0);
+  });
+
   it("exempts the extensions that say which module system they are", () => {
     fixtureModuleRoot();
     write("skills/x-probe/scripts/tool.mjs", 'import fs from "node:fs";\nconsole.log(fs);\n');
     write("skills/x-probe/scripts/tool.cjs", 'const fs = require("node:fs");\nconsole.log(fs);\n');
 
-    const result = lintOn(root);
-    assert.deepEqual(result.commonjs, []);
+    const result = lintOn(root);    assert.deepEqual(result.commonjs, []);
     assert.equal(result.code, 0);
   });
 

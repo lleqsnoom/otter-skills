@@ -104,6 +104,20 @@ function filesUnder(dir, prefix = "") {
 
 const COMMONJS_RE = /\brequire\s*\(|\bmodule\.exports\b/;
 
+/**
+ * The words `require(` and `module.exports` also appear inside comments and string literals, where they are
+ * content rather than module syntax: a skill that reports an error message quoting `require('x')` cannot run,
+ * but it is not CommonJS. Blank those regions out before matching, at the price of an approximate lexer.
+ */
+function codeOnly(text) {
+  return String(text)
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ")
+    .replace(/`(?:[^`\\]|\\.)*`/g, "``")
+    .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
+    .replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
+}
+
 /** A tree whose own package.json declares ESM: a `.js` here is a module, so require and module.exports throw. */
 function isModuleRoot(root) {
   const file = path.join(root, "package.json");
@@ -126,7 +140,7 @@ export function commonjsScripts(dir, root) {
   const scriptsDir = path.join(dir, "scripts");
   return filesUnder(scriptsDir)
     .filter((rel) => rel.endsWith(".js"))
-    .filter((rel) => COMMONJS_RE.test(fs.readFileSync(path.join(scriptsDir, rel), "utf8")))
+    .filter((rel) => COMMONJS_RE.test(codeOnly(fs.readFileSync(path.join(scriptsDir, rel), "utf8"))))
     .map((rel) => path.join("scripts", rel));
 }
 
