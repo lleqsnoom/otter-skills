@@ -473,6 +473,11 @@ install it where an agent runs it (`xskills install <skill> -g` copies it to `~/
 
 Nothing in the app imports them, and `files` keeps them out of the published package.
 
+A skill's scripts are `.mjs`: this repository's `package.json` says `"type": "module"`, and an installed skill is
+a symlink into this tree, so a `.js` script that calls `require` or writes `module.exports` throws the moment
+anyone runs it, installed or not. `x-skill-lint` fails on that (`commonjs-script`), and the fix is the extension
+and `import`/`export` — a `.cjs` file is the escape hatch for a script that must stay CommonJS.
+
 | Skill | Description |
 |-------|-------------|
 | `x-analyze` | Interactive analysis skill — research the project and web first, ask via panels (single / multi / open / confirm) until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory. |
@@ -483,7 +488,7 @@ Nothing in the app imports them, and `files` keeps them out of the published pac
 | `x-comments` | Comment management — add only precise, meaningful comments and remove noisy or obvious ones; refactor overly commented code into self-explanatory functions instead of describing it |
 | `x-commit` | Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body |
 | `x-debug` | Evidence-based debugging — reproduce, hypothesize, fix root cause, verify |
-| `x-decompose` | Decompose approved epic into layer-based tasks — each task is an independent, testable increment that builds on the previous; outputs `<run folder>/E02-tasks/` for handoff to x-implement |
+| `x-decompose` | Decompose an approved plan (or an older run's epic) into layer-based tasks, triaging every candidate first — each candidate is decided as a task in this run, a run of its own (x-plan), an analysis (x-analyze), or dropped; outputs `<run folder>/E<nn>-triage.md` and `<run folder>/E<nn>-tasks/` for handoff to x-implement |
 | `x-epic` | Convert approved spec into a layer-based epic — each layer is a coherent, testable increment from prototype to polished product; outputs `<run folder>/E01-epic.md` for handoff to x-decompose |
 | `x-essay` | Write an article end-to-end on a fixed loop — x-analyze thesis, x-roast critique, x-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim. |
 | `x-fix` | Resolve issues from fix plans — read, edit, verify, mark complete |
