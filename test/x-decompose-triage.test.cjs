@@ -107,11 +107,11 @@ function rules(result) {
   return result.json.violations.map((violation) => violation.rule);
 }
 
-/** A candidate whose verdict hands the work to a child run that has been started. */
-function planCandidate(task, title, child = "platform-physics") {
+/** A candidate whose verdict hands the work to a child run that has been started, waiting on layer 2 by default. */
+function planCandidate(task, title, child = "platform-physics", layer = 2) {
   add(task, title);
   childRun(child);
-  return decide(["--task", task, "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", child]);
+  return decide(["--task", task, "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", child, "--layer", String(layer)]);
 }
 
 /** Five candidates across three layers: two tasks, two child runs, one drop, and the files the tasks verdicts earn. */
@@ -126,8 +126,8 @@ function agreedDecomposition() {
   childRun("leaderboard-backend", "E03-analysis.md");
   decide(["--task", "L0-T1", "--verdict", "task", "--why", "one change, one check, 3h"]);
   decide(["--task", "L1-T2", "--verdict", "task", "--why", "one component, one test, 2h"]);
-  decide(["--task", "L2-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", "platform-physics"]);
-  decide(["--task", "L2-T2", "--verdict", "analyze", "--why", "storage shape undecided", "--evidence", "src/score.js:4", "--child", "leaderboard-backend"]);
+  decide(["--task", "L2-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", "platform-physics", "--layer", "2"]);
+  decide(["--task", "L2-T2", "--verdict", "analyze", "--why", "storage shape undecided", "--evidence", "src/score.js:4", "--child", "leaderboard-backend", "--layer", "2"]);
   decide(["--task", "L3-T1", "--verdict", "drop", "--why", "L0 already covers it"]);
   const dir = tasksDir();
   taskFile("L0-T1-one-level-one-sprite.md", dir);
@@ -288,7 +288,7 @@ describe("x-decompose triage verify", () => {
     add("L2-T1", "physics and collisions");
     childRun("platform-physics");
     decide([
-      "--task", "L2-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", "platform-physics",
+      "--task", "L2-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", "platform-physics", "--layer", "2",
     ]);
     fs.rmSync(path.join(root, ".x-skills", "runs", "2026-01-01-0901-R01-platform-physics"), { recursive: true, force: true });
     tasksDir();
@@ -312,7 +312,7 @@ describe("x-decompose triage verify", () => {
     start();
     add("L0-T1", "one sprite that moves");
     childRun("platform-physics");
-    decide(["--task", "L0-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", "platform-physics"]);
+    decide(["--task", "L0-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", "platform-physics", "--layer", "2"]);
     const dir = tasksDir();
     taskFile("L0-T1-one-sprite.md", dir);
     taskFile("L9-T9-stray.md", dir);
@@ -371,6 +371,91 @@ describe("x-decompose triage verify", () => {
     assert.equal(listed.json.candidates, 5);
     assert.equal(listed.json.decided, 5);
     assert.equal(listed.json.handoffs, 2);
+  });
+});
+
+describe("x-decompose triage receipts", () => {
+  /** A child run holding a tasks folder with one task file, ticked or not. */
+  function childWithTasks(slug, ticked) {
+    const dir = childRun(slug, null);
+    const tasks = path.join(dir, "E01-tasks");
+    fs.mkdirSync(tasks, { recursive: true });
+    fs.writeFileSync(path.join(tasks, "L0-T1-step.md"), `# Task\n\n## Definition of Done\n- [${ticked ? "x" : " "}] the step works\n`);
+    return dir;
+  }
+
+  /** A ledger with one plan verdict for a child prepared by the caller. */
+  function ledgerWithPlan(child, layer = 2) {
+    start();
+    add("L2-T1", "physics and collisions");
+    const args = ["--task", "L2-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", child];
+    if (layer !== null) args.push("--layer", String(layer));
+    return decide(args);
+  }
+
+  it("records which layer waits on the child run", () => {
+    childRun("platform-physics", "E00-plan.md");
+    ledgerWithPlan("platform-physics", 3);
+    tasksDir();
+    const result = verify();
+    assert.deepEqual(result.json.violations, []);
+    assert.equal(result.json.receipts.length, 1);
+    assert.equal(result.json.receipts[0].layer, 3);
+    assert.equal(result.json.receipts[0].child, "platform-physics");
+  });
+
+  it("reports a child that closed as delivered", () => {
+    childRun("platform-physics", "E00-summary.md");
+    ledgerWithPlan("platform-physics");
+    const result = verify();
+    assert.equal(result.json.receipts[0].delivered, true);
+    assert.match(result.json.receipts[0].evidence, /E00-summary\.md/);
+  });
+
+  it("reports a child whose own tasks are all ticked as delivered", () => {
+    childWithTasks("platform-physics", true);
+    ledgerWithPlan("platform-physics");
+    const result = verify();
+    assert.equal(result.json.receipts[0].delivered, true);
+    assert.match(result.json.receipts[0].evidence, /1 task file/);
+  });
+
+  it("reports an undelivered child without failing the run", () => {
+    childWithTasks("platform-physics", false);
+    ledgerWithPlan("platform-physics");
+    tasksDir();
+    const result = verify();
+    assert.equal(result.code, 0);
+    assert.deepEqual(result.json.violations, []);
+    assert.equal(result.json.receipts[0].delivered, false);
+    assert.match(result.json.receipts[0].evidence, /unticked/);
+  });
+
+  it("refuses a plan verdict that waits on no layer", () => {
+    childRun("platform-physics", "E00-plan.md");
+    ledgerWithPlan("platform-physics", null);
+    const result = verify();
+    assert.equal(result.code, 1);
+    assert.ok(rules(result).includes("no-layer"));
+  });
+
+  it("refuses a layer on a verdict that waits on nothing", () => {
+    start();
+    add("L0-T1", "one sprite that moves");
+    const result = tryDecide(["--task", "L0-T1", "--verdict", "task", "--why", "small", "--layer", "1"]);
+    assert.equal(result.code, 2);
+    assert.match(result.json.error, /no layer/);
+  });
+
+  it("refuses a layer that is not a positive whole number", () => {
+    start();
+    add("L2-T1", "physics and collisions");
+    childRun("platform-physics", "E00-plan.md");
+    const result = tryDecide([
+      "--task", "L2-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", "platform-physics", "--layer", "0",
+    ]);
+    assert.equal(result.code, 2);
+    assert.match(result.json.error, /positive/);
   });
 });
 
