@@ -13,7 +13,7 @@ user-invocable: true
 ## Artifact Location
 
 ```bash
-node <path-to-save-plan.js> --epic <slug>
+node <path-to-save-plan.mjs> --epic <slug>
 ```
 The script creates the staging directory. Read all `.md` files inside it — one file per user story.
 

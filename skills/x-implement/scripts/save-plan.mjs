@@ -3,14 +3,14 @@
 /**
  * Create .x-skills/runs/<stamp>-R<nn>-<epic>/E<nn>-implement.md with a resolved header skeleton.
  * Auto-finds the matching epic by topic slug and fills in the path.
- * Usage: node save-plan.js --epic <slug> [--branch <name>]
+ * Usage: node save-plan.mjs --epic <slug> [--branch <name>]
  * Output (stdout): path to the created plan file.
  * NOTE: Timestamps are always JS-generated. No --date flag is accepted.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const shared = require("./shared");
+import fs from "node:fs";
+import path from "node:path";
+import * as shared from "./shared.mjs";
 
 function main() {
   const args = shared.parseArgs(process.argv.slice(2), {
@@ -22,7 +22,7 @@ function main() {
   shared.log("x-implement", "parsing arguments");
 
   if (!args.epic) {
-    process.stderr.write("Usage: node save-plan.js --epic <slug> [--branch <name>]\n");
+    process.stderr.write("Usage: node save-plan.mjs --epic <slug> [--branch <name>]\n");
     process.exit(1);
   }
 

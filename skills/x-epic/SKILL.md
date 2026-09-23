@@ -13,7 +13,7 @@ user-invocable: true
 
 ## Workflow
 
-1. **Open staging file** — Run: `node <path-to-save-epic.js> --topic <slug>`
+1. **Open staging file** — Run: `node <path-to-save-epic.mjs> --topic <slug>`
 2. **Read the spec** — Open file referenced by `spec:` in Epic Header. Extract every layer from the Layer Roadmap.
 3. **Flesh out layers** — See Layer Format below. Each layer becomes a coherent increment with scope, prerequisites, and DOD.
 4. **Define epic-level boundaries** — Explicitly state what is *in* and what is *out*.

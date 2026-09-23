@@ -3,13 +3,13 @@
 /**
  * Create .x-skills/runs/<stamp>-R<nn>-<topic>/E01-epic.md with a resolved header skeleton.
  * Auto-finds the matching design spec by topic slug and fills in the path.
- * Usage: node save-epic.js --topic <slug> [--branch <name>] 
+ * Usage: node save-epic.mjs --topic <slug> [--branch <name>] 
  * Output (stdout): path to the created epic file.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const shared = require("./shared");
+import fs from "node:fs";
+import path from "node:path";
+import * as shared from "./shared.mjs";
 
 function main() {
   const args = shared.parseArgs(process.argv.slice(2), {
@@ -22,7 +22,7 @@ function main() {
   shared.log("x-epic", "parsing arguments");
 
   if (!args.topic) {
-    process.stderr.write("Usage: node save-epic.js --topic <slug> [--branch <name>] [--issue <n>]\n");
+    process.stderr.write("Usage: node save-epic.mjs --topic <slug> [--branch <name>] [--issue <n>]\n");
     process.exit(1);
   }
 
