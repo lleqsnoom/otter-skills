@@ -5,3 +5,6 @@ board.json
 
 # npm pack output
 *.tgz
+
+# Sample tree written by `npm run demo`
+demo/
