@@ -9,6 +9,7 @@ import {
   columnTone,
   isMoved,
   relativeTime,
+  routeFor,
   STATUS_LABELS,
   statusTone,
   type ClosedWindow,
@@ -18,14 +19,7 @@ import { linkProps } from '../lib/router';
 import type { BoardColumn, BoardDeletions, BoardMoves, BoardOrder, BoardOrders } from '../lib/types';
 import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
-import { Card, CardHead, Chip, EpicPill, ProgressBar, StatusBadge } from './Card';
-
-/** Where an item's own page is: a collection opens as a group, a document as a file. */
-export function routeFor(item: WorkItem) {
-  return item.kind === 'group'
-    ? ({ name: 'group', project: item.projectId, group: item.relPath } as const)
-    : ({ name: 'file', project: item.projectId, path: item.relPath } as const);
-}
+import { Card, CardHead, CardTitle, Chip, EpicPill, ProgressBar, StatusBadge } from './Card';
 
 export function WorkCard(props: {
   item: WorkItem;
@@ -47,16 +41,12 @@ export function WorkCard(props: {
     props.onKeyMove?.(props.item, event.key === 'ArrowLeft' ? -1 : 1);
   };
 
-  // A card is one link, and a link inside a link is not one — so a card holding tasks is not a link itself. Its
-  // title is, and so is each task under it, which is the only way the tasks can be reached from where they are read.
+  // A card holding tasks is still one target: the title below carries the card's link, stretched over the panel,
+  // and the tasks paint above that stretch — which is what leaves them links of their own.
   const holds = () => props.item.tasks.length > 0;
-  const link = () => linkProps(routeFor(props.item));
 
   return (
     <Card
-      as={holds() ? 'article' : 'a'}
-      {...(holds() ? {} : link())}
-      label={holds() ? undefined : `${props.item.categoryLabel}: ${props.item.title}`}
       title={props.onKeyMove ? 'Drag to a column and a place in it, or Alt + ← / → to file it' : undefined}
       class={cn(props.dragging && 'opacity-40 shadow-none rotate-[-1.2deg]')}
       style={cardStyle(props.item, props.order)}
@@ -85,13 +75,9 @@ export function WorkCard(props: {
         </span>
       </CardHead>
 
-      <h3 class="break-anywhere m-0 text-body font-semibold">
-        <Show when={holds()} fallback={props.item.title}>
-          <a {...link()} class="text-foreground">
-            {props.item.title}
-          </a>
-        </Show>
-      </h3>
+      <CardTitle to={routeFor(props.item)} label={`${props.item.categoryLabel}: ${props.item.title}`}>
+        {props.item.title}
+      </CardTitle>
 
       <Show when={props.item.excerpt}>
         <p class="m-0 line-clamp-2 text-chrome text-muted-foreground">{props.item.excerpt}</p>

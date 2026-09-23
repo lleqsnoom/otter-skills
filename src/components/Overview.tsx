@@ -2,11 +2,10 @@ import { For, Show } from 'solid-js';
 
 import { countLabel } from '../lib/api';
 import { liveItems as liveItemsIn } from '../lib/board.mjs';
-import { itemsForProject, relativeTime, statusCounts, type WorkItem } from '../lib/items';
-import { linkProps } from '../lib/router';
+import { itemsForProject, relativeTime, routeFor, statusCounts, type WorkItem } from '../lib/items';
 import type { BoardDeletions, Project, Snapshot } from '../lib/types';
 import { Breadcrumbs, rootCrumb } from './Breadcrumbs';
-import { Card, CardHead, Chip, Empty, EpicPill, Stat, StatusBadge } from './Card';
+import { Card, CardHead, CardTitle, Chip, Empty, EpicPill, Stat, StatusBadge } from './Card';
 import { ProjectIcon } from './ProjectIcon';
 
 /** One project: what the IDE calls it, how much is in it, and where the board stands without opening it. */
@@ -15,10 +14,10 @@ function ProjectCard(props: { project: Project; deletions: BoardDeletions }) {
   const liveItems = (items: WorkItem[]) => liveItemsIn(items, props.deletions);
   const counts = () => statusCounts(liveItems(itemsForProject(props.project)));
   return (
-    <Card as="a" {...linkProps({ name: 'project', project: props.project.id })} label={props.project.name}>
+    <Card>
       <CardHead>
         <ProjectIcon project={props.project} size="lead" />
-        <h3 class="m-0 text-body font-semibold">{props.project.name}</h3>
+        <CardTitle to={{ name: 'project', project: props.project.id }}>{props.project.name}</CardTitle>
         <Show when={counts().active}>
           <StatusBadge status="active" class="ml-auto" />
         </Show>
@@ -49,14 +48,7 @@ function ProjectCard(props: { project: Project; deletions: BoardDeletions }) {
 /** The newest work in any project, which is the one thing the overview is for. */
 function RecentCard(props: { item: WorkItem & { projectName: string } }) {
   return (
-    <Card
-      as="a"
-      {...linkProps(
-        props.item.kind === 'group'
-          ? { name: 'group', project: props.item.projectId, group: props.item.relPath }
-          : { name: 'file', project: props.item.projectId, path: props.item.relPath },
-      )}
-    >
+    <Card>
       <CardHead>
         <StatusBadge status={props.item.status} />
         <Show when={!props.item.isEpic && props.item.epic}>{(epic) => <EpicPill epic={epic()} />}</Show>
@@ -65,7 +57,7 @@ function RecentCard(props: { item: WorkItem & { projectName: string } }) {
           {relativeTime(props.item.date || props.item.mtime)}
         </span>
       </CardHead>
-      <h3 class="break-anywhere m-0 text-body font-semibold">{props.item.title}</h3>
+      <CardTitle to={routeFor(props.item)}>{props.item.title}</CardTitle>
       <p class="m-0 text-chrome text-muted-foreground">{props.item.categoryLabel}</p>
     </Card>
   );

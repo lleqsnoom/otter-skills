@@ -1245,7 +1245,7 @@ test('archiving an item hides it from the board, and only the reader’s own dec
   assert.match(view, /searchItemsForProject\(props\.project, visible\(\)\)/, 'the Archived list is built from the widest item set, so an artifact archived on its own page can be found again');
   assert.match(view, /deletedItems\(/, 'and lists the decisions rather than everything they cover');
   assert.match(view, /onClick=\{\(\) => props\.onDelete\?\.\(item, false\)\}/, 'with an unarchive per row');
-  assert.match(view, /<a \{\.\.\.linkProps\(routeFor\(item\)\)\} class="break-anywhere text-chrome">\s*\{item\.title\}\s*<\/a>/, 'an archived row opens the item it names, so a reader can see what the decision was about');
+  assert.match(view, /<Card class="flex flex-wrap items-center[\s\S]*?<CardTitle to=\{routeFor\(item\)\}/, 'an archived row is one target that opens the item it names, so a reader can see what the decision was about');
   assert.match(view, /text-chrome text-muted-foreground">\{item\.relPath\}</, 'and names the path it covers, because a collection and a file inside it can share one title');
   assert.match(view, /liveItems\(itemsForProject\(props\.project\), props\.deletions\)\.slice\(0, 6\)/, 'the recent list draws live work only — an archived item is not one of the project’s recent things');
   assert.doesNotMatch(items, /deletions/, 'the rules live in one module, not in the item model');
@@ -2172,7 +2172,9 @@ test('the board draws tasks one at a time, and an epic holds the ones that belon
   assert.match(card, /export function EpicPill/, 'the epic a task belongs to is drawn as a pill');
   assert.match(card, /color: props\.epic\.color/, 'in the epic’s own colour, from the theme');
   assert.match(board, /<Show when=\{!props\.item\.isEpic && props\.item\.epic\}>/, 'on every task card, and not on the epic’s own');
-  assert.match(board, /as=\{holds\(\) \? 'article' : 'a'\}/, 'a card that holds tasks is not a link, because a link inside a link is not one');
+  assert.match(card, /export function CardTitle/, 'a card is one target, and its title is the link that makes it one');
+  assert.match(board, /<CardTitle to=\{routeFor\(props\.item\)\}/, 'worn by every card, the one holding tasks included: the link inside it paints above the stretch, which a link around the panel could never allow');
+  assert.match(css, /\.card \.stretched::after/, 'and the stylesheet is what stretches the title over the whole box');
   assert.match(board, /border-inline-start-color/, 'an epic’s card carries its colour down the leading edge, so two epics are told apart at a glance');
   assert.match(board, /if \(item\.epic\) return null/, 'and a task does not repeat its epic in the footer, which was half of why the two categories read alike');
   assert.match(board, /<Show when=\{whereabouts\(props\.item\)\}>/, 'so the line is left out rather than drawn empty');

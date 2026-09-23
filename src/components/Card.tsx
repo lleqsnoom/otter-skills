@@ -1,8 +1,8 @@
 import type { JSX } from 'solid-js';
-import { Dynamic } from 'solid-js/web';
 
 import { cn } from '../ui/cn';
 import { STATUS_LABELS, statusTone, type EpicRef } from '../lib/items';
+import { linkProps, type Route } from '../lib/router';
 import type { Progress, Status } from '../lib/types';
 
 /**
@@ -10,19 +10,15 @@ import type { Progress, Status } from '../lib/types';
  * (the numbers behind it). A run, a task group, a document, a project — four views of the same kind of thing, so
  * one card and no layouts to learn.
  *
- * `as="a"` makes the whole panel the link, which is what a board wants: the row a reader aims at is the thing
- * that opens, not the name inside it.
+ * One card is one target: the link that covers it is the card's own title (`CardTitle`), stretched over the box by
+ * the stylesheet — the only shape a card holding links of its own, an epic and its tasks, could wear.
  */
 export function Card(props: {
-  as?: 'article' | 'a' | 'div';
-  href?: string;
-  onClick?: (event: MouseEvent) => void;
   onKeyDown?: (event: KeyboardEvent) => void;
   /** Drag support, for a board that files cards between columns. */
   draggable?: boolean;
   onDragStart?: (event: DragEvent) => void;
   onDragEnd?: (event: DragEvent) => void;
-  label?: string;
   class?: string;
   /** A lane orders its own rows, so a card on one carries the `order` of its row. */
   style?: JSX.CSSProperties;
@@ -30,15 +26,11 @@ export function Card(props: {
   children: JSX.Element;
 }) {
   return (
-    <Dynamic
-      component={props.as ?? 'article'}
-      href={props.href}
-      onClick={props.onClick}
+    <article
       onKeyDown={props.onKeyDown}
       draggable={props.draggable}
       onDragStart={props.onDragStart}
       onDragEnd={props.onDragEnd}
-      aria-label={props.label}
       title={props.title}
       style={props.style}
       class={cn(
@@ -46,15 +38,35 @@ export function Card(props: {
         // elevation, and there is nowhere else to hang a rule that every card in every lane gets.
         'card',
         'grid content-start gap-1.5 rounded-lg border border-border bg-card p-2.5 text-foreground no-underline',
-        // The border and the shadow are two halves of the same hover: a card on a lane is lifted by both, so both
-        // move together — and neither moves at all for a reader who asked for less motion.
-        props.as === 'a' && 'transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none hover:border-ring',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        // Whether a card opens is asked of the card (`:has`) rather than passed in as a prop: its stretched title is
+        // the fact. Both halves of the hover move together, and neither moves for a reader who asked for less motion.
+        'has-[.stretched]:hover:border-ring has-[.stretched]:transition-[color,background-color,border-color,box-shadow] has-[.stretched]:motion-reduce:transition-none',
         props.class,
       )}
     >
       {props.children}
-    </Dynamic>
+    </article>
+  );
+}
+
+/**
+ * A card's title, and the card's one link.
+ *
+ * The stylesheet stretches it over the panel, so a reader aims at the card and the card is what opens — the space
+ * between things included. The links a card holds paint above the stretch and keep their own clicks, which is what
+ * leaves the title as the card's one tab stop.
+ */
+export function CardTitle(props: { to: Route; label?: string; class?: string; children: JSX.Element }) {
+  return (
+    <h3 class={cn('break-anywhere m-0 text-body font-semibold', props.class)}>
+      <a
+        {...linkProps(props.to)}
+        aria-label={props.label}
+        class="stretched text-foreground no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        {props.children}
+      </a>
+    </h3>
   );
 }
 
