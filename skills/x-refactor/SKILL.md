@@ -22,7 +22,7 @@ All scripts self-resolve via `__dirname` — run from any working directory:
 
 ```bash
 # Analyze single file or directory for refactoring opportunities
-node <path-to>/scripts/analyzer.js <file-or-dir> [--thresholds 20,5,3]
+node <path-to>/scripts/analyzer.mjs <file-or-dir> [--thresholds 20,5,3]
 
 # Output structured JSON to stdout
 # Exit code 0 = analysis complete (may find issues)
@@ -48,6 +48,6 @@ Trivial single-line methods called from exactly one location.
 ## Definition of Done
 
 - [ ] SKILL.md exists with YAML frontmatter and description
-- [ ] `scripts/analyzer.js` detects all four refactoring patterns
+- [ ] `scripts/analyzer.mjs` detects all four refactoring patterns
 - [ ] Outputs structured suggestions in JSON format (stdout) and human-readable markdown (stderr for review)
 - [ ] Passes `node bin/install.js list` as valid skill

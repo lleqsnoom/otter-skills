@@ -7,9 +7,9 @@
  * Writes every artifact into .x-skills/runs/<stamp>-R<nn>-<slug>/.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const { execFileSync } = require("node:child_process");
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 // ── Run folders ──────────────────────────────────────────────────────
 // #region run-folder

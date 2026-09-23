@@ -13,8 +13,8 @@
  * Output: Test stub files written to specified directory (default: tests/unit/)
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
 // ── Framework Detection ───────────────────────────────────────────────
 

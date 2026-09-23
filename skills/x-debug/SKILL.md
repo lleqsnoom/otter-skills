@@ -16,7 +16,7 @@ Do not suppress errors, disable reporting, or add try/catch that swallows them. 
 **Before any analysis, hypothesis testing, or fixing begins**, execute `analyze.js` with the user's bug description as the error text:
 
 ```bash
-node <path-to>/scripts/analyze.js --error "<user's bug description>" --context .
+node <path-to>/scripts/analyze.mjs --error "<user's bug description>" --context .
 ```
 
 This creates:
@@ -28,9 +28,9 @@ This creates:
 ## Usage
 
 ```bash
-node <path-to>/scripts/analyze.js --error "TypeError: Cannot read property 'foo' of undefined" [--file src/main.js]
-node <path-to>/scripts/analyze.js --context . [--session-id my-session]
-node <path-to>/scripts/analyze.js --no-reproduce --error "..."  # skip auto-reproduction
+node <path-to>/scripts/analyze.mjs --error "TypeError: Cannot read property 'foo' of undefined" [--file src/main.js]
+node <path-to>/scripts/analyze.mjs --context . [--session-id my-session]
+node <path-to>/scripts/analyze.mjs --no-reproduce --error "..."  # skip auto-reproduction
 ```
 
 **Output**: Debug session and fix plan as `E<nn>-` artifacts in one run folder under `.x-skills/runs/`.

@@ -78,7 +78,7 @@ When all fields are populated, write `<run folder>/E<nn>-triage.md`:
 **Investigate Tools:** <tool set selected by platform>
 ```
 
-Use `scripts/route.js` to look up the reproduce template and investigate tools for the classified platform. The routing table maps:
+Use `scripts/route.mjs` to look up the reproduce template and investigate tools for the classified platform. The routing table maps:
 
 - `web` → browser-console / chrome-devtools-mcp, lighthouse, network-capture
 - `mobile` → adb-logcat / react-native-debugger, xcode-instruments, android-studio-profiler

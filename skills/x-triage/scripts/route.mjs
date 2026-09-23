@@ -22,4 +22,4 @@ const ROUTE_TABLE = {
   },
 };
 
-module.exports = { ROUTE_TABLE };
+export { ROUTE_TABLE };

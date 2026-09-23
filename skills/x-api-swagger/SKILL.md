@@ -42,10 +42,10 @@ Generate the OpenAPI YAML file using the script (or manually):
 
 ```bash
 # Global install:
-node ~/.agents/skills/x-api-swagger/scripts/save-spec.js --topic <slug>
+node ~/.agents/skills/x-api-swagger/scripts/save-spec.mjs --topic <slug>
 
 # Local install:
-node ./.agents/skills/x-api-swagger/scripts/save-spec.js --topic <slug>
+node ./.agents/skills/x-api-swagger/scripts/save-spec.mjs --topic <slug>
 
 # Auto-discovery — pass any path to save-spec.js:
 node /absolute/path/to/save-spec.js --topic <slug>
