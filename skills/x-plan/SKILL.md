@@ -9,7 +9,7 @@ user-invocable: true
 
 # X-Plan — Layered Spec-Driven Planning
 
-Do not write any code until the spec is approved by the user. Pipeline order: `x-plan → x-epic → x-decompose → x-implement`.
+Do not write any code until the spec is approved by the user. Pipeline order: `x-plan → x-decompose → x-implement`.
 
 ## When to use
 
@@ -183,7 +183,7 @@ node <skill>/scripts/scenario.mjs start --slug <topic> [--new-run | --run <nn>]
 
 - Run folder: `.x-skills/runs/YYYY-MM-DD-hhmm-R<nn>-<topic>/` — one folder per run, holding `state.json`, `memory.md`, and every artifact of the run.
 - Artifacts are numbered `E<nn>-<kind>.md` or `E<nn>-<kind>/` in execution order, so a plain name sort lists the run in the order it was built.
-- Spec report (handoff): `<run folder>/E00-plan.md` — the path `x-epic` reads.
+- Spec report (handoff): `<run folder>/E00-plan.md` — the path `x-decompose` reads.
 - The topic reuses its existing run. Use `--new-run` to start a second run of it, and `--run <nn>` to join a specific one; with two runs and neither flag the command fails rather than picking.
 
 **The report is a live file, and one block of it belongs to the graph.** Every `record` and `--to`
@@ -198,7 +198,7 @@ If user decides not to proceed after clarification, stop. Record reason in worki
 
 ## Handoff Flow
 
-Artifact must exist on disk with required declarations (contract, invariant, test) and a Layer Roadmap before handing off to `x-epic`. Prove it with `scenario.mjs guard --gate spec_complete` (exit 0).
+Artifact must exist on disk with required declarations (contract, invariant, test) and a Layer Roadmap whose every block carries its five fields, before handing off to `x-decompose`. Prove it with `scenario.mjs guard --gate layers_complete` (exit 0).
 
 ## Limits
 

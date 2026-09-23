@@ -9,7 +9,7 @@ user-invocable: true
 
 # X-Decompose — Triaged, Layer-Based Task Decomposition
 
-One task file per sub-step, organized by layer. Each task is a self-contained, testable increment that builds on the previous one. Before any file is written, every candidate is **triaged**: a candidate that hides its own contract gets a run of its own instead of a task in this one. Pipeline order: `x-plan → x-epic → x-decompose → x-implement`.
+One task file per sub-step, organized by layer. Each task is a self-contained, testable increment that builds on the previous one. Before any file is written, every candidate is **triaged**: a candidate that hides its own contract gets a run of its own instead of a task in this one. Pipeline order: `x-plan → x-decompose → x-implement`.
 
 ## When to use
 

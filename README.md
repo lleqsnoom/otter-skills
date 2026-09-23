@@ -270,11 +270,10 @@ wherever you happen to be reading.
 
 ## Epics and their tasks
 
-An epic and the work it was split into are written by two skills into two folders, and **neither document names the
-other**: `x-epic` writes `epics/<stamp>-<slug>.md`, `x-decompose` writes `tasks/<stamp>-<slug>/`, and the two stamps
-are minutes apart because they were written minutes apart. Read literally that is two cards with the same name under
-two categories, each with a progress bar, and nothing on either saying which is which — which is what made **Tasks**
-look like a duplicate of **Epics**.
+`x-epic` used to write an `E<nn>-epic.md` beside the plan, and a run's tasks were decomposed from it. That skill is
+retired — `x-plan` carries the layer roadmap now and `x-decompose` reads it — but the document it wrote is still on
+disk in the runs it made, so the board still has to say whose tasks those are. The rules below are what it does with
+them, and they are also what the two ways below describe for a run numbered twice.
 
 The link is in the tree, and there are exactly two ways the two meet (`src/lib/epics.mjs`):
 
@@ -489,7 +488,6 @@ and `import`/`export` — a `.cjs` file is the escape hatch for a script that mu
 | `x-commit` | Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body |
 | `x-debug` | Evidence-based debugging — reproduce, hypothesize, fix root cause, verify |
 | `x-decompose` | Decompose an approved plan (or an older run's epic) into layer-based tasks, triaging every candidate first — each candidate is decided as a task in this run, a run of its own (x-plan), an analysis (x-analyze), or dropped; outputs `<run folder>/E<nn>-triage.md` and `<run folder>/E<nn>-tasks/` for handoff to x-implement |
-| `x-epic` | Convert approved spec into a layer-based epic — each layer is a coherent, testable increment from prototype to polished product; outputs `<run folder>/E01-epic.md` for handoff to x-decompose |
 | `x-essay` | Write an article end-to-end on a fixed loop — x-analyze thesis, x-roast critique, x-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim. |
 | `x-fix` | Resolve issues from fix plans — read, edit, verify, mark complete |
 | `x-humanize` | Simplify text, an article, a commit or PR to a B2 reading level — measure sentence length and complexity, cut noise, rewrite, then verify no meaning was lost. Use when asked to humanize, simplify, make easy to read, or plain-language a piece of prose. |

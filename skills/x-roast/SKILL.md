@@ -174,7 +174,7 @@ node <skill>/scripts/check-report.mjs --file <report.md>   # exit 0 iff filled i
 |--------|-----------|
 | Artifact needs rewriting/fixing | `x-fix` (drive it with the improvement proposals) or edit directly |
 | It is a spec that failed review | `x-plan` (re-derive contract, invariants, tests) |
-| It is an epic/task that failed review | `x-epic` / `x-decompose` |
+| It is a plan or task that failed review | `x-plan` (the layers) / `x-decompose` (the tasks) |
 | It is a skill that failed review | edit the `SKILL.md`, then `x-skill-lint` (frontmatter, refs, README) |
 | You need deeper root-cause work on a claim | `x-investigate` |
 | You need to reproduce a failing claim | `x-reproduce` |

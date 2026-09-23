@@ -176,8 +176,8 @@ function tick(lines, from, to) {
 /**
  * The layer headings of a run's layers artifact, with the span each one owns.
  *
- * Both dialects count: `## Layer 0 — …`, which `x-epic` emits and its SKILL.md writes as `### Layer 0 — …`, and
- * `### L0 — …`, which a plan's roadmap uses. The number is whichever group the heading matched.
+ * Both dialects count: `## Layer 0 — …`, which a legacy epic wrote, and the plan's `### L0 — …`. The number is
+ * whichever group the heading matched.
  *
  * A layer's boxes are read from its `**Definition of Done:**` to the end of its bullet list, which is either the next
  * layer's heading or the end of the file. A layer whose field is missing is not a span, so the misses are dropped

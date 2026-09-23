@@ -20,7 +20,7 @@
 | **Self-contained** | Task references another file, task ID, or "see X" | Inline the missing context into this file |
 | **Synthetic data only** | Test plan relies solely on mock/synthetic data with no real-data acceptance criterion | Add a production-data verification step |
 
-None of these gates sends work back to `x-epic`. Triage already offered that route; a candidate that fails
+None of these gates sends work back to `x-plan`. Triage already offered that route; a candidate that fails
 a gate here is triaged again, not bounced up the pipeline.
 
 ## What NOT to put in a task file
