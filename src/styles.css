@@ -224,6 +224,18 @@ code { background: var(--muted); padding: .05em .3em; border-radius: calc(var(--
   content-visibility: auto;
   contain-intrinsic-size: auto 148px; }
 .lane .card:hover, .lane .card:focus-visible { box-shadow: 0 2px 6px color-mix(in srgb, var(--foreground) 16%, transparent); }
+
+/* One box, one target.
+
+   The link that opens a panel is the panel's own title, stretched over the box by `::after` — the shape a card can
+   wear while it holds links of its own (an epic and its tasks, a row and its unarchive), which a link wrapped around
+   the panel could not be, because a link inside a link is not one. The overlay belongs to a real `a`, so the
+   browser's own gestures still open it; a click handler on the box would not have them. The links inside paint above
+   the stretch, which is what leaves them clickable. */
+.card:has(.stretched) { position: relative; }
+.card .stretched::after { content: ""; position: absolute; inset: -1px; }
+.card:has(.stretched) :is(a, button):not(.stretched) { position: relative; z-index: 1; }
+
 .drop-slot { border: 1px dashed color-mix(in srgb, var(--foreground) 24%, transparent);
   border-radius: var(--radius); background: color-mix(in srgb, var(--foreground) 4%, transparent); }
 

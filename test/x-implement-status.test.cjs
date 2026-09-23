@@ -48,6 +48,29 @@ issue:
 - [ ] No regressions across layers
 `;
 
+const PLAN = `# Plan — demo
+
+goal:         Every script runs where it is installed.
+contract:     The one interface that must hold.
+invariant:    Nothing regresses.
+test:         given a run, when it finishes, then it is green
+
+## Layers
+
+### L0 — the checker
+
+**Goal:** the rule exists.
+**Definition of Done:**
+- [ ] the rule fires on a fixture
+- [ ] the test proves it on a clean root
+
+### L1 — the receipt
+
+**Goal:** the receipt is reported.
+**Definition of Done:**
+- [ ] the receipt names the child run
+`;
+
 /** A run with an epic and three task files: two in layer 0, one in layer 1. */
 function fixture() {
   const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "xskills-status-")), ".x-skills", "runs", "2026-01-01-0900-R01-demo");
@@ -180,9 +203,10 @@ describe("x-implement status", async () => {
   it("refuses a run it cannot describe, with the reason", () => {
     const { run, tasks } = fixture();
     fs.rmSync(path.join(run, "E01-epic.md"));
-    const noEpic = status(run);
-    assert.equal(noEpic.status, 1);
-    assert.match(noEpic.stderr, /No epic in/);
+    const noLayers = status(run);
+    assert.equal(noLayers.status, 1);
+    assert.match(noLayers.stderr, /No layers in/);
+    assert.match(noLayers.stderr, /E<nn>-epic\.md nor an E00-plan\.md/, "and it names both artifacts a run can hold them in");
 
     fs.rmSync(tasks, { recursive: true });
     assert.equal(status(run).status, 1);
@@ -212,5 +236,90 @@ describe("x-implement status", async () => {
     );
     assert.equal(report.total, 3);
     assert.equal(report.complete, false);
+  });
+});
+
+/** A run whose layers live in a plan: the shape `x-plan` produces, with no epic anywhere. */
+function planFixture() {
+  const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "xskills-status-plan-")), ".x-skills", "runs", "2026-01-02-0900-R01-demo");
+  const tasks = path.join(run, "E01-tasks");
+  fs.mkdirSync(tasks, { recursive: true });
+  fs.writeFileSync(path.join(run, "E00-plan.md"), PLAN);
+  const task = (name, layer) =>
+    fs.writeFileSync(
+      path.join(tasks, name),
+      `# Task: ${name}\n**Layer:** ${layer} — a layer\n**Effort:** 1h\n\n## Definition of Done\n- [ ] the step works\n`,
+    );
+  task("L0-T1-rule.md", 0);
+  task("L1-T1-receipt.md", 1);
+  return { run, tasks, plan: path.join(run, "E00-plan.md") };
+}
+
+describe("x-implement status: a plan-based run", () => {
+  it("ticks a layer in the plan when the run has no epic", () => {
+    const { run, tasks, plan } = planFixture();
+    finish(tasks, "L0-T1-rule.md");
+
+    const answer = status(run);
+    assert.equal(answer.status, 0, answer.stderr);
+    assert.match(answer.stdout, /layer 0: 2 box\(es\) ticked/);
+    assert.deepEqual(boxes(plan).slice(0, 3), [true, true, false], "the plan's layer 0 closed, layer 1 did not");
+  });
+
+  it("says how far the run got, in the plan", () => {
+    const { run, plan } = planFixture();
+    assert.equal(status(run).status, 0);
+    assert.match(fs.readFileSync(plan, "utf8"), /^\*\*Status:\*\* 0\/2 tasks done/m);
+  });
+
+  it("leaves the plan alone when the run also holds an epic", () => {
+    const { run, tasks, plan } = planFixture();
+    fs.writeFileSync(path.join(run, "E02-epic.md"), EPIC.replace(/E02-tasks/g, "E01-tasks"));
+
+    finish(tasks, "L0-T1-rule.md");
+    const answer = status(run);
+    assert.equal(answer.status, 0, answer.stderr);
+    assert.deepEqual(boxes(plan).slice(0, 3), [false, false, false], "the epic is the layers artifact while it exists");
+    assert.deepEqual(boxes(path.join(run, "E02-epic.md")).slice(0, 3), [true, true, false]);
+  });
+
+  it("reads the layer heading x-epic documents, not only the one it emits", () => {
+    const { run, tasks } = planFixture();
+    const documented = PLAN.replace(/^### L(\d+) —/gm, "### Layer $1 —");
+    fs.rmSync(path.join(run, "E00-plan.md"));
+    fs.writeFileSync(path.join(run, "E01-epic.md"), documented);
+
+    finish(tasks, "L0-T1-rule.md");
+    const answer = status(run);
+    assert.equal(answer.status, 0, answer.stderr);
+    assert.deepEqual(boxes(path.join(run, "E01-epic.md")).slice(0, 3), [true, true, false]);
+  });
+
+  it("refuses a run holding neither artifact, naming both", () => {
+    const { run } = planFixture();
+    fs.rmSync(path.join(run, "E00-plan.md"));
+
+    const answer = status(run);
+    assert.equal(answer.status, 1);
+    assert.match(answer.stderr, /E<nn>-epic\.md nor an E00-plan\.md/);
+  });
+});
+
+describe("x-implement status: a run-level status line", () => {
+  it("writes the run's tally into the header, not into a layer's own status note", () => {
+    const { run, tasks, plan } = planFixture();
+    const withNote = `${PLAN}`.replace("### L0 — the checker", "### L0 — the checker\n**Status:** this layer's own note");
+    fs.writeFileSync(plan, withNote);
+    finish(tasks, "L0-T1-rule.md");
+
+    const answer = status(run);
+    assert.equal(answer.status, 0, answer.stderr);
+    const text = fs.readFileSync(plan, "utf8");
+    assert.match(text, /the checker\n\*\*Status:\*\* this layer's own note/, "a layer's note is left as the author wrote it");
+    assert.match(text, /^\*\*Status:\*\* 1\/2 tasks done/m, "and the run's tally lands in the header");
+    assert.ok(
+      text.indexOf("**Status:** 1/2 tasks done") < text.indexOf("## Layers"),
+      "the run's line sits above the run's own sections",
+    );
   });
 });

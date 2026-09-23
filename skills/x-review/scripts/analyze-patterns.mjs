@@ -12,15 +12,15 @@
  *   4. Inline Method: trivial methods called from exactly one location
  *
  * Usage:
- *   node analyze-patterns.js <file-or-dir> [--thresholds lines,branches]
- *   node analyze-patterns.js --all
+ *   node analyze-patterns.mjs <file-or-dir> [--thresholds lines,branches]
+ *   node analyze-patterns.mjs --all
  *
  * Output: JSON to stdout with suggestions grouped by file.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const { findSourceFiles } = require("./utils/file-discovery");
+import fs from "node:fs";
+import path from "node:path";
+import { findSourceFiles } from "./utils/file-discovery.mjs";
 
 // ── Thresholds ────────────────────────────────────────────────────────
 
@@ -279,8 +279,8 @@ function analyzeFile(filePath, thresholds) {
 // ── Main ──────────────────────────────────────────────────────────────
 
 function main() {
-  const { fileArgs, thresholds } = parseArgs(process.argv);
-  const files = findSourceFiles(fileArgs);
+  const { thresholds } = parseArgs(process.argv);
+  const files = findSourceFiles(process.argv.slice(2));
 
   if (files.length === 0) {
     console.log(JSON.stringify({ results: [], totalFiles: 0, message: "No source files found." }, null, 2));

@@ -8,22 +8,26 @@
  * so duplicated comments or string literals with embedded slashes may not be detected. For production
  * use prefer tree-sitter-based extraction when available.
  *
- * Usage: node scripts/check-duplication.js <file1> [file2] ...
- *        node scripts/check-duplication.js --all [--root ./src]
+ * Usage: node scripts/check-duplication.mjs <file1> [file2] ...
+ *        node scripts/check-duplication.mjs --all [--root ./src]
  *
  * Outputs duplicated blocks as JSON.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const { findSourceFiles } = require("./utils/file-discovery");
-const { normalizeLines } = require("./utils/text-normalization");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { findSourceFiles } from "./utils/file-discovery.mjs";
+import { normalizeLines } from "./utils/text-normalization.mjs";
+
+/** The directory this script sits in: ESM has no __dirname, and the config resolves from here. */
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 // ── Config ─────────────────────────────────────────────────────────
 
 function loadConfig() {
   try {
-    const configPath = path.join(__dirname, "..", "assets", "config.json");
+    const configPath = path.join(HERE, "..", "assets", "config.json");
     return JSON.parse(fs.readFileSync(configPath, "utf-8"));
   } catch {
     return {};

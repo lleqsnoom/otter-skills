@@ -8,14 +8,15 @@
  * between source and target versions with automated fix candidates.
  *
  * Usage:
- *   node analyze.js --target express@5 [--source express@4] [--output plan.md]
- *   node analyze.js --all [--output migration-plan.md]
+ *   node analyze.mjs --target express@5 [--source express@4] [--output plan.md]
+ *   node analyze.mjs --all [--output migration-plan.md]
  *
  * Output: JSON report to stdout, markdown plan to stderr and optional file.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 // ── Known Breaking Changes Database ───────────────────────────────────
 
@@ -227,11 +228,11 @@ function main() {
   process.exit(0);
 }
 
-if (require.main === module) {
+if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   main();
 }
 
-module.exports = {
+export {
   BREAKING_CHANGES,
   parseArgs,
   getCurrentVersions,

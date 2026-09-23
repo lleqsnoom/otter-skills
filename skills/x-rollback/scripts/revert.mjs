@@ -9,14 +9,16 @@
  * properly formatted revert commit via x-commit integration.
  *
  * Usage:
- *   node revert.js --commit abc123def456 [--dry-run]
- *   node revert.js --last 1 [--dry-run]
+ *   node revert.mjs --commit abc123def456 [--dry-run]
+ *   node revert.mjs --last 1 [--dry-run]
  *
  * Output: JSON report to stdout (dry-run or actual revert), stderr for interactive prompts.
  */
 
-const { execSync } = require("node:child_process");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
+import { execSync } from "node:child_process";
+import { createInterface } from "node:readline";
 
 // ── Argument Parsing ──────────────────────────────────────────────────
 
@@ -128,7 +130,7 @@ function revertCommit(sha) {
     let commitSuccess = false;
     try {
       // Check if x-commit skill is installed
-      require("node:fs").accessSync(xCommitScript);
+      fs.accessSync(xCommitScript);
       execSync(`node "${xCommitScript}" "${revertMessage}"`, { stdio: ["pipe", "pipe", "inherit"] });
       commitSuccess = true;
     } catch (err) {
@@ -175,7 +177,7 @@ function promptConfirmation(impact) {
   }
 
   // Read user input synchronously
-  const readline = require("node:readline").createInterface({
+  const readline = createInterface({
     input: process.stdin,
     output: process.stdout,
   });

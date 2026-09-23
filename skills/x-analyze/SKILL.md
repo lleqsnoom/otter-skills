@@ -197,7 +197,7 @@ Based on the analysis scope and user decision, present the routes as a `single` 
 |-------|----------|--------|
 | Single, small fix (<1 file, <30 min) | `x-fix` or direct implementation | Apply the fix directly; reference this analysis |
 | Multi-file fix or moderate complexity | Create tasks and use `x-implement` | Split into tasks, follow TDD workflow |
-| Large / architectural issue | Use `x-plan` → `x-epic` → `x-decompose` | Write spec first, then epic and tasks |
+| Large / architectural issue | Use `x-plan` → `x-decompose` | Write spec first, then the layers and tasks |
 | Needs more investigation | Use `x-investigate` + `x-reproduce` pipeline | Hand off with full analysis as context |
 | Not actionable right now | Note for later | Save analysis; don't force a decision |
 

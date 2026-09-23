@@ -6,14 +6,16 @@
  * Logs each step to stderr for verification.
  *
  * Usage:
- *   node save-design.js --topic <slug> [--branch <name>]
+ *   node save-design.mjs --topic <slug> [--branch <name>]
  *
  * Output (stdout): absolute path to the design file, ready to write into with `write`.
  * NOTE: Timestamps are always JS-generated. No --date flag is accepted.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
+import cp from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 // ── Logging ───────────────────────────────────────────────────────────
 
@@ -39,7 +41,6 @@ function parseArgs(argv) {
 
 function getBranch() {
   try {
-    const cp = require("node:child_process");
     const result = cp.execSync("git rev-parse --abbrev-ref HEAD", { stdio: ["ignore", "pipe", "ignore"] });
     return result.toString().trim();
   } catch {
@@ -142,12 +143,12 @@ function nextE(runDir) {
 // #endregion run-folder
 
 // ── Self-discovery ────────────────────────────────────────────────────
-// __dirname resolves to wherever the script actually lives, whether invoked
+// The script's own directory resolves to wherever it actually lives, whether invoked
 // from a global install ( ~/.agents/skills/x-api-draft/scripts/ ) or a local one
 // (.agents/skills/<project>/x-api-draft/scripts/). This lets us find sibling
 // scripts and resources without the agent needing to know <skill-install-dir>.
 
-const SKILL_DIR = path.resolve(__dirname, ".."); // parent of scripts/
+const SKILL_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."); // parent of scripts/
 
 function skillScript(relPath) {
   return path.join(SKILL_DIR, "scripts", relPath);
@@ -165,7 +166,7 @@ function main() {
   log("parsing arguments");
 
   if (!args.topic) {
-    console.error("Usage: node save-design.js --topic <slug> [--branch <name>]\n");
+    console.error("Usage: node save-design.mjs --topic <slug> [--branch <name>]\n");
     process.exit(1);
   }
 

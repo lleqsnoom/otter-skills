@@ -17,10 +17,10 @@ All scripts self-resolve via `__dirname` — run from any working directory:
 
 ```bash
 # Analyze current project for migration opportunities
-node <path-to>/scripts/analyze.js --target express@5 [--source express@4]
+node <path-to>/scripts/analyze.mjs --target express@5 [--source express@4]
 
 # Generate full migration plan document
-node <path-to>/scripts/analyze.js --target react@19 --output migration-plan.md
+node <path-to>/scripts/analyze.mjs --target react@19 --output migration-plan.md
 ```
 
 **Auto-discovery**: Scripts resolve config and sibling scripts relative to `__dirname`, so they work whether installed globally (`~/.agents/skills/x-migrate/scripts/`) or locally (`.agents/skills/<project>/x-migrate/scripts/`).
@@ -33,7 +33,7 @@ node <path-to>/scripts/analyze.js --target react@19 --output migration-plan.md
 
 ## Definition of Done
 
-A migration run is done when `analyze.js` produces all three of:
+A migration run is done when `analyze.mjs` produces all three of:
 
 - **Structured plan on stdout** — JSON `{ packagesAnalyzed, plan[] }`; every plan step carries `package`, `fromVersion`, `toVersion`, `change`, `severity`, `fix`, and `automated`.
 - **Human-readable plan on stderr** — grouped by package, each step showing its severity and fix; when `--output <file>` is passed, the same markdown is also written to that file.

@@ -50,6 +50,7 @@ npm run serve                # build if needed, then serve the build on the firs
 npm run serve -- --port 8080
 npm run serve -- --no-build  # serve the last build as it is
 npm run build                # build only
+npm run demo                 # write a sample tree to ./demo, so the board has something to show
 npm test                     # the app's own tests
 npm run typecheck
 ```
@@ -217,7 +218,8 @@ rules, with the extension deciding first and its own text only when the extensio
 | Status | finished node → done; some boxes ticked → in progress; none → to do; nothing counted → unsorted |
 | Stage | the `E<nn>` a run numbered an artifact with: `E00-plan.md` is rung 0, `E02-tasks/` is rung 2 |
 | Epic | the epic a task belongs to: the run both are stages of, or the slug their folders share (see below) |
-| Named in | the `**Input:**` / `Spec:` / `Plan:` paths an artifact names, when the path leads somewhere |
+| Named in | the `**Input:**` / `Spec:` / `Plan:` paths an artifact names, when the path leads somewhere — drawn as the reads row above the document |
+| Mark | `project.md` at the root: the project's about text and how it is drawn, and the one Docs card badged `mark` |
 
 A run (a folder with `state.json`) and a task group (a folder of task files) are the same thing to the UI: a
 collection with a head and a body of artifacts — except that a task group's files are drawn instead of the group,
@@ -225,56 +227,44 @@ because the folder is not the unit a reader picks up. See **Epics and their task
 
 ## Runs and their stages
 
-The skills write one run folder per topic and number everything in it in the order they built it —
-`E00-plan.md`, `E01-epic.md`, `E02-tasks/` — so a run is a chain of rungs and the folder name is the topic. That is
-the right unit to work in and the wrong one to find things in: an analysis that has to be found inside a run is not
-in **Analysis**, and the category that names it looks like a folder nothing has written to since the skills moved
-into run folders.
+The skills write one run folder per topic and number everything in it in the order they built it — `E00-plan.md`,
+`E01-triage.md` where the decomposition triaged its candidates, `E02-tasks/` — so a run is a chain of rungs and the
+folder name is the topic. That is the right unit to work in and the wrong one to find things in: an analysis that
+has to be found inside a run is not in **Analysis**, and the category that names it looks like a folder nothing has
+written to since the skills moved into run folders.
 
 So every rung is read **in the category that names its kind as well as in its run**. `E00-analysis.md` is a card
-under Analysis and a file of the run that wrote it; `E01-epic.md` is under Epics; a `E02-tasks/` folder
-(x-decompose writes a folder, not a file) is read under **Tasks**, where its task files are the cards and the folder
+under Analysis and a file of the run that wrote it; `E00-plan.md` is under **Plan** where `plan/` exists and
+**Plans** where only `plans/` does; a `E<nn>-tasks/` folder (x-decompose writes a folder, not a file) is read under
+**Tasks**, where its task files are the cards and the folder
 it came from travels with it as `runPath`.
 Nothing is copied — a stage keeps the path it came from, so it is the same file in two places, and the card says
 `in shared-media-kms-key-staging-sandbox` rather than leaving you to guess which of nine same-named files it is.
 
-Which category that is falls out of the kind and what the repository has: `analysis` is Analysis, `epic` is
-**Epics**, and `plan` is **Plan** where `plan/` exists and **Plans** where only `plans/` does. A kind no folder
+Which category that is falls out of the kind and what the repository has: `analysis` is **Analysis**, and `plan` is
+**Plan** where `plan/` exists and **Plans** where only `plans/` does. A kind no folder
 claims (a summary, a critique, a repro script) is read where it was written. A kind the registry knows and the
 repository has never used — **Triage**, in a tree with no `triage/` — gets its category from the registry, and the
 category's own page says it was named by the runs rather than read from a folder. A run that is *already* filed in
 the category its own stage belongs to (a session living in `anal/`) is not listed twice.
 
-**The chain is one panel, and every view of a piece of work shows the same one.** A rung is a chain by construction
-and a named path is another edge, so the pipeline a reader thinks in — analysis, plan, epic, tasks — is the component
-those edges connect, and it is usually **two runs**: `x-analyze` writes the analysis into its own run and `x-plan`
-opens the next one, so the analysis and the plan that read it are joined by one written path and nothing else.
+**One address per piece of work.** The related panel is gone, and with it the second way into a document. An artifact
+filed inside a collection is read on that collection's page, with itself selected, and the address says which artifact
+is open — `/p/<repo>/g/<run folder>/<file>` — so a link can be sent to someone. Only a document the tree files on its
+own, a loose analysis or a plan in `plan/`, has a page of its own, at `/f/<repo>/<path>`. Which run numbered an
+artifact is the pill on its card and the trail above it.
 
-**Related** draws that whole component (`chain.mjs`), from wherever you are:
-
-- **Run** — the run the artifact belongs to, when it belongs to one.
-- **Chain** — the run's rungs in `E<nn>` order, then the runs it reached, with the artifact you are reading marked
-  rather than linked. A folder rung carries the files it is made of — `E02-tasks/` lists its task files — and a rung
-  that has no collection of its own (a run filed inside the category its stage belongs to) opens the run instead.
-- **Each line says how it was reached** — `named Input by E00-plan.md` — because that is what says which way the work
-  flowed.
-
-The edges are walked in both directions, which is why `scan.mjs` also publishes every path read backwards
-(`references`): an epic names the plan and the plan names the analysis, but an analysis names nothing at all, so
-following only what an artifact points at left the analysis looking like the end of the chain it began. From the
-analysis you now see the plan run; from the epic you see the analysis. Only paths the repository actually holds are
-edges at all: a skeleton's `<run folder>/E00-plan.md` placeholder and a mistyped path lead nowhere and stay text.
-
-The same panel is on a run's own page and on every artifact's page, so "what else is part of this?" is answered
-wherever you happen to be reading.
+**A document says what it read**, under the trail: the `**Input:**` / `Spec:` / `Plan:` paths it names, each one a
+link to the artifact, so "where did this come from" is answered where it is asked. It is the one direction a document
+writes down itself — a plan names the analysis, never the other way round — and the board holds the other half of the
+answer, since the run a document belongs to is the pill beside it.
 
 ## Epics and their tasks
 
-An epic and the work it was split into are written by two skills into two folders, and **neither document names the
-other**: `x-epic` writes `epics/<stamp>-<slug>.md`, `x-decompose` writes `tasks/<stamp>-<slug>/`, and the two stamps
-are minutes apart because they were written minutes apart. Read literally that is two cards with the same name under
-two categories, each with a progress bar, and nothing on either saying which is which — which is what made **Tasks**
-look like a duplicate of **Epics**.
+`x-epic` used to write an `E<nn>-epic.md` beside the plan, and a run's tasks were decomposed from it. That skill is
+retired — `x-plan` carries the layer roadmap now and `x-decompose` reads it — but the document it wrote is still on
+disk in the runs it made, so the board still has to say whose tasks those are. The rules below are what it does with
+them, and they are also what the two ways below describe for a run numbered twice.
 
 The link is in the tree, and there are exactly two ways the two meet (`src/lib/epics.mjs`):
 
@@ -429,11 +419,11 @@ otter-pm/
 ├── src/pages/api/       # GET /api/snapshot, GET|POST /api/file, POST /api/refresh, /api/project, /api/roots
 ├── src/pages/           # the shell, for / and for every other path
 ├── src/ui/              # shared primitives: Button, Input, Badge, ToggleGroup, cn
-├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail, Related
-├── src/lib/             # types, the API client, the router, the work-item model, the chain (chain.mjs), the epics (epics.mjs)
+├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail, FileView
+├── src/lib/             # types, the API client, the router, the work-item model, the epics (epics.mjs)
 ├── src/styles.css       # Orca's tokens, base, and the markdown an artifact is read in
 ├── src/tailwind.css     # Tailwind wired to those tokens
-├── scripts/             # dev.mjs, serve.mjs, import-board.mjs: the ports, the foreground, the migration
+├── scripts/             # dev.mjs, serve.mjs, seed-demo.mjs, import-board.mjs: the ports, the foreground, the sample, the migration
 ├── public/favicon.svg   # the app icon, see brand/README.md
 ├── brand/               # the mark's sources: the EPS, the traces, the proposals
 ├── skills/              # the skills themselves: what writes the trees this app reads
@@ -473,6 +463,11 @@ install it where an agent runs it (`xskills install <skill> -g` copies it to `~/
 
 Nothing in the app imports them, and `files` keeps them out of the published package.
 
+A skill's scripts are `.mjs`: this repository's `package.json` says `"type": "module"`, and an installed skill is
+a symlink into this tree, so a `.js` script that calls `require` or writes `module.exports` throws the moment
+anyone runs it, installed or not. `x-skill-lint` fails on that (`commonjs-script`), and the fix is the extension
+and `import`/`export` — a `.cjs` file is the escape hatch for a script that must stay CommonJS.
+
 | Skill | Description |
 |-------|-------------|
 | `x-analyze` | Interactive analysis skill — research the project and web first, ask via panels (single / multi / open / confirm) until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory. |
@@ -483,8 +478,7 @@ Nothing in the app imports them, and `files` keeps them out of the published pac
 | `x-comments` | Comment management — add only precise, meaningful comments and remove noisy or obvious ones; refactor overly commented code into self-explanatory functions instead of describing it |
 | `x-commit` | Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body |
 | `x-debug` | Evidence-based debugging — reproduce, hypothesize, fix root cause, verify |
-| `x-decompose` | Decompose approved epic into layer-based tasks — each task is an independent, testable increment that builds on the previous; outputs `<run folder>/E02-tasks/` for handoff to x-implement |
-| `x-epic` | Convert approved spec into a layer-based epic — each layer is a coherent, testable increment from prototype to polished product; outputs `<run folder>/E01-epic.md` for handoff to x-decompose |
+| `x-decompose` | Decompose an approved plan (or an older run's epic) into layer-based tasks, triaging every candidate first — each candidate is decided as a task in this run, a run of its own (x-plan), an analysis (x-analyze), or dropped; outputs `<run folder>/E<nn>-triage.md` and `<run folder>/E<nn>-tasks/` for handoff to x-implement |
 | `x-essay` | Write an article end-to-end on a fixed loop — x-analyze thesis, x-roast critique, x-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim. |
 | `x-fix` | Resolve issues from fix plans — read, edit, verify, mark complete |
 | `x-humanize` | Simplify text, an article, a commit or PR to a B2 reading level — measure sentence length and complexity, cut noise, rewrite, then verify no meaning was lost. Use when asked to humanize, simplify, make easy to read, or plain-language a piece of prose. |

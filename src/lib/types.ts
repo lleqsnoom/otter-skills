@@ -125,11 +125,14 @@ export interface Project {
   iconSrc: string | null;
   /** An image inside the project, relative to its root, served by `/api/asset`. */
   iconFile: string | null;
+  /**
+   * Where the mark itself is written, relative to the root — `project.md` when the project has one. The file is read
+   * as a document like any other, and this is what says that document is the mark rather than a note beside it.
+   */
+  markPath: string | null;
   source: 'orca' | 'path';
   scannedAt: string;
   totals: { groups: number; items: number; files: number };
-  /** Every path some artifact names, and the artifacts that named it — the links read backwards; see `chain.mjs`. */
-  references: Record<string, string[]>;
   categories: Category[];
 }
 

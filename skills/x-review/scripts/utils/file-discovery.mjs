@@ -1,5 +1,6 @@
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
+import cp from "node:child_process";
 
 /**
  * Shared file discovery utilities for x-review scripts.
@@ -34,7 +35,6 @@ function walkDir(dir, out) {
  * @returns {string[]} Resolved absolute file paths (deduplicated)
  */
 function findTrackedSourceFiles(exts) {
-  const cp = require("node:child_process");
   const files = [];
 
   try {
@@ -97,4 +97,4 @@ function findSourceFiles(fileArgs, rootDir) {
   return [...new Set(files)];
 }
 
-module.exports = { findSourceFiles, findTrackedSourceFiles, walkDir };
+export { findSourceFiles, findTrackedSourceFiles, walkDir };

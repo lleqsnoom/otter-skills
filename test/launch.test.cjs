@@ -212,6 +212,10 @@ test('open hands the published URL to the window front door, and starts no serve
 
   const opened = await runToCompletion(['open'], stateHome, { env });
   assert.equal(opened.code, 0, opened.complaint);
+
+  // The door is spawned detached and unref'd, so the launcher exits before the door has run: wait for the
+  // record rather than reading it on the next line.
+  await waitFor(() => window.opened());
   assert.equal(window.opened(), server.url, 'the window door is given the URL that was published');
   assert.equal(browser.opened(), null, 'and the browser door is left alone');
 
@@ -229,6 +233,7 @@ test('open --browser uses the browser front door instead', async (t) => {
 
   const opened = await runToCompletion(['open', '--browser'], stateHome, { env });
   assert.equal(opened.code, 0, opened.complaint);
+  await waitFor(() => browser.opened());
   assert.equal(browser.opened(), server.url);
   assert.equal(window.opened(), null);
 });
@@ -455,7 +460,12 @@ test('serve clears a URL it cannot stand behind', async (t) => {
   assert.equal(readPublished(stateHome), null, 'a URL from a run that is gone is not left for a launcher to trust');
 });
 
-test('a server that dies by signal is a failure, so the unit restarts it', async () => {
+/** `childPid` below reads Linux procfs, so the one case that needs it is skipped where procfs does not exist. */
+const HAS_PROC = fs.existsSync('/proc');
+
+test('a server that dies by signal is a failure, so the unit restarts it', {
+  skip: HAS_PROC ? false : 'needs /proc to find the server pid the launcher started',
+}, async () => {
   const stateHome = tempStateHome();
   const port = await freePort();
   const child = run(['serve', '--port', String(port)], stateHome);

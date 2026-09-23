@@ -208,11 +208,17 @@ function readState(dir) {
  * The project's own mark, when it has one: `<root>/project.md` says what the project is about and how to draw it.
  * Read here rather than through an artifact's fields, because these are fields about the project and not about a
  * file; a project without one is not a project missing something.
+ *
+ * `markPath` is the file itself, relative to the root. The same document is read as a document too — root markdown
+ * lands in **Docs** — and a card that cannot say which of its documents is the mark reads as a note beside the
+ * project rather than as the mark it is.
  */
+const MARK_FILE = 'project.md';
+
 const MARK_FIELDS = { about: 'about', icon: 'iconText', color: 'color', 'icon-url': 'iconSrc', 'icon-file': 'iconFile' };
 
 function projectMark(root) {
-  const path = join(root, 'project.md');
+  const path = join(root, MARK_FILE);
   const stat = safeStat(path);
   const fields = stat
     ? cachedParse('mark', path, () => {
@@ -225,6 +231,7 @@ function projectMark(root) {
     const raw = fields[field];
     mark[key] = raw ? String(raw) : null;
   }
+  mark.markPath = stat ? MARK_FILE : null;
   return mark;
 }
 
@@ -236,8 +243,8 @@ const FILE_RANK = [
   [/^E\d+-analysis/i, 0],
   [/^E\d+-triage/i, 1],
   [/^E\d+-investigate/i, 2],
-  [/^E\d+-plan/i, 3],
-  [/^E\d+-epic/i, 4],
+  // A legacy epic is the plan under its old name, so the two are one rung rather than two.
+  [/^E\d+-(?:plan|epic)/i, 3],
   [/^E\d+-tasks/i, 5],
   [/^E\d+-repro/i, 6],
   [/^E\d+-reflection/i, 7],
@@ -483,9 +490,22 @@ function indexRunStages(root, categories) {
  */
 function rungsToIndex(categories, category, group) {
   group.files = withRun(group);
-  return group.stages
+  return withoutSupersededEpic(group.stages)
     .map((stage) => ({ ...stage, target: stageCategoryFor(categories, stage.kind) }))
     .filter((stage) => stage.target && stage.target.id !== category.id);
+}
+
+/**
+ * A run's plan is where its layers are written, and a run older than the merge wrote them as an epic: `E<nn>-epic.md`
+ * is a plan by another name (see `artifactKind`). A run holding both spellings numbered the plan twice with one
+ * document, and reading both would draw its plan twice — so the plan's own file wins and the epic beside it is left
+ * unread. Two epics and no plan is a run that numbered two pieces of work, which is not this case and is left alone.
+ */
+const LEGACY_EPIC = /^E\d+-epic/i;
+
+function withoutSupersededEpic(stages) {
+  const numbered = stages.some((stage) => artifactKind(stage.name) === 'plan' && !LEGACY_EPIC.test(stage.name));
+  return numbered ? stages.filter((stage) => !LEGACY_EPIC.test(stage.name)) : stages;
 }
 
 /** Only the numbered rungs know which run they are in; `memory.md` beside them is the run's own, not a stage. */
@@ -537,33 +557,6 @@ function rootDocs(root, names) {
   };
 }
 
-/**
- * Who names what, read backwards.
- *
- * A rung says which artifact it read (`**Input:**`, `spec:`), and that is one direction of the pipeline: a plan
- * points at the analysis it came from, never the other way round. So an analysis on its own page looked like the
- * end of the chain it began. The reverse index is the other direction of the same edges — every path becomes the
- * artifacts that named it — which is what lets a reader walk the pipeline from any of its stages, in either
- * direction.
- *
- * A path that leads nowhere was never a link (`resolveLink`), so nothing here points at a file this project does
- * not hold.
- */
-function referencesIn(root, categories) {
-  const references = {};
-  const remember = (from, target) => {
-    if (target === from) return;
-    references[target] = [...(references[target] ?? []), from];
-  };
-  for (const category of categories) {
-    for (const file of category.items) for (const link of file.links) remember(file.relPath, link.path);
-    for (const group of category.groups) {
-      for (const file of group.files) for (const link of file.links) remember(file.relPath, link.path);
-    }
-  }
-  return references;
-}
-
 export function scanRoot(root, meta = {}) {
   const entries = readdirSync(root, { withFileTypes: true }).filter((entry) => !entry.name.startsWith('.'));
   const categories = [];
@@ -581,12 +574,17 @@ export function scanRoot(root, meta = {}) {
     if (MARKDOWN_EXTENSIONS.has(extname(entry.name).toLowerCase())) rootFiles.push(entry.name);
   }
 
+  // A root can hold a `docs/` folder *and* markdown beside it, and both are the same category: folding them into one
+  // is what keeps the rail from drawing Docs twice, each answerable at the same address.
   const docs = rootDocs(root, rootFiles);
-  if (docs) categories.push(docs);
+  if (docs) {
+    const existing = categories.find((candidate) => candidate.id === docs.id);
+    if (existing) mergeCategory(existing, docs);
+    else categories.push(docs);
+  }
 
   // Before the sort, so a category a run named lands in its registry order along with the ones read from disk.
   indexRunStages(root, categories);
-  const references = referencesIn(root, categories);
   categories.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
 
   const totals = categories.reduce(
@@ -613,8 +611,6 @@ export function scanRoot(root, meta = {}) {
     source: meta.source ?? 'path',
     scannedAt: new Date().toISOString(),
     totals,
-    /** Every path that is named by some artifact, and the artifacts that named it — the links read backwards. */
-    references,
     categories,
   };
 }

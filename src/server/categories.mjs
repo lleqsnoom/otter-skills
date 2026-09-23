@@ -7,16 +7,19 @@
  * time, so a repository can hold both spellings — `anal/` and `analysis/` — and to a reader they are one thing:
  * work that analysed a problem. The listed names are folded into the entry that names them.
  *
- * `work` is what a *collection* in the category is to a screen, and only two categories have one. An **epic** is a
- * layer plan and its tasks are what the epic was split into, and the two are read against each other wherever they
- * appear — see `src/lib/epics.mjs`. Everything else a repository holds is work in its own right.
+ * `work` is what a *collection* in the category is to a screen. A **layer plan** is the collection the tasks hang
+ * from — the plan says what to build in layers, `x-decompose` turns each layer into task files, and the two are read
+ * against each other wherever they appear — see `src/lib/epics.mjs`. Every folder a layer plan is written to carries
+ * the role, because which folder it is in is a fact about a skill's version rather than about the work: `epics/` is
+ * the folder the retired `x-epic` wrote to, and `plan/` and `plans/` are where the plan itself lands.
+ * Everything else a repository holds is work in its own right.
  */
 export const CATEGORY_REGISTRY = [
   { id: 'runs', label: 'Runs', order: 0, hint: 'One folder per workflow run, with its graph state and artifacts.' },
-  { id: 'epics', label: 'Epics', order: 1, work: 'epic', hint: 'Layer plans produced by x-epic.' },
-  { id: 'tasks', label: 'Tasks', order: 2, work: 'task', hint: 'Decomposed work: the tasks an epic was split into, one file each.' },
-  { id: 'plan', label: 'Plan', order: 3 },
-  { id: 'plans', label: 'Plans', order: 4 },
+  { id: 'epics', label: 'Epics', order: 1, work: 'epic', hint: 'Layer plans written before the plan carried its own layers, under the folder the retired x-epic wrote to.' },
+  { id: 'tasks', label: 'Tasks', order: 2, work: 'task', hint: 'Decomposed work: the tasks a plan was split into, one file each.' },
+  { id: 'plan', label: 'Plan', order: 3, work: 'epic', hint: 'The layer plan a run produced, and the tasks it was split into.' },
+  { id: 'plans', label: 'Plans', order: 4, work: 'epic', hint: 'A plan of its own, and the tasks it was split into.' },
   { id: 'design', label: 'Design', order: 5 },
   {
     id: 'analysis',
@@ -66,8 +69,7 @@ export function categoryForDir(dirName) {
 /**
  * The category that answers for a stage's kind, so an artifact a run produced is readable where a reader looks for
  * that sort of thing. The skills name the kind in the artifact (`E00-analysis.md`, `E02-tasks/`) and the folder it
- * belongs in is usually the plural of that name: `epic` is **Epics**, and `plan` is **Plan** in one tree and
- * **Plans** in another.
+ * belongs in is usually the plural of that name: `plan` is **Plan** in one tree and **Plans** in another.
  *
  * `null` for a kind no category claims — a summary, a critique, a repro script have no folder of their own, so they
  * are read where they were written. That is a fact about the registry, not a failure here.

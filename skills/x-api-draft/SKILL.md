@@ -34,7 +34,7 @@ Ask through panels, never in prose. A panel is the host's question UI in one of 
 Save the design document using the script:
 
 ```bash
-node <path-to-save-design.js> --topic <slug>
+node <path-to-save-design.mjs> --topic <slug>
 ```
 
 Output: `<run folder>/E<nn>-api-design.md` (relative to CWD).
@@ -47,7 +47,7 @@ For full format rules and example template see `references/format.md`.
 
 ## Errors & Limits
 
-`save-design.js` only creates the file and prints its absolute path on stdout; the agent fills in the body afterwards.
+`save-design.mjs` only creates the file and prints its absolute path on stdout; the agent fills in the body afterwards.
 
 - Exits **1** with a usage message on stderr when `--topic` is missing (stdout stays empty).
 - Writes a **new timestamped file every run** — it never overwrites an existing draft, so re-running the same topic produces a second file.

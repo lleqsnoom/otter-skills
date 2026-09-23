@@ -8,13 +8,13 @@
  * then generates scaffolded test files with TODO comments for manual completion.
  *
  * Usage:
- *   node generate.js <file-or-dir> [--output tests/unit/ --framework jest|vitest|mocha]
+ *   node generate.mjs <file-or-dir> [--output tests/unit/ --framework jest|vitest|mocha]
  *
  * Output: Test stub files written to specified directory (default: tests/unit/)
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
 // ── Framework Detection ───────────────────────────────────────────────
 

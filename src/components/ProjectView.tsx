@@ -16,6 +16,8 @@ import {
   itemsForProject,
   matches,
   relativeTime,
+  routeFor,
+  routeForPath,
   searchItemsForProject,
   statusCounts,
   STATUS_LABELS,
@@ -25,9 +27,9 @@ import type { BoardColumn, BoardDeletions, BoardMoves, BoardOrder, BoardOrders, 
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { ToggleGroup } from '../ui/ToggleGroup';
-import { Board, ClosedWindowPicker, routeFor, WorkCard } from './Board';
+import { Board, ClosedWindowPicker, WorkCard } from './Board';
 import { Breadcrumbs, rootCrumb } from './Breadcrumbs';
-import { Chip, Empty, Stat, StatusBadge } from './Card';
+import { Card, CardTitle, Chip, Empty, Stat, StatusBadge } from './Card';
 import { ProjectIcon } from './ProjectIcon';
 
 type View = 'board' | 'list';
@@ -76,6 +78,16 @@ function ProjectHeader(props: {
               <p class="break-anywhere m-0 text-chrome text-muted-foreground">{props.project.about}</p>
             </Show>
             <p class="break-anywhere m-0 text-chrome text-muted-foreground">{props.project.repoPath}</p>
+            {/* The mark is a document of the project like any other, so the page that draws what it says says where it
+                is written: one file, one address, and no need to guess which Docs card is the mark. */}
+            <Show when={props.project.markPath}>
+              {(mark) => (
+                <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <Chip to={routeForPath(props.project, mark())}>mark</Chip>
+                  <span class="break-anywhere text-chrome text-muted-foreground">{mark()}</span>
+                </p>
+              )}
+            </Show>
             <div class="flex flex-wrap gap-x-5 gap-y-2 pt-1">
               <Stat value={props.project.totals.files} label="artifacts" />
               <Stat value={props.project.totals.groups} label="collections" />
@@ -325,16 +337,18 @@ export function ProjectView(props: {
           <ul class="m-0 grid list-none gap-1 p-0">
             <For each={deleted()}>
               {(item) => (
-                <li class="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
-                  <StatusBadge status={item.status} />
-                  <a {...linkProps(routeFor(item))} class="break-anywhere text-chrome">
-                    {item.title}
-                  </a>
-                  <span class="break-anywhere text-chrome text-muted-foreground">{item.relPath}</span>
-                  <Chip>{formatDate(item.date || item.mtime)}</Chip>
-                  <Button size="chip" variant="quiet" class="ml-auto" onClick={() => props.onDelete?.(item, false)}>
-                    unarchive
-                  </Button>
+                <li>
+                  <Card class="flex flex-wrap items-center gap-2 rounded-md px-2 py-1.5">
+                    <StatusBadge status={item.status} />
+                    <CardTitle to={routeFor(item)} class="break-anywhere text-chrome font-normal">
+                      {item.title}
+                    </CardTitle>
+                    <span class="break-anywhere text-chrome text-muted-foreground">{item.relPath}</span>
+                    <Chip>{formatDate(item.date || item.mtime)}</Chip>
+                    <Button size="chip" variant="quiet" class="ml-auto" onClick={() => props.onDelete?.(item, false)}>
+                      unarchive
+                    </Button>
+                  </Card>
                 </li>
               )}
             </For>

@@ -2,19 +2,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { formatStamp, resolveRunDir, resolveArtifact } from "./shared.js";
+import { formatStamp, resolveRunDir, resolveArtifact } from "./shared.mjs";
 
 export const SKILL = "x-plan";
 export const REPORT_ROOT = ".x-skills/runs";
 export const START_NODE = "intake";
 export const STOPS = ["handoff", "abandon"];
 
-const ABANDON_EDGES = ["intake", "research", "clarify", "propose", "decide", "spec", "gate"].map(
+const ABANDON_EDGES = ["intake", "research", "clarify", "propose", "decide", "spec", "layers", "gate"].map(
   (from) => ({ from, to: "abandon", guards: [] })
 );
 
 export const GRAPH = {
-  nodes: ["intake", "research", "clarify", "propose", "decide", "spec", "gate", "handoff", "abandon"],
+  nodes: ["intake", "research", "clarify", "propose", "decide", "spec", "layers", "gate", "handoff", "abandon"],
   edges: [
     { from: "intake", to: "research", guards: [] },
     { from: "research", to: "clarify", guards: ["research_recorded"] },
@@ -22,13 +22,20 @@ export const GRAPH = {
     { from: "clarify", to: "propose", guards: ["no_open_questions", "three_options"] },
     { from: "propose", to: "decide", guards: ["three_options"] },
     { from: "decide", to: "spec", guards: ["decision_made"] },
-    { from: "spec", to: "gate", guards: ["spec_complete"] },
+    { from: "spec", to: "layers", guards: ["spec_complete"] },
+    { from: "layers", to: "gate", guards: ["layers_complete"] },
     { from: "gate", to: "handoff", guards: ["gate_approved"] },
     ...ABANDON_EDGES,
   ],
 };
 
 const SPEC_MARKERS = ["contract", "invariant", "test"];
+
+/** A layer heading: `### L0 — the skeleton`, which is what a plan's roadmap writes. */
+const LAYER_HEADING = /^###\s+L(\d+)\b/;
+
+/** What `x-decompose` reads a layer for. A block missing any of them cannot be decomposed. */
+const LAYER_FIELDS = ["**Objective:**", "**Scope in:**", "**Scope out:**", "**Prerequisite:**", "**Definition of Done:**"];
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -43,7 +50,26 @@ function gate(pass, expected, actual) {
 }
 
 function hasSpec(text) {
-  return SPEC_MARKERS.every((marker) => text.includes(marker)) && text.includes("## Layers");
+  const declared = SPEC_MARKERS.every((marker) => new RegExp(`^${marker}:`, "m").test(text));
+  return declared && /^## Layers\s*$/m.test(text);
+}
+
+/**
+ * What the roadmap says: how many layer blocks it holds, and which field each of them is missing. A span runs
+ * from its heading to the next one, so a field written in a sibling block does not count for this one.
+ */
+export function layerReport(text) {
+  const lines = String(text ?? "").split("\n");
+  const headings = lines.flatMap((line, index) => {
+    const match = line.match(LAYER_HEADING);
+    return match ? [{ number: Number(match[1]), index }] : [];
+  });
+  const gaps = headings.flatMap((heading, at) => {
+    const end = headings[at + 1]?.index ?? lines.length;
+    const span = lines.slice(heading.index, end).join("\n");
+    return LAYER_FIELDS.filter((field) => !span.includes(field)).map((field) => `L${heading.number} is missing ${field}`);
+  });
+  return { layers: headings.length, gaps };
 }
 
 export function createState({ slug, goal = null, root = REPORT_ROOT, now = new Date(), fresh = false, run = null } = {}) {
@@ -80,8 +106,16 @@ export function computeGuards(state, { reportText = "" } = {}) {
     three_options: gate(state.options.length >= 3, 3, state.options.length),
     decision_made: gate(state.decision !== null, "a decision", state.decision ? "recorded" : "none"),
     spec_complete: gate(hasSpec(reportText), "contract, invariant, test, ## Layers", reportText.trim() ? `${reportText.length} bytes` : "empty"),
+    layers_complete: layersGate(reportText),
     gate_approved: gate(approved, "approval event", approved ? "recorded" : "none"),
   };
+}
+
+/** The roadmap a decomposition needs: every layer carries its five fields, and a roadmap with no layer fails. */
+function layersGate(reportText) {
+  const { layers, gaps } = layerReport(reportText);
+  if (!layers) return gate(false, LAYER_FIELDS.join(", "), "no layer block in the roadmap");
+  return gate(gaps.length === 0, LAYER_FIELDS.join(", "), gaps[0] ?? `${layers} layer(s) with all five fields`);
 }
 
 function answerQuestion(list, target, answer) {
@@ -158,9 +192,15 @@ export function renderMemoryLine(entry) {
   return `- [${entry.at}] ${detail}`;
 }
 
+/**
+ * The graph rewrites its own section and nothing else. The window starts at the
+ * `## Scenario` heading (line-anchored, so prose that mentions the heading is not
+ * a match) and closes at the end of that section's fence, which is why a plan body
+ * written anywhere else in the file is never at risk.
+ */
 export function upsertScenario(text, mermaid) {
   const section = `## Scenario\n\n${mermaid}\n`;
-  const pattern = /## Scenario[\s\S]*?(?=\n## |\s*$)/;
+  const pattern = /^## Scenario[ \t]*\r?\n(?:[ \t]*\r?\n)*(?:```mermaid[\s\S]*?```[ \t]*\r?\n?)?/m;
   if (pattern.test(text)) return text.replace(pattern, section);
   return `${text.trimEnd()}\n\n${section}`;
 }

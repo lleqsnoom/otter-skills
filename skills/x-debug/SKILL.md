@@ -11,37 +11,37 @@ user-invocable: true
 
 Do not suppress errors, disable reporting, or add try/catch that swallows them. Fix the cause and verify with the reproduction script.
 
-## Critical: Run analyze.js First (Always)
+## Critical: Run analyze.mjs First (Always)
 
-**Before any analysis, hypothesis testing, or fixing begins**, execute `analyze.js` with the user's bug description as the error text:
+**Before any analysis, hypothesis testing, or fixing begins**, execute `analyze.mjs` with the user's bug description as the error text:
 
 ```bash
-node <path-to>/scripts/analyze.js --error "<user's bug description>" --context .
+node <path-to>/scripts/analyze.mjs --error "<user's bug description>" --context .
 ```
 
 This creates:
 - `<run folder>/E<nn>-debug.md` — debug session doc (required for x-fix handoff)
 - `<run folder>/E<nn>-fix-plan.md` — fix plan (required input for x-fix skill)
 
-**Never skip this step.** It is required even for behavioral bugs with no stack trace (e.g., "SSE event not triggered", "wrong value displayed"). analyze.js will create empty hypothesis lists in that case, but the docs MUST exist before any further work.
+**Never skip this step.** It is required even for behavioral bugs with no stack trace (e.g., "SSE event not triggered", "wrong value displayed"). analyze.mjs will create empty hypothesis lists in that case, but the docs MUST exist before any further work.
 
 ## Usage
 
 ```bash
-node <path-to>/scripts/analyze.js --error "TypeError: Cannot read property 'foo' of undefined" [--file src/main.js]
-node <path-to>/scripts/analyze.js --context . [--session-id my-session]
-node <path-to>/scripts/analyze.js --no-reproduce --error "..."  # skip auto-reproduction
+node <path-to>/scripts/analyze.mjs --error "TypeError: Cannot read property 'foo' of undefined" [--file src/main.js]
+node <path-to>/scripts/analyze.mjs --context . [--session-id my-session]
+node <path-to>/scripts/analyze.mjs --no-reproduce --error "..."  # skip auto-reproduction
 ```
 
 **Output**: Debug session and fix plan as `E<nn>-` artifacts in one run folder under `.x-skills/runs/`.
 
 ## Workflow (4 Steps)
 
-### 0. Initialize — Run analyze.js
-Execute `analyze.js` with the bug description. This is mandatory and must complete before Step 1. The generated docs are the handoff contract for x-fix later. If auto-reproduction fails, write one manually — never proceed without it.
+### 0. Initialize — Run analyze.mjs
+Execute `analyze.mjs` with the bug description. This is mandatory and must complete before Step 1. The generated docs are the handoff contract for x-fix later. If auto-reproduction fails, write one manually — never proceed without it.
 
 ### 1. Reproduce Locally
-`analyze.js` generates `repro-*.js` for known error patterns. Run it to confirm the error triggers locally. If auto-reproduction fails, write one manually — never proceed without it.
+`analyze.mjs` generates `repro-*.js` for known error patterns. Run it to confirm the error triggers locally. If auto-reproduction fails, write one manually — never proceed without it.
 
 ### 2. Hypothesize & Test
 The script lists hypotheses ranked by likelihood. For each, run the proposed test and mark `[ ]` → `[x] Confirmed` or `[ ] Rejected` in the run's `E<nn>-debug.md`. Eliminate until one cause remains.

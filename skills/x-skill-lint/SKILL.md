@@ -44,6 +44,7 @@ violation is found, **2** on a usage error. Each violation names the `skill` and
 | `cross-skill-import` | A skill's script imports another skill's script — skills must stay standalone. |
 | `copy-drift` | A file shared across skills differs byte-for-byte between copies. |
 | `fragile-main-guard` | A script compares `import.meta.url` to `process.argv[1]` without `realpathSync`, so it does nothing when run through a symlinked install. |
+| `commonjs-script` | A `scripts/**/*.js` file uses `require(` or `module.exports` while the lint root's `package.json` declares `"type": "module"`, so the script throws before it runs — and it throws for whoever installed the skill, because an installed skill is a symlink into that root. Fix it by renaming the file to `.mjs` with `import` and `export`; `.cjs` is the escape hatch for a tree that must stay CommonJS. |
 | `expectations-shape` | An optional `evals/expectations.json` names another skill, holds no or more than seven `expected_behavior` lines, or lacks a `source` list. |
 | `triggers-shape` | An optional `evals/triggers.json` names another skill, has a query without text or a non-boolean `should_trigger`, or holds fewer than four should-trigger or four should-not-trigger queries. |
 
@@ -57,4 +58,6 @@ rest before running the lint.
 ## Completion
 
 `node <skill>/scripts/lint.mjs` exits 0. If it exits 1, fix each listed violation and re-run —
-do not ship with an open violation.
+do not ship with an open violation. One exception, and only while it is being worked: converting a
+skill's scripts to `.mjs` makes `commonjs-script` red for every script not yet converted, so that
+violation stands open until the last one lands. Any other open violation is a defect.

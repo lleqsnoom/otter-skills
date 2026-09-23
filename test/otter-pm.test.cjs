@@ -130,6 +130,36 @@ test('every directory in the root is a category, and a folder in one is a collec
   assert.equal(category(project, 'docs').items.length, 1, 'root-level markdown folds into Docs');
 });
 
+/**
+ * A root often holds both: a `docs/` folder with the notes in it, and a `roadmap.md` or a `project.md` beside it.
+ * Both are the same category, and one category is one address — two entries answering `/c/docs` would leave one of
+ * them unreachable, and the rail would show Docs twice.
+ */
+test('root-level markdown folds into a `docs/` folder rather than beside it', async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-docs-'));
+  const root = path.join(repo, '.x-skills');
+  writeFile(path.join(root, 'docs', 'CONTRIBUTING.md'), '# Contributing\n');
+  writeFile(path.join(root, 'roadmap.md'), '# Roadmap\n');
+  writeFile(path.join(root, 'project.md'), '# The project\n\n**about:** a board\n');
+
+  const { scanRoot } = await serverModule('scan');
+  const project = scanRoot(root, { name: 'docs-fixture' });
+
+  assert.equal(
+    project.categories.filter((entry) => entry.id === 'docs').length,
+    1,
+    'the folder and the loose files are one category, not two answers at one address',
+  );
+  const docs = category(project, 'docs');
+  assert.deepEqual(
+    docs.items.map((item) => item.relPath).sort(),
+    ['docs/CONTRIBUTING.md', 'project.md', 'roadmap.md'],
+    'and the loose files are read in it, beside the folder',
+  );
+  assert.equal(docs.dir, 'docs', 'the folder that bears the name is still the one the panel is shown under');
+  assert.deepEqual(docs.dirs, ['.', 'docs'], 'both were read, and both are remembered');
+});
+
 test('`anal` and `analysis` are one Analysis category, not two', async () => {
   const { root, scan } = await load();
   const project = scan.scanRoot(root);
@@ -183,8 +213,9 @@ test('a task file carries its layer, effort and checklist progress', async () =>
 
 /**
  * The tree the pipeline writes: one run folder per topic, every artifact numbered in the order it was built, and
- * the rung it read named by path in the artifact it produced. This is the shape `x-analyze → x-plan → x-epic →
- * x-decompose` leaves on disk, and the one a reader has to be able to walk.
+ * the rung it read named by path in the artifact it produced. This is the shape `x-analyze → x-plan → x-decompose`
+ * leaves on disk, plus the `E01-epic.md` a run written before the merge still holds, and the one a reader has to be
+ * able to walk.
  */
 function pipeline() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-pipeline-'));
@@ -247,18 +278,57 @@ test('a run\'s stages also land in the category that names their kind', async ()
   for (const [id, relPath] of [
     ['analysis', `${analysisRun}/E00-analysis.md`],
     ['plan', `${planRun}/E00-plan.md`],
-    ['epics', `${planRun}/E01-epic.md`],
   ]) {
     const stage = fileAt(category(project, id), relPath);
     assert.ok(stage, `${id} reads the stage its run wrote`);
     assert.equal(stage.runPath, relPath.slice(0, relPath.lastIndexOf('/')), 'a stage says which run it belongs to');
   }
 
+  assert.deepEqual(
+    category(project, 'plan')
+      .items.filter((item) => item.runPath === planRun)
+      .map((item) => item.name),
+    ['E00-plan.md'],
+    'and the legacy epic beside it is not read as a second plan: one document, one card',
+  );
+
   assert.equal(fileAt(category(project, 'plan'), `${planRun}/E00-plan.md`).runTitle, 'shared-media-kms-key');
   assert.equal(
     runs.groups.find((group) => group.relPath === planRun).files.filter((file) => file.step !== null).length,
     2,
     'the run still holds its own stages — the same files in two places, not moved',
+  );
+});
+
+test('a legacy epic is read as the plan it was', async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-legacy-epic-'));
+  const root = path.join(repo, '.x-skills');
+  const run = 'runs/2026-01-02-1015-R01-sample';
+  writeFile(path.join(root, run, 'E00-epic.md'), '# Epic — sample\n\n### Layer 0 — x\n');
+  writeFile(path.join(root, run, 'E01-tasks', 'L0-0.1-first.md'), '# Task: first\n');
+
+  const { scanRoot } = await serverModule('scan');
+  const project = scanRoot(root, { name: 'legacy-epic' });
+  const epic = fileAt(category(project, 'plan'), `${run}/E00-epic.md`);
+
+  assert.ok(epic, 'a run folder `x-epic` already wrote is not orphaned by the skill being gone');
+  assert.equal(epic.kind, 'plan', 'the kind is the plan’s, which is the document the file holds');
+  assert.equal(epic.runPath, run, 'filed where a plan is filed, under the run that wrote it');
+  assert.deepEqual(
+    category(project, 'runs').groups[0].stages.map((stage) => [stage.step, stage.kind]),
+    [
+      [0, 'plan'],
+      [1, 'tasks'],
+    ],
+    'and at the plan’s rung, above the tasks it was decomposed into',
+  );
+  assert.equal(category(project, 'epics'), undefined, 'no `Epics` category is made for it: a folder names a category, an artifact does not');
+
+  const { epicIndex, epicOfTasks } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'epics.mjs')).href);
+  assert.equal(
+    epicOfTasks(epicIndex(project.categories), { runPath: run, step: 1, name: 'E01-tasks' }).relPath,
+    epic.relPath,
+    'and its tasks still claim it: the epic is the plan at the rung above them',
   );
 });
 
@@ -308,10 +378,10 @@ test('the stages of a run are the ladder it built', async () => {
     run.stages.map((stage) => [stage.step, stage.kind]),
     [
       [0, 'plan'],
-      [1, 'epic'],
+      [1, 'plan'],
       [2, 'tasks'],
     ],
-    'E00 plan, E01 epic, E02 tasks — numbered in the order they were written',
+    'E00 plan, E01 the same plan under its legacy name, E02 tasks — numbered in the order they were written',
   );
   assert.equal(run.stages[2].isDirectory, true, 'a stage can be a folder');
   assert.equal(run.stages[2].name, 'E02-tasks', 'and it is named for the entry it came from, counted by the collection it became');
@@ -334,7 +404,9 @@ test('an artifact names the one it read, and a path that leads nowhere is not a 
     },
   ], 'the analysis this plan came from, and not the path that was never written');
 
-  const epic = fileAt(category(project, 'epics'), `${planRun}/E01-epic.md`);
+  const epic = category(project, 'runs')
+    .groups.find((group) => group.relPath === planRun)
+    .files.find((file) => file.name === 'E01-epic.md');
   assert.deepEqual(epic.links, [], 'a skeleton placeholder is not a link either');
 });
 
@@ -347,141 +419,27 @@ test('one artifact read in two places is one hit in search', async () => {
   assert.deepEqual(onePerPath([card, { relPath: 'runs/x/E01-epic.md' }]).length, 2);
 });
 
-test('an artifact is read with the chain it is part of, in both views', () => {
-  const file = source(path.join('components', 'FileView.tsx'));
-  const group = source(path.join('components', 'GroupDetail.tsx'));
 
-  assert.match(file, /<Related project=\{props\.project\} path=\{props\.path\} \/>/, 'the file page draws it');
-  assert.match(
-    group,
-    /<Related project=\{props\.project\} path=\{match\(\)\.group\.relPath\} \/>/,
-    'and a collection is its own view of the same chain',
-  );
-});
-
-/**
- * The tree the pipeline leaves: an analysis in its own run, and the plan run that read it. Two runs, one written
- * path between them — which is the case a chain has to walk backwards as well as forwards.
- */
-function chainedRuns() {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-chain-'));
-  const root = path.join(repo, '.x-skills');
-  const analysisRun = 'runs/2026-01-01-0900-R01-shared-key-rotation';
-  const planRun = 'runs/2026-01-02-0832-R01-shared-media-kms-key';
-
-  writeFile(path.join(root, analysisRun, 'state.json'), JSON.stringify({ skill: 'x-analyze', slug: 'shared-key-rotation', node: 'plan', stops: ['plan'] }));
-  writeFile(path.join(root, analysisRun, 'E00-analysis.md'), '# Analysis — shared key rotation\n\nThesis\n');
-  // The plan names the analysis it read; the epic names the plan; the tasks land in a folder of the same run.
-  writeFile(
-    path.join(root, planRun, 'E00-plan.md'),
-    `# Spec — shared media KMS key\n\n**Input:** \`.x-skills/${analysisRun}/E00-analysis.md\`\n`,
-  );
-  writeFile(path.join(root, planRun, 'E01-epic.md'), `# Epic — shared media KMS key\n\nspec: ${planRun}/E00-plan.md\n`);
-  writeFile(path.join(root, planRun, 'E02-tasks', 'L0-0.1-config-table.md'), '# Task: config table\n\n- [ ] schema\n');
-  writeFile(path.join(root, planRun, 'E02-tasks', 'L1-1.1-real-arns.md'), '# Task: real ARNs\n');
-  writeFile(path.join(root, planRun, 'state.json'), JSON.stringify({ skill: 'x-plan', slug: 'shared-media-kms-key', node: 'handoff', stops: ['handoff'] }));
-  return { root, analysisRun, planRun };
-}
-
-async function chainOf(relPath) {
-  const { root, analysisRun, planRun } = chainedRuns();
-  const scan = await serverModule('scan');
-  scan.clearParseCache();
-  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
-  return { chain: chainFor(scan.scanRoot(root), relPath), root, analysisRun, planRun };
-}
-
-test("the chain from an epic is the whole pipeline, including the analysis another run holds", async () => {
-  const { chain, analysisRun, planRun } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key/E01-epic.md');
-
-  assert.deepEqual(
-    chain.entries.map((entry) => [entry.step, entry.kind]),
-    [
-      [0, 'plan'],
-      [1, 'epic'],
-      [2, 'tasks'],
-      [0, 'analysis'],
-    ],
-    'the run\'s rungs in order, then the analysis the plan read',
-  );
-  assert.equal(chain.entries[1].current, true, 'the artifact being read is marked, not linked');
-  assert.equal(chain.entries[3].path, `${analysisRun}/E00-analysis.md`);
-  assert.equal(chain.entries[3].relation, 'Input', 'and how it was reached: the field the plan named it in');
-  assert.equal(chain.entries[3].from, `${planRun}/E00-plan.md`, 'by the plan');
-  assert.deepEqual(
-    chain.entries[2].children.map((file) => file.name),
-    ['L0-0.1-config-table.md', 'L1-1.1-real-arns.md'],
-    'a folder rung carries the files it is made of, which is what "all the tasks" means',
-  );
-  assert.equal(chain.run.title, 'shared-media-kms-key');
-  assert.equal(chain.hidden, 0);
-});
-
-test('the chain from the analysis walks the same pipeline the other way', async () => {
-  const { chain, planRun } = await chainOf('runs/2026-01-01-0900-R01-shared-key-rotation/E00-analysis.md');
-
-  assert.deepEqual(
-    chain.entries.map((entry) => entry.path),
-    [
-      'runs/2026-01-01-0900-R01-shared-key-rotation/E00-analysis.md',
-      `${planRun}/E00-plan.md`,
-      `${planRun}/E01-epic.md`,
-      `${planRun}/E02-tasks`,
-    ],
-    'an analysis names nothing, so only the reverse edge can reach the work it led to',
-  );
-  assert.equal(chain.entries[0].current, true);
-  assert.equal(chain.entries[1].relation, 'Input', 'the plan is reached as the artifact that named it');
-});
-
-test('the chain from a run, or from a file of its own, is the same work', async () => {
-  const { chain: fromRun } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key');
-  const { chain: fromTask } = await chainOf('runs/2026-01-02-0832-R01-shared-media-kms-key/E02-tasks/L0-0.1-config-table.md');
-
-  const paths = (chain) => chain.entries.filter((entry) => entry.kind !== 'task').map((entry) => entry.path);
-  assert.deepEqual(
-    paths(fromRun),
-    paths(fromTask),
-    'every view of one piece of work lists the same artifacts',
-  );
-  assert.equal(fromTask.entries.some((entry) => entry.current && entry.kind === 'task'), true, 'and marks the file being read');
-});
-
-test('an artifact nothing relates to has no chain, and that is not a panel', async () => {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-loose-'));
-  const root = path.join(repo, '.x-skills');
-  writeFile(path.join(root, 'analysis', 'loose.md'), '# Analysis — loose\n');
-  const scan = await serverModule('scan');
-  scan.clearParseCache();
-  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
-  const chain = chainFor(scan.scanRoot(root), 'analysis/loose.md');
-
-  assert.equal(chain.run, null);
-  assert.deepEqual(chain.entries.map((entry) => entry.current), [true], 'only itself, which the panel then does not draw');
-});
-
-test('a stage folder with no collection of its own is still a rung, and opens the run', async () => {
+test('a stage folder with no collection of its own is still a rung of the run that owns it', async () => {
   // A run filed inside the category its own stage belongs to: `tasks/<run>/E00-tasks/` is skipped where it would be
-  // the same work listed twice, so the rung has no collection — and a chain that dropped it would misreport the
-  // order the run was built in.
+  // the same work listed twice, so the rung has no collection — and a run that dropped it would misreport the order
+  // it was built in.
   const { root, scan } = await load();
   const session = path.join(root, 'tasks', '2026-01-01-session');
   writeFile(path.join(session, 'state.json'), JSON.stringify({ skill: 'x-decompose', slug: 'session', node: 'handoff', stops: ['handoff'] }));
   writeFile(path.join(session, 'E00-tasks', 'L0-0.1-a.md'), '# Task: a\n');
   scan.clearParseCache();
 
-  const { chainFor } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'chain.mjs')).href);
   const project = scan.scanRoot(root);
-  const chain = chainFor(project, 'tasks/2026-01-01-session');
-  const rung = chain.entries.find((entry) => entry.step === 0);
+  const run = category(project, 'tasks').groups.find((group) => group.relPath === 'tasks/2026-01-01-session');
+  const rung = run.stages.find((stage) => stage.relPath === 'tasks/2026-01-01-session/E00-tasks');
 
-  assert.equal(rung.kind, 'tasks');
-  assert.equal(rung.path, 'tasks/2026-01-01-session/E00-tasks');
-  assert.equal(rung.open, 'tasks/2026-01-01-session', 'and it opens the run, which is where its files are listed');
+  assert.equal(rung.kind, 'tasks', 'the run numbers the folder as a stage of its own');
+  assert.equal(rung.isDirectory, true);
   assert.equal(
-    category(project, 'tasks').groups.some((group) => group.relPath === rung.path),
+    category(project, 'tasks').groups.some((group) => group.relPath === 'tasks/2026-01-01-session/E00-tasks'),
     false,
-    'no collection was ever created for it',
+    'and no collection was ever created for it, so the run is the page it is read on',
   );
 });
 
@@ -1285,7 +1243,7 @@ test('the edit surface offers only what the server would accept', () => {
     /<Artifact project=\{props\.project\.id\} path=\{file\(\)\.relPath\} onSaved=\{props\.onSaved\} canArchive=\{false\} \/>|<Artifact\s+project=\{props\.project\.id\}\s+path=\{file\(\)\.relPath\}\s+onSaved=\{props\.onSaved\}\s+canArchive=\{false\}\s+\/>/,
     'a collection’s page offers no per-file archive: its header carries the only one',
   );
-  assert.match(source(path.join('components', 'App.tsx')), /<FileView project=\{active\(\)\} path=\{routeFilePath\(\)\} onSaved=\{props\.onRefresh\} \/>/);
+  assert.match(source(path.join('components', 'App.tsx')), /<FilePage\b[\s\S]*?path=\{routeFilePath\(\)\}/, 'and a file’s address is answered by the one component that decides whether it has a page of its own');
   assert.match(fs.readFileSync(path.join(APP_SRC, 'server', 'snapshot.mjs'), 'utf8'), /editable: TEXT_EXTENSIONS\.has\(extension\) && !truncated/, 'and that flag is decided where the text set lives');
 });
 
@@ -1317,7 +1275,7 @@ test('archiving an item hides it from the board, and only the reader’s own dec
   assert.match(view, /searchItemsForProject\(props\.project, visible\(\)\)/, 'the Archived list is built from the widest item set, so an artifact archived on its own page can be found again');
   assert.match(view, /deletedItems\(/, 'and lists the decisions rather than everything they cover');
   assert.match(view, /onClick=\{\(\) => props\.onDelete\?\.\(item, false\)\}/, 'with an unarchive per row');
-  assert.match(view, /<a \{\.\.\.linkProps\(routeFor\(item\)\)\} class="break-anywhere text-chrome">\s*\{item\.title\}\s*<\/a>/, 'an archived row opens the item it names, so a reader can see what the decision was about');
+  assert.match(view, /<Card class="flex flex-wrap items-center[\s\S]*?<CardTitle to=\{routeFor\(item\)\}/, 'an archived row is one target that opens the item it names, so a reader can see what the decision was about');
   assert.match(view, /text-chrome text-muted-foreground">\{item\.relPath\}</, 'and names the path it covers, because a collection and a file inside it can share one title');
   assert.match(view, /liveItems\(itemsForProject\(props\.project\), props\.deletions\)\.slice\(0, 6\)/, 'the recent list draws live work only — an archived item is not one of the project’s recent things');
   assert.doesNotMatch(items, /deletions/, 'the rules live in one module, not in the item model');
@@ -2162,7 +2120,8 @@ test('an epic and the work it was split into are found by the rung they share, o
 test('a run’s numbered tasks folder carries the run and the rung it was filed out of', async () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-epic-'));
   const root = path.join(repo, '.x-skills');
-  // A run the way the skills write one: the plan, the epic, and the tasks the epic was decomposed into a rung later.
+  // A run the way the skills write one: the plan, the plan's legacy epic beside it, and the tasks it was
+  // decomposed into a rung later.
   writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E01-plan.md'), '# Plan — sample\n');
   writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E02-epic.md'), '# Epic — sample\n');
   writeFile(path.join(root, 'runs', '2026-01-02-1015-R01-sample', 'E03-tasks', '0.1-one.md'), '# Task: one\n');
@@ -2183,10 +2142,14 @@ test('a run’s numbered tasks folder carries the run and the rung it was filed 
     'but the tasks folder read outside its run says which run numbered it, which is the one thing its path cannot say there',
   );
   assert.equal(stage.step, 3, 'and the rung it holds there, so the epic above it can be found');
-  const epic = category(project, 'epics').items[0];
-  assert.equal(epic.runPath, 'runs/2026-01-02-1015-R01-sample', 'the epic beside it is the same run’s');
-  assert.equal(epic.step, 2, 'at the rung above the tasks, which is what pairs them');
-  assert.equal(epicOfTasks(epicIndex(project.categories), stage).relPath, epic.relPath, 'so the tasks resolve to that epic, off the real scanner rather than a fixture');
+  const epic = category(project, 'plan').items.find((item) => item.name === 'E01-plan.md');
+  assert.equal(epic.runPath, 'runs/2026-01-02-1015-R01-sample', 'the plan beside it is the same run’s');
+  assert.equal(epic.step, 1, 'at the rung above the tasks, which is what pairs them');
+  assert.equal(
+    epicOfTasks(epicIndex(project.categories), stage).relPath,
+    epic.relPath,
+    'so the tasks resolve to that plan, off the real scanner rather than a fixture',
+  );
 
   const collection = tasks.groups.find((group) => group.relPath === 'tasks/2026-01-03-sample');
   assert.equal(
@@ -2200,6 +2163,81 @@ test('a run’s numbered tasks folder carries the run and the rung it was filed 
     'while every other collection is still named by the document it opens with',
   );
   assert.equal(collection.step, null, 'a folder no run numbered holds no rung');
+});
+
+test('an artifact inside a collection is read on the collection’s page, not on an address of its own', () => {
+  const items = source(path.join('lib', 'items.ts'));
+  const router = source(path.join('lib', 'router.ts'));
+  const app = source(path.join('components', 'App.tsx'));
+  const group = source(path.join('components', 'GroupDetail.tsx'));
+
+  assert.match(items, /export function routeFor\(item: WorkItem\): Route/, 'where an item is read is one rule, in the module that reads items');
+  assert.match(items, /if \(item\.groupRelPath\) return \{ name: 'group'[\s\S]*?file: item\.relPath \}/, 'a document inside a collection opens that collection with itself selected');
+  assert.match(router, /route\.file \? `\/\$\{encodeURIComponent\(route\.file\)\}` : ''/, 'so a collection’s address can name the artifact it has open');
+  assert.match(router, /const file = parts\.slice\(4\)\.join\('\/'\)/, 'and that artifact travels as one encoded segment, the way a group’s path does');
+  assert.doesNotMatch(app, /import .*Related/, 'and nothing draws a “related” panel beside it: the trail and the artifact list already say where the document sits');
+  assert.match(app, /export function FilePage|function FilePage\(/, 'a file’s address is answered by one component');
+  assert.match(app, /routeForPath\(props\.project, props\.path\)/, 'which asks the one rule where a path is read');
+  assert.match(app, /navigate\(found, \{ replace: true \}\)/, 'and replaces the address with the collection’s, so the second address does not survive being followed');
+  assert.doesNotMatch(group, /createSignal/, 'and the collection keeps its selection in the address rather than in a signal beside it');
+  assert.match(group, /navigate\(\{ name: 'group', project: props\.project\.id, group: props\.groupPath, file: file\.relPath \}, \{ replace: true \}\)/, 'choosing another artifact replaces the address, so the back button returns to the page rather than to the last artifact');
+});
+
+/**
+ * The one edge a document writes down itself: the artifacts it read — `**Input:**`, `spec:`, `plan:`. The panel that
+ * drew the pipeline both ways is gone, and this is the half of it a reader used, drawn where the question is asked.
+ */
+test('a document says what it read, where it is read', () => {
+  const reads = source(path.join('components', 'Reads.tsx'));
+  const view = source(path.join('components', 'FileView.tsx'));
+  const group = source(path.join('components', 'GroupDetail.tsx'));
+  const card = source(path.join('components', 'Card.tsx'));
+  const items = source(path.join('lib', 'items.ts'));
+
+  assert.match(
+    items,
+    /export function routeForPath\(project: Project, relPath: string\): Route/,
+    'what a link names is opened by the same rule every other address uses, resolved from the tree rather than from a card',
+  );
+  assert.match(reads, /props\.file\.links\.length/, 'the row draws the links the artifact carries');
+  assert.match(reads, /to=\{routeForPath\(props\.project, link\.path\)\}/, 'each one is a link to the artifact it names');
+  assert.match(reads, /link\.label/, 'labelled with the field it was named in, because that is what says which way the work flowed');
+  assert.match(card, /to\?: Route/, 'and a chip can be the thing to open, rather than only a fact about a card');
+  assert.match(view, /<Reads project=\{props\.project\} file=\{found\(\)\.file\} \/>/, 'a document on its own address says it there');
+  assert.match(group, /<Reads project=\{props\.project\} file=\{file\(\)\} \/>/, 'and an artifact says it on the collection’s page that holds it');
+});
+
+/**
+ * The project's mark is a document of the project like any other — root markdown lands in **Docs** — so the file that
+ * carries it has to say so, or a reader looking at the Docs row cannot tell it from a note beside the project.
+ */
+test('the mark is the project’s own file, and says so where it is read', async () => {
+  const { scanRoot } = await serverModule('scan');
+
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-mark-'));
+  const root = path.join(repo, '.x-skills');
+  writeFile(path.join(root, 'project.md'), '# Board demo\n\n**about:** a board over .x-skills trees\n');
+  const marked = scanRoot(root, { name: 'mark-fixture' });
+
+  assert.equal(marked.markPath, 'project.md', 'the mark’s own path travels with the project that carries it');
+  assert.equal(marked.about, 'a board over .x-skills trees', 'and its fields are read exactly as before');
+  assert.ok(
+    category(marked, 'docs').items.some((item) => item.relPath === 'project.md'),
+    'the same file is a document of Docs as well, which is why the path is needed',
+  );
+
+  const bareRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-bare-')), '.x-skills');
+  fs.mkdirSync(bareRoot, { recursive: true });
+  assert.equal(scanRoot(bareRoot, { name: 'no-mark' }).markPath, null, 'a project with no mark is not a project missing one');
+
+  const items = source(path.join('lib', 'items.ts'));
+  const project = source(path.join('components', 'ProjectView.tsx'));
+  assert.match(
+    items,
+    /file\.relPath === project\.markPath \? \['mark'\] : \[\]/,
+    'the card for that file is the one badged `mark`, so the Docs row and the tile name the same document',
+  );
+  assert.match(project, /props\.project\.markPath/, 'and the project’s own page links it, so the mark has one address a reader can follow');
 });
 
 test('the board draws tasks one at a time, and an epic holds the ones that belong to it', () => {
@@ -2222,7 +2260,9 @@ test('the board draws tasks one at a time, and an epic holds the ones that belon
   assert.match(card, /export function EpicPill/, 'the epic a task belongs to is drawn as a pill');
   assert.match(card, /color: props\.epic\.color/, 'in the epic’s own colour, from the theme');
   assert.match(board, /<Show when=\{!props\.item\.isEpic && props\.item\.epic\}>/, 'on every task card, and not on the epic’s own');
-  assert.match(board, /as=\{holds\(\) \? 'article' : 'a'\}/, 'a card that holds tasks is not a link, because a link inside a link is not one');
+  assert.match(card, /export function CardTitle/, 'a card is one target, and its title is the link that makes it one');
+  assert.match(board, /<CardTitle to=\{routeFor\(props\.item\)\}/, 'worn by every card, the one holding tasks included: the link inside it paints above the stretch, which a link around the panel could never allow');
+  assert.match(css, /\.card \.stretched::after/, 'and the stylesheet is what stretches the title over the whole box');
   assert.match(board, /border-inline-start-color/, 'an epic’s card carries its colour down the leading edge, so two epics are told apart at a glance');
   assert.match(board, /if \(item\.epic\) return null/, 'and a task does not repeat its epic in the footer, which was half of why the two categories read alike');
   assert.match(board, /<Show when=\{whereabouts\(props\.item\)\}>/, 'so the line is left out rather than drawn empty');

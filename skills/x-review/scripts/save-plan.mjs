@@ -6,14 +6,18 @@
  * and pre-fills the plan with aggregated statistics.
  *
  * Usage:
- *   node save-plan.js --output <dir> [--branch <name>]
+ *   node save-plan.mjs --output <dir> [--branch <name>]
  *
  * Output (stdout): absolute path to the plan file, ready to write into with `write`.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
-const { execSync } = require("node:child_process");
+import fs from "node:fs";
+import path from "node:path";
+import { execSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+/** The directory this script sits in: ESM has no __dirname, and the siblings are spawned from here. */
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const args = {};
@@ -130,7 +134,7 @@ function nextE(runDir) {
 
 // ── Self-discovery ────────────────────────────────────────────────────
 
-const SKILL_DIR = path.resolve(__dirname, ".."); // parent of scripts/
+const SKILL_DIR = path.resolve(HERE, ".."); // parent of scripts/
 
 function scriptPath(rel) {
   return path.join(SKILL_DIR, "scripts", rel);
@@ -228,9 +232,9 @@ function generatePlanHeader(stats, branch, failed = []) {
   lines.push(`**Branch:** ${branch}`);
   lines.push("**Counts below:** repo-wide (`--all`), so they describe the whole repository, not the scope you were asked to review.");
   lines.push(`**Total files analyzed:** ${totalFiles}`);
-  lines.push(metric("Functions with complexity > 5", stats.functionsHighComplexity, "analyze-complexity.js"));
-  lines.push(metric("Functions longer than 20 lines", stats.functionsLong, "analyze-complexity.js"));
-  lines.push(metric("Duplicated blocks found", stats.duplicatedBlocks, "check-duplication.js"));
+  lines.push(metric("Functions with complexity > 5", stats.functionsHighComplexity, "analyze-complexity.mjs"));
+  lines.push(metric("Functions longer than 20 lines", stats.functionsLong, "analyze-complexity.mjs"));
+  lines.push(metric("Duplicated blocks found", stats.duplicatedBlocks, "check-duplication.mjs"));
   lines.push("");
 
   if (failed.length) {
@@ -262,7 +266,7 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (!args.output && !args.slug) {
-    console.error("Usage: node save-plan.js [--output <dir> | --slug <topic>] [--branch <name>]");
+    console.error("Usage: node save-plan.mjs [--output <dir> | --slug <topic>] [--branch <name>]");
     process.exit(1);
   }
 
@@ -279,13 +283,13 @@ function main() {
 
   // Run all three analysis scripts
   console.error("[x-review] Running complexity analysis...");
-  const complexity = runAnalysis("analyze-complexity.js", ["--all"]);
+  const complexity = runAnalysis("analyze-complexity.mjs", ["--all"]);
 
   console.error("[x-review] Running duplication check...");
-  const duplication = runAnalysis("check-duplication.js", ["--all"]);
+  const duplication = runAnalysis("check-duplication.mjs", ["--all"]);
 
   console.error("[x-review] Running refactor pattern detection...");
-  const patterns = runAnalysis("analyze-patterns.js", ["--all"]);
+  const patterns = runAnalysis("analyze-patterns.mjs", ["--all"]);
 
   // Aggregate and write plan header
   const stats = aggregateStats(complexity.data, duplication.data, patterns.data);
@@ -296,8 +300,8 @@ function main() {
   console.log(fullPath);
 }
 
-module.exports = { generatePlanHeader };
+export { generatePlanHeader };
 
-if (require.main === module) {
+if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   main();
 }

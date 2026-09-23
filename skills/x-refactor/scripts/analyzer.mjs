@@ -11,13 +11,13 @@
  *   4. Inline Method: trivial methods called from exactly one location
  *
  * Usage:
- *   node analyzer.js <file-or-dir> [--thresholds lines,complexity,params]
+ *   node analyzer.mjs <file-or-dir> [--thresholds lines,complexity,params]
  *
  * Output: JSON to stdout (structured suggestions), markdown report to stderr.
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
 // ── Thresholds ────────────────────────────────────────────────────────
 
