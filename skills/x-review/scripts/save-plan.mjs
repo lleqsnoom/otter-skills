@@ -6,7 +6,7 @@
  * and pre-fills the plan with aggregated statistics.
  *
  * Usage:
- *   node save-plan.js --output <dir> [--branch <name>]
+ *   node save-plan.mjs --output <dir> [--branch <name>]
  *
  * Output (stdout): absolute path to the plan file, ready to write into with `write`.
  */
@@ -266,7 +266,7 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (!args.output && !args.slug) {
-    console.error("Usage: node save-plan.js [--output <dir> | --slug <topic>] [--branch <name>]");
+    console.error("Usage: node save-plan.mjs [--output <dir> | --slug <topic>] [--branch <name>]");
     process.exit(1);
   }
 

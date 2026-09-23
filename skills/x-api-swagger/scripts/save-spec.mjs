@@ -6,7 +6,7 @@
  * Logs each step to stderr for verification.
  *
  * Usage:
- *   node save-spec.js --topic <slug> [--branch <name>]
+ *   node save-spec.mjs --topic <slug> [--branch <name>]
  *
  * Output (stdout): absolute path to the YAML spec file, ready to write into with `write`.
  * NOTE: Timestamps are always JS-generated. No --date flag is accepted.
@@ -166,7 +166,7 @@ function main() {
   log("parsing arguments");
 
   if (!args.topic) {
-    console.error("Usage: node save-spec.js --topic <slug> [--branch <name>]\n");
+    console.error("Usage: node save-spec.mjs --topic <slug> [--branch <name>]\n");
     process.exit(1);
   }
 

@@ -11,7 +11,7 @@
  *   4. Inline Method: trivial methods called from exactly one location
  *
  * Usage:
- *   node analyzer.js <file-or-dir> [--thresholds lines,complexity,params]
+ *   node analyzer.mjs <file-or-dir> [--thresholds lines,complexity,params]
  *
  * Output: JSON to stdout (structured suggestions), markdown report to stderr.
  */

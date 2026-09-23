@@ -8,8 +8,8 @@
  * so duplicated comments or string literals with embedded slashes may not be detected. For production
  * use prefer tree-sitter-based extraction when available.
  *
- * Usage: node scripts/check-duplication.js <file1> [file2] ...
- *        node scripts/check-duplication.js --all [--root ./src]
+ * Usage: node scripts/check-duplication.mjs <file1> [file2] ...
+ *        node scripts/check-duplication.mjs --all [--root ./src]
  *
  * Outputs duplicated blocks as JSON.
  */

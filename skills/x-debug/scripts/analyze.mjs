@@ -3,7 +3,7 @@
 
 /**
  * x-debug analyzer — evidence-based root cause analysis.
- * Usage: node analyze.js --error "msg" [--file src.js] [--slug topic] [--no-reproduce]
+ * Usage: node analyze.mjs --error "msg" [--file src.js] [--slug topic] [--no-reproduce]
  * Writes every artifact into .x-skills/runs/<stamp>-R<nn>-<slug>/.
  */
 

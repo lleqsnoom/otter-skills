@@ -47,8 +47,8 @@ node ~/.agents/skills/x-api-swagger/scripts/save-spec.mjs --topic <slug>
 # Local install:
 node ./.agents/skills/x-api-swagger/scripts/save-spec.mjs --topic <slug>
 
-# Auto-discovery — pass any path to save-spec.js:
-node /absolute/path/to/save-spec.js --topic <slug>
+# Auto-discovery — pass any path to save-spec.mjs:
+node /absolute/path/to/save-spec.mjs --topic <slug>
 ```
 
 Output: `<run folder>/E<nn>-api-spec.yaml` (relative to CWD).

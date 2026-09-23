@@ -1,4 +1,4 @@
-// scripts/route.js — Platform routing table for x-triage downstream skills
+// scripts/route.mjs — Platform routing table for x-triage downstream skills
 const ROUTE_TABLE = {
   web: {
     reproduceTemplate: "browser-console",

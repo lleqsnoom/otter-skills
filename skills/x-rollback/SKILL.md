@@ -37,7 +37,7 @@ node <path-to>/scripts/revert.mjs --commit abc123def456 --dry-run
 
 ## Definition of Done
 
-A rollback run is done when `revert.js` delivers:
+A rollback run is done when `revert.mjs` delivers:
 
 - **Refuses a dirty tree** — any uncommitted change makes it exit 1 with a "working tree is not clean" message on stderr, before touching anything.
 - **Resolves exactly one target** — `--commit <sha>` or `--last N` selects a single commit; a missing or ambiguous target exits 1 with a usage error.

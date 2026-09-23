@@ -9,8 +9,8 @@
  * properly formatted revert commit via x-commit integration.
  *
  * Usage:
- *   node revert.js --commit abc123def456 [--dry-run]
- *   node revert.js --last 1 [--dry-run]
+ *   node revert.mjs --commit abc123def456 [--dry-run]
+ *   node revert.mjs --last 1 [--dry-run]
  *
  * Output: JSON report to stdout (dry-run or actual revert), stderr for interactive prompts.
  */

@@ -8,8 +8,8 @@
  * between source and target versions with automated fix candidates.
  *
  * Usage:
- *   node analyze.js --target express@5 [--source express@4] [--output plan.md]
- *   node analyze.js --all [--output migration-plan.md]
+ *   node analyze.mjs --target express@5 [--source express@4] [--output plan.md]
+ *   node analyze.mjs --all [--output migration-plan.md]
  *
  * Output: JSON report to stdout, markdown plan to stderr and optional file.
  */

@@ -8,8 +8,8 @@
  * and parameter count analysis — no regex heuristics.
  *
  * Usage:
- *   node analyze-complexity.js <file1> [file2] ...
- *   node analyze-complexity.js --all [--root ./src]
+ *   node analyze-complexity.mjs <file1> [file2] ...
+ *   node analyze-complexity.mjs --all [--root ./src]
  *
  * Output: JSON report of functions exceeding thresholds.
  */

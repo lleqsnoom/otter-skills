@@ -12,8 +12,8 @@
  *   4. Inline Method: trivial methods called from exactly one location
  *
  * Usage:
- *   node analyze-patterns.js <file-or-dir> [--thresholds lines,branches]
- *   node analyze-patterns.js --all
+ *   node analyze-patterns.mjs <file-or-dir> [--thresholds lines,branches]
+ *   node analyze-patterns.mjs --all
  *
  * Output: JSON to stdout with suggestions grouped by file.
  */

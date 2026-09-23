@@ -33,7 +33,7 @@ node <path-to>/scripts/analyze.mjs --target react@19 --output migration-plan.md
 
 ## Definition of Done
 
-A migration run is done when `analyze.js` produces all three of:
+A migration run is done when `analyze.mjs` produces all three of:
 
 - **Structured plan on stdout** — JSON `{ packagesAnalyzed, plan[] }`; every plan step carries `package`, `fromVersion`, `toVersion`, `change`, `severity`, `fix`, and `automated`.
 - **Human-readable plan on stderr** — grouped by package, each step showing its severity and fix; when `--output <file>` is passed, the same markdown is also written to that file.
