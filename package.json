@@ -20,7 +20,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test test/*.test.cjs",
+    "test": "node --test --test-concurrency=1 test/*.test.cjs",
     "dev": "node scripts/dev.mjs",
     "build": "astro build",
     "start": "node scripts/serve.mjs --no-build",
