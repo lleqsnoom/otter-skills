@@ -125,10 +125,18 @@ function startedArtifact(dir) {
   );
 }
 
+/** The child's own `E<nn>-tasks/` folder, when it holds at least one task file: work begun before any summary. */
+function childTasksDir(dir) {
+  const name = entries(dir, /^E\d{2}-tasks$/).find((candidate) => fs.statSync(path.join(dir, candidate)).isDirectory());
+  if (!name) return null;
+  const tasksDir = path.join(dir, name);
+  return taskFiles(tasksDir).length ? tasksDir : null;
+}
+
 /**
- * A child run counts as started only once it holds an artifact: a folder on its own
- * is a plan that was never opened, and the parent's ledger would record a hand-off
- * to nothing. Returns the reason it is not started, or null when it is.
+ * A child run counts as started once it holds an artifact or a tasks folder with a task in it: a folder on
+ * its own is a plan that was never opened, and the parent's ledger would record a hand-off to nothing.
+ * Returns the reason it is not started, or null when it is.
  */
 export function childRunState(runsRoot, slug) {
   const { wanted, dirs } = childRunDirs(runsRoot, slug);
@@ -143,13 +151,49 @@ export function childRunState(runsRoot, slug) {
   for (const name of [...dirs].reverse()) {
     const dir = path.join(runsRoot, name);
     const artifact = startedArtifact(dir);
-    if (artifact) return { dir, artifact, problem: null };
+    if (artifact || childTasksDir(dir)) return { dir, artifact, problem: null };
   }
   return {
     dir: path.join(runsRoot, dirs[dirs.length - 1]),
     artifact: null,
     problem: `run folder ${dirs[dirs.length - 1]} holds no E<nn>-*.md artifact yet; the child has not been started`,
   };
+}
+
+/**
+ * Whether the child run in this folder delivered: it closed with a summary, or every task file it wrote is
+ * ticked. Reported rather than blocking - a parent task names the state it needs, and the implementer decides
+ * whether to wait.
+ */
+export function childDelivery(dir) {
+  if (!dir || !fs.existsSync(dir)) return { delivered: false, evidence: "no child run folder" };
+  const summary = entries(dir, CHILD_ARTIFACT).find((name) => /summary/i.test(name) && fs.readFileSync(path.join(dir, name), "utf8").trim() !== "");
+  if (summary) return { delivered: true, evidence: `${summary} is written` };
+  const tasksDir = childTasksDir(dir);
+  if (!tasksDir) return { delivered: false, evidence: "no summary and no task files" };
+  const files = taskFiles(tasksDir);
+  const unticked = files.filter((name) => /^\s*-\s*\[ \]/m.test(fs.readFileSync(path.join(tasksDir, name), "utf8")));
+  return unticked.length
+    ? { delivered: false, evidence: `${unticked.length} of ${files.length} task files have an unticked check` }
+    : { delivered: true, evidence: `all ${files.length} task file(s) are ticked` };
+}
+
+/** One receipt per child run this ledger handed work to, in the order the verdicts were recorded. */
+export function receiptsFor(ledger, findChild = () => null) {
+  return ledger.verdicts
+    .filter((entry) => OWN_PLAN_VERDICTS.includes(entry.verdict))
+    .map((entry) => {
+      const state = findChild(entry.child) ?? { dir: null };
+      const delivery = childDelivery(state.dir);
+      return {
+        task: entry.id,
+        child: entry.child,
+        childRun: state.dir ? displayPath(state.dir) : null,
+        layer: entry.layer ?? null,
+        delivered: delivery.delivered,
+        evidence: delivery.evidence,
+      };
+    });
 }
 
 /**
@@ -278,7 +322,20 @@ function childOfVerdict(verdict, { evidence, child }, findChild) {
 }
 
 /** The recorded row for a candidate: its title, this verdict, and where the work went. */
-function verdictEntry(previous, { verdict, why, evidence, child, owned }, now) {
+/** The layer a verdict feeds, as recorded: a plan or analyze verdict waits on one, the others wait on nothing. */
+function layerOfVerdict(verdict, layer) {
+  if (layer === null || layer === undefined || layer === "") return null;
+  const wanted = String(layer).trim();
+  if (!/^\d+$/.test(wanted) || Number(wanted) < 1) {
+    throw new Error(`--layer must be a positive whole number, not "${layer}"; it names the layer whose tasks wait on this run`);
+  }
+  if (!OWN_PLAN_VERDICTS.includes(verdict)) {
+    throw new Error(`a "${verdict}" verdict waits on no layer; --layer names the layer a plan or analyze verdict feeds`);
+  }
+  return Number(wanted);
+}
+
+function verdictEntry(previous, { verdict, why, evidence, child, owned, layer }, now) {
   return {
     id: previous.id,
     title: previous.title,
@@ -287,6 +344,7 @@ function verdictEntry(previous, { verdict, why, evidence, child, owned }, now) {
     evidence: evidence || null,
     child: child ? sanitizeSlug(child) : null,
     childRun: owned ? displayPath(owned.dir) : null,
+    layer,
     at: now.toISOString(),
   };
 }
@@ -298,7 +356,7 @@ function verdictEntry(previous, { verdict, why, evidence, child, owned }, now) {
  * hand-off to a folder nobody opened. A task id that was never drafted is
  * refused: triage decides candidates, it does not invent them.
  */
-export function decideCandidate(ledger, { task, verdict, why, evidence = null, child = null }, now = new Date(), findChild = () => null) {
+export function decideCandidate(ledger, { task, verdict, why, evidence = null, child = null, layer = null }, now = new Date(), findChild = () => null) {
   const index = ledger.verdicts.findIndex((entry) => entry.id === task);
   if (index < 0) {
     throw new Error(`task ${task} was never added; known candidates: ${knownIds(ledger)}`);
@@ -307,8 +365,9 @@ export function decideCandidate(ledger, { task, verdict, why, evidence = null, c
     throw new Error(`verdict "${verdict ?? ""}" is not one of ${VERDICT_KINDS.join("|")}`);
   }
   if (!why) throw new Error("--why is required: a verdict with no reason is a guess");
+  const wantedLayer = layerOfVerdict(verdict, layer);
   const owned = OWN_PLAN_VERDICTS.includes(verdict) ? childOfVerdict(verdict, { evidence, child }, findChild) : null;
-  const entry = verdictEntry(ledger.verdicts[index], { verdict, why, evidence, child, owned }, now);
+  const entry = verdictEntry(ledger.verdicts[index], { verdict, why, evidence, child, owned, layer: wantedLayer }, now);
   return {
     ...ledger,
     updatedAt: entry.at,
@@ -389,6 +448,13 @@ export function verdictViolations(ledger, findChild = () => null) {
     if (!entry.why) violations.push({ rule: "no-reason", task: entry.id, detail: "a verdict with no reason is a guess" });
     if (!OWN_PLAN_VERDICTS.includes(entry.verdict)) continue;
     if (!entry.evidence) violations.push({ rule: "no-evidence", task: entry.id, detail: `"${entry.verdict}" cites no file:line or URL` });
+    if (!entry.layer) {
+      violations.push({
+        rule: "no-layer",
+        task: entry.id,
+        detail: `"${entry.verdict}" names no layer that waits on this run; record it with --layer <n>`,
+      });
+    }
     if (!entry.child) {
       violations.push({ rule: "no-child", task: entry.id, detail: `"${entry.verdict}" names no run to own the work` });
       continue;
@@ -551,6 +617,7 @@ function verdictArgs(args) {
     why: value(args, "why"),
     evidence: value(args, "evidence"),
     child: value(args, "child"),
+    layer: value(args, "layer"),
   };
 }
 
@@ -602,10 +669,11 @@ function commandVerify(args) {
   const ledger = pickLedger(dir, value(args, "source", "s"));
   const tasksDir = findTasksDir(dir, { rung: ledger.rung, override: value(args, "tasks-dir") });
   const runsRoot = resolveRunsRoot(dir, value(args, "runs-root"));
+  const findChild = (slug) => childRunState(runsRoot, slug);
   const { violations, files } = computeViolations(ledger, {
     reportText: reportTextFor(dir, ledger),
     tasksDir,
-    findChild: (slug) => childRunState(runsRoot, slug),
+    findChild,
   });
   return {
     exitCode: violations.length ? 1 : 0,
@@ -616,6 +684,7 @@ function commandVerify(args) {
       candidates: ledger.verdicts.length,
       taskFiles: files.length,
       tasksDir: tasksDir ? displayPath(tasksDir) : null,
+      receipts: receiptsFor(ledger, findChild),
       violations,
     },
   };
