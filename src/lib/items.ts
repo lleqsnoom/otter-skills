@@ -468,3 +468,16 @@ export function routeFor(item: WorkItem): Route {
   if (item.groupRelPath) return { name: 'group', project: item.projectId, group: item.groupRelPath, file: item.relPath };
   return { name: 'file', project: item.projectId, path: item.relPath };
 }
+
+/**
+ * Where a path is read, when all that is known is the path — an artifact another artifact named.
+ *
+ * The same rule as `routeFor`, resolved from the tree instead of from the card: a document the tree files in a
+ * collection is opened on that collection's page with itself selected, and only a loose document has an address of
+ * its own.
+ */
+export function routeForPath(project: Project, relPath: string): Route {
+  const group = locateFile(project, relPath)?.group ?? null;
+  if (group) return { name: 'group', project: project.id, group: group.relPath, file: relPath };
+  return { name: 'file', project: project.id, path: relPath };
+}

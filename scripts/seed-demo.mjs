@@ -5,8 +5,8 @@
  * The board has no data of its own: every screen is a reading of a repository's `.x-skills` tree, so the only way to
  * see a shape is to have one on disk. This writes the shapes the reader distinguishes and nothing else: a run whose
  * **plan** carries the layers with the tasks it was split into, a run that began with a triage, a run that ended at a
- * gate, a plan filed loose and paired with its tasks by slug, a task collection belonging to nothing at all, and
- * enough collections to walk the whole eight-colour palette.
+ * gate, a plan filed loose and paired with its tasks by slug, a task collection belonging to nothing at all, a plan
+ * that names the analysis it read, and enough collections to walk the whole eight-colour palette.
  *
  * No run writes an epic. The epic document repeated the plan's layer roadmap in a second file — one plan, two pages —
  * so the sample writes the merged shape and only that. An epic in an old tree is still read; that case is covered by
@@ -110,8 +110,14 @@ The reader is already written and tested; this task wires it to the screen. No c
 The previous layer's checks pass and the route exists.
 `;
 
-const planDoc = (topic, goal) => `# Plan — ${topic}
+/**
+ * The `**Input:**` line, when the plan names what it read. It is the one edge a document writes down itself, and two
+ * of the runs below are joined by it: the analysis one run wrote, and the plan the next run opened read it.
+ */
+const planInput = (input) => (input ? `\n**Input:** \`${input}\`\n` : '');
 
+const planDoc = (topic, goal, input = null) => `# Plan — ${topic}
+${planInput(input)}
 goal:         ${goal}
 contract:     the screen reads the store through the existing reader
 invariant:    an empty store renders an empty state, never an error
@@ -151,7 +157,7 @@ function runFiles() {
       dir: '2026-09-18-0930-R01-checkout-redesign',
       files: {
         'E00-analysis.md': '# Analysis — checkout-redesign\n\n## Thesis\n\nThe form loses the buyer when it asks for a postcode twice.\n',
-        'E01-plan.md': planDoc('checkout-redesign', 'Checkout keeps the buyer in one screen'),
+        'E01-plan.md': planDoc('checkout-redesign', 'Checkout keeps the buyer in one screen', 'runs/2026-09-18-0930-R01-checkout-redesign/E00-analysis.md'),
         'E02-tasks/L0-0.1-shell.md': taskDoc({ name: 'Checkout shell with stub rows', layer: '0 — Skeleton', effort: '2h', files: 'src/pages/checkout.tsx (new)', goal: 'The route renders with stub rows.', dod: 'Screen renders without errors', done: true }),
         'E02-tasks/L1-1.1-real-reader.md': taskDoc({ name: 'Wire the real cart reader', layer: '1 — Real data', effort: '3h', files: 'src/pages/checkout.tsx (mod), src/lib/cart.mjs (new)', goal: 'Rows come from the store instead of the stub.' }),
         'E02-tasks/L1-1.2-empty-state.md': taskDoc({ name: 'Empty cart shows an empty state', layer: '1 — Real data', effort: '1h', files: 'src/pages/checkout.tsx (mod)', goal: 'An empty cart says so rather than rendering nothing.' }),
@@ -163,7 +169,7 @@ function runFiles() {
       dir: '2026-09-19-1415-R01-search-speed',
       files: {
         'E00-triage.md': '# Triage — search-speed\n\n**Platform:** node\n**Type:** performance\n',
-        'E01-plan.md': planDoc('search-speed', 'Search answers while the query is typed'),
+        'E01-plan.md': planDoc('search-speed', 'Search answers while the query is typed', 'analysis/2026-09-17-slow-search.md'),
         'E02-tasks/L1-1.1-index-once.md': taskDoc({ name: 'Build the index once per request', layer: '1 — Real data', effort: '4h', files: 'src/server/search.mjs (mod)', goal: 'The index is built once and reused.' }),
         'E02-tasks/L2-2.1-debounce.md': taskDoc({ name: 'Debounce the query', layer: '2 — Resilience', effort: '1h', files: 'src/components/Search.tsx (mod)', goal: 'Typing does not fire a request per keystroke.' }),
         'state.json': stateFor({ skill: 'x-plan', slug: 'search-speed', goal: 'Search answers while the query is typed', node: 'handoff', stops: ['handoff', 'abandon'], report: 'E01-plan.md', guards: [['research_recorded', true], ['no_open_questions', true], ['three_options', true], ['decision_made', true], ['spec_complete', true], ['gate_approved', true]], options: ['index once', 'cache per query', 'move to a worker'], events: 17 }),

@@ -10,6 +10,7 @@ import { Button } from '../ui/Button';
 import { Artifact } from './Artifact';
 import { Breadcrumbs, rootCrumb } from './Breadcrumbs';
 import { EpicPill, ProgressBar, StatusBadge } from './Card';
+import { Reads } from './Reads';
 
 const PREFERRED = ['plan', 'analysis', 'epic', 'summary', 'investigate', 'triage', 'review', 'reflection', 'doc'];
 
@@ -291,7 +292,10 @@ export function GroupDetail(props: {
                 {/* No archive button in this panel: on a collection's page the header carries the only one, because a
                     second inside the document archives just the file and leaves the run on the board looking unchanged. */}
                 {(file) => (
-                  <Artifact project={props.project.id} path={file().relPath} onSaved={props.onSaved} canArchive={false} />
+                  <>
+                    <Reads project={props.project} file={file()} />
+                    <Artifact project={props.project.id} path={file().relPath} onSaved={props.onSaved} canArchive={false} />
+                  </>
                 )}
               </Show>
             </div>

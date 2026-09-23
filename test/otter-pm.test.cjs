@@ -2177,9 +2177,34 @@ test('an artifact inside a collection is read on the collection’s page, not on
   assert.match(router, /const file = parts\.slice\(4\)\.join\('\/'\)/, 'and that artifact travels as one encoded segment, the way a group’s path does');
   assert.doesNotMatch(app, /import .*Related/, 'and nothing draws a “related” panel beside it: the trail and the artifact list already say where the document sits');
   assert.match(app, /export function FilePage|function FilePage\(/, 'a file’s address is answered by one component');
-  assert.match(app, /navigate\(\{ name: 'group', project: props\.project\.id, group: found\.relPath, file: props\.path \}, \{ replace: true \}\)/, 'which replaces the address with the collection’s, so the second address does not survive being followed');
+  assert.match(app, /routeForPath\(props\.project, props\.path\)/, 'which asks the one rule where a path is read');
+  assert.match(app, /navigate\(found, \{ replace: true \}\)/, 'and replaces the address with the collection’s, so the second address does not survive being followed');
   assert.doesNotMatch(group, /createSignal/, 'and the collection keeps its selection in the address rather than in a signal beside it');
   assert.match(group, /navigate\(\{ name: 'group', project: props\.project\.id, group: props\.groupPath, file: file\.relPath \}, \{ replace: true \}\)/, 'choosing another artifact replaces the address, so the back button returns to the page rather than to the last artifact');
+});
+
+/**
+ * The one edge a document writes down itself: the artifacts it read — `**Input:**`, `spec:`, `plan:`. The panel that
+ * drew the pipeline both ways is gone, and this is the half of it a reader used, drawn where the question is asked.
+ */
+test('a document says what it read, where it is read', () => {
+  const reads = source(path.join('components', 'Reads.tsx'));
+  const view = source(path.join('components', 'FileView.tsx'));
+  const group = source(path.join('components', 'GroupDetail.tsx'));
+  const card = source(path.join('components', 'Card.tsx'));
+  const items = source(path.join('lib', 'items.ts'));
+
+  assert.match(
+    items,
+    /export function routeForPath\(project: Project, relPath: string\): Route/,
+    'what a link names is opened by the same rule every other address uses, resolved from the tree rather than from a card',
+  );
+  assert.match(reads, /props\.file\.links\.length/, 'the row draws the links the artifact carries');
+  assert.match(reads, /to=\{routeForPath\(props\.project, link\.path\)\}/, 'each one is a link to the artifact it names');
+  assert.match(reads, /link\.label/, 'labelled with the field it was named in, because that is what says which way the work flowed');
+  assert.match(card, /to\?: Route/, 'and a chip can be the thing to open, rather than only a fact about a card');
+  assert.match(view, /<Reads project=\{props\.project\} file=\{found\(\)\.file\} \/>/, 'a document on its own address says it there');
+  assert.match(group, /<Reads project=\{props\.project\} file=\{file\(\)\} \/>/, 'and an artifact says it on the collection’s page that holds it');
 });
 
 test('the board draws tasks one at a time, and an epic holds the ones that belong to it', () => {

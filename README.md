@@ -218,7 +218,7 @@ rules, with the extension deciding first and its own text only when the extensio
 | Status | finished node → done; some boxes ticked → in progress; none → to do; nothing counted → unsorted |
 | Stage | the `E<nn>` a run numbered an artifact with: `E00-plan.md` is rung 0, `E02-tasks/` is rung 2 |
 | Epic | the epic a task belongs to: the run both are stages of, or the slug their folders share (see below) |
-| Named in | the `**Input:**` / `Spec:` / `Plan:` paths an artifact names, when the path leads somewhere |
+| Named in | the `**Input:**` / `Spec:` / `Plan:` paths an artifact names, when the path leads somewhere — drawn as the reads row above the document |
 
 A run (a folder with `state.json`) and a task group (a folder of task files) are the same thing to the UI: a
 collection with a head and a body of artifacts — except that a task group's files are drawn instead of the group,
@@ -251,8 +251,12 @@ the category its own stage belongs to (a session living in `anal/`) is not liste
 filed inside a collection is read on that collection's page, with itself selected, and the address says which artifact
 is open — `/p/<repo>/g/<run folder>/<file>` — so a link can be sent to someone. Only a document the tree files on its
 own, a loose analysis or a plan in `plan/`, has a page of its own, at `/f/<repo>/<path>`. Which run numbered an
-artifact is the pill on its card and the trail above it; the paths an artifact names are still read into the snapshot
-(`links`), and no screen draws them.
+artifact is the pill on its card and the trail above it.
+
+**A document says what it read**, under the trail: the `**Input:**` / `Spec:` / `Plan:` paths it names, each one a
+link to the artifact, so "where did this come from" is answered where it is asked. It is the one direction a document
+writes down itself — a plan names the analysis, never the other way round — and the board holds the other half of the
+answer, since the run a document belongs to is the pill beside it.
 
 ## Epics and their tasks
 

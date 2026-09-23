@@ -109,6 +109,34 @@ test('the sample reads as one project: a mark, both analysis spellings, and a ru
 });
 
 test('re-seeding overwrites rather than accumulating, and --clean removes what is gone', async () => {
+/**
+ * The one edge a document writes down itself, so the sample has to write one: two runs joined by a written path, and
+ * a plan filed loose that names the analysis it read. Without them the reads row has nothing to show in the sample.
+ */
+test('two of the sample’s plans name the analysis they read', async () => {
+  const { dir, project } = await seeded();
+  try {
+    const named = (relPath) => {
+      for (const category of project.categories) {
+        const file = [...category.items, ...category.groups.flatMap((group) => group.files)].find(
+          (candidate) => candidate.relPath === relPath,
+        );
+        if (file) return file.links.map((link) => `${link.label} ${link.path}`);
+      }
+      return null;
+    };
+
+    assert.deepEqual(named('runs/2026-09-18-0930-R01-checkout-redesign/E01-plan.md'), [
+      'Input runs/2026-09-18-0930-R01-checkout-redesign/E00-analysis.md',
+    ], 'a run’s plan names the analysis its own run wrote');
+    assert.deepEqual(named('runs/2026-09-19-1415-R01-search-speed/E01-plan.md'), [
+      'Input analysis/2026-09-17-slow-search.md',
+    ], 'and the next run’s plan names the loose analysis it read, which is an address of its own');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-demo-'));
   try {
     execFileSync(process.execPath, [SCRIPT, '--root', dir], { cwd: ROOT });

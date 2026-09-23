@@ -4,7 +4,7 @@ import { deleteItem, fetchSnapshot, moveItem, refreshSnapshot } from '../lib/api
 import { replaceProject } from '../lib/board.mjs';
 import { BoardProvider } from '../lib/board-context';
 import type { WorkItem } from '../lib/items';
-import { locateFile } from '../lib/items';
+import { routeForPath } from '../lib/items';
 import { current, href, linkProps, navigate, routeCategory, routeFilePath, routeGroupPath, routeProject } from '../lib/router';
 import type { Project, BoardColumn, BoardDeletions, BoardOrder, Snapshot } from '../lib/types';
 import { Button } from '../ui/Button';
@@ -279,22 +279,28 @@ function FilePage(props: {
   onDelete: (relPath: string, deleted: boolean) => void;
   onSaved: () => void;
 }) {
-  const group = createMemo(() => locateFile(props.project, props.path)?.group ?? null);
+  // One rule, one place: `routeForPath` says where a path is read, and this page is the whole of its use here — a
+  // document the tree files in a collection is that collection's page with itself selected, and the address is
+  // replaced with it rather than kept.
+  const grouped = createMemo(() => {
+    const route = routeForPath(props.project, props.path);
+    return route.name === 'group' ? route : null;
+  });
 
   createEffect(() => {
-    const found = group();
-    if (found) navigate({ name: 'group', project: props.project.id, group: found.relPath, file: props.path }, { replace: true });
+    const found = grouped();
+    if (found) navigate(found, { replace: true });
   });
 
   return (
     <Show
-      when={group()}
+      when={grouped()}
       fallback={<FileView project={props.project} path={props.path} onSaved={props.onSaved} />}
     >
       {(found) => (
         <GroupDetail
           project={props.project}
-          groupPath={found().relPath}
+          groupPath={found().group}
           file={props.path}
           onSaved={props.onSaved}
           deletions={props.deletions}

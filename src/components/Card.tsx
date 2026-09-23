@@ -1,4 +1,4 @@
-import type { JSX } from 'solid-js';
+import { Show, type JSX } from 'solid-js';
 
 import { cn } from '../ui/cn';
 import { STATUS_LABELS, statusTone, type EpicRef } from '../lib/items';
@@ -98,20 +98,38 @@ export function StatusBadge(props: { status: Status; class?: string }) {
   );
 }
 
-/** A small chip for a fact about a card: a layer, an effort, the skill that produced it. */
-export function Chip(props: { children: JSX.Element; class?: string; title?: string }) {
+/**
+ * A small chip for a fact about a card: a layer, an effort, the skill that produced it.
+ *
+ * `to` makes the chip the thing to open — a chip that names an artifact is an artifact to read, and the chip is the
+ * whole of what a reader aims at. Without it the chip is a fact, which is the other half of what chips are for.
+ */
+export function Chip(props: { children: JSX.Element; class?: string; title?: string; to?: Route }) {
+  const classes = cn(
+    // `truncate` rather than `whitespace-nowrap`: a chip whose text is a sentence is what makes a card, and
+    // then the board, wider than the pane it is in.
+    'inline-flex max-w-full min-w-0 items-center truncate rounded-sm bg-muted px-1.5 py-px text-chrome text-muted-foreground',
+    props.class,
+  );
   return (
-    <span
-      title={props.title}
-      class={cn(
-        // `truncate` rather than `whitespace-nowrap`: a chip whose text is a sentence is what makes a card, and
-        // then the board, wider than the pane it is in.
-        'inline-flex max-w-full min-w-0 items-center truncate rounded-sm bg-muted px-1.5 py-px text-chrome text-muted-foreground',
-        props.class,
-      )}
+    <Show
+      when={props.to}
+      fallback={
+        <span title={props.title} class={classes}>
+          {props.children}
+        </span>
+      }
     >
-      {props.children}
-    </span>
+      {(to) => (
+        <a
+          {...linkProps(to())}
+          title={props.title}
+          class={cn(classes, 'no-underline hover:bg-ring/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring')}
+        >
+          {props.children}
+        </a>
+      )}
+    </Show>
   );
 }
 

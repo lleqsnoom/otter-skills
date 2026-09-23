@@ -6,6 +6,7 @@ import { Artifact } from './Artifact';
 import { TaskList } from './Board';
 import { Breadcrumbs, rootCrumb, type Crumb } from './Breadcrumbs';
 import { EpicPill } from './Card';
+import { Reads } from './Reads';
 
 /**
  * One artifact, on its own address.
@@ -53,6 +54,8 @@ export function FileView(props: { project: Project; path: string; onSaved?: () =
         <Breadcrumbs trail={trail()} />
         <Show when={epic()}>{(ref) => <EpicPill epic={ref()} />}</Show>
       </div>
+
+      <Show when={located()}>{(found) => <Reads project={props.project} file={found().file} />}</Show>
 
       <Show when={tasks().length}>
         <section class="grid gap-1.5 rounded-lg border border-border bg-card p-2.5">
