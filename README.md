@@ -456,7 +456,7 @@ highlighter.
 
 ## Skills
 
-`skills/` is where the skills live: 29 of them, each a `SKILL.md` with its `scripts/`, `references/` and
+`skills/` is where the skills live: 31 of them, each a `SKILL.md` with its `scripts/`, `references/` and
 `assets/`. They write the `.x-skills` trees this board reads, so both halves of the loop sit in one checkout.
 They run from wherever they are installed, so this repository is the source of truth: edit a skill here, then
 install it where an agent runs it (`xskills install <skill> -g` copies it to `~/.agents/skills/`).
@@ -473,6 +473,8 @@ and `import`/`export` — a `.cjs` file is the escape hatch for a script that mu
 | `x-analyze` | Interactive analysis skill — research the project and web first, ask via panels (single / multi / open / confirm) until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory. |
 | `x-api-draft` | Draft API design from requirements — clarify scope, analyze endpoints and data models, produce a human-reviewable API design in markdown |
 | `x-api-swagger` | Convert an API design draft to OpenAPI YAML — generate a valid spec from markdown drafts with endpoints, schemas, and auth definitions |
+| `x-arch` | Keep a codebase's architecture honest — where a unit lives, what it is called, what its one responsibility is, and which way its dependencies point; names banned (`utils`, `helpers`, `common`, `tools`, `misc`, `other`, `shared`), composition over inheritance, and the rule of three before extracting. Use when asked to fix a directory layout, a vague or role-shaped name, inheritance growth, where new code belongs, or a layer boundary; `x-implement`, `x-decompose`, `x-review` and `x-fix` run it as a pass. |
+| `x-arch-lint` | Check a code tree against the architecture it declares — reads `.x-skills/config/arch.json` and reports banned directory and file names plus layer-boundary and dependency-direction departures as `file:line` with a rule name; detection only, never writes code, exit 1 on a violation. Use to check layer boundaries, verify dependency direction, find `utils`/`helpers`/`common` sprawl, or prove a repo still matches its declared structure; `x-review` runs it on every review. |
 | `x-autoreflection` | Turn sessions into approved skill fixes — `x-autoreflection <period>` (24h, 7d, 2w) traverses every session of that window across every CLI and writes one skill-health report (JSON truth + markdown read) plus a fix plan, then asks whether an auto-heal session is wanted and, on yes, proposes each fix as one multi-select option carrying the original issue, the proposed edit and the rate it should move, applying only what is picked with a revert-on-failure ledger. Without a period it reflects on one session instead. |
 | `x-browser` | Launch the real Chrome/Chromium with remote debugging and attach the chrome-devtools MCP to the project’s app URL — detects the URL from README/config/env, verifies the dev server, and opens the browser so you can drive it without manual setup. |
 | `x-comments` | Comment management — add only precise, meaningful comments and remove noisy or obvious ones; refactor overly commented code into self-explanatory functions instead of describing it |
@@ -482,7 +484,7 @@ and `import`/`export` — a `.cjs` file is the escape hatch for a script that mu
 | `x-essay` | Write an article end-to-end on a fixed loop — x-analyze thesis, x-roast critique, x-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim. |
 | `x-fix` | Resolve issues from fix plans — read, edit, verify, mark complete |
 | `x-humanize` | Simplify text, an article, a commit or PR to a B2 reading level — measure sentence length and complexity, cut noise, rewrite, then verify no meaning was lost. Use when asked to humanize, simplify, make easy to read, or plain-language a piece of prose. |
-| `x-implement` | Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work and x-unbloat to every change, red-green-refactor per task, verify with x-review + x-fix, gate on plan completion |
+| `x-implement` | Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work, x-arch for placement and naming, and x-unbloat to every change, red-green-refactor per task, verify with x-review + x-fix, gate on plan completion |
 | `x-investigate` | Hypothesis-driven root cause analysis — generate ranked hypotheses from evidence, test systematically with platform tools and git history, eliminate candidates until one root cause remains, output fix plan for x-fix |
 | `x-migrate` | Framework/dependency migration assistant — generates migration plans with breaking changes, upgrade paths, and automated fix candidates from source analysis |
 | `x-parallel` | Run multiple coding tasks in parallel — each task gets an isolated git worktree and its own background agent process with full tools and the parent's project rights, then committed results merge back into your branch |
