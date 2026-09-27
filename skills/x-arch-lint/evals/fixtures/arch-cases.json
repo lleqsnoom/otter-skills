@@ -233,6 +233,27 @@
         "unrated": [],
         "unplaced": 0
       }
+    },
+    {
+      "name": "a Go tree, declared with its quoted import paths",
+      "why": "the marker is the quoted import path, not an import keyword, so the same declaration shape carries a Go tree and the allowed direction reports nothing",
+      "tree": {
+        "internal/domain/pricing.go": "package domain\n\nfunc Total(lines []Line) int {\n\ttotal := 0\n\tfor _, line := range lines {\n\t\ttotal += line.Amount\n\t}\n\treturn total\n}\n",
+        "internal/application/checkout.go": "package application\n\nimport \"github.com/acme/app/internal/domain\"\n\nfunc Charge(order Order) int {\n\treturn domain.Total(order.Lines)\n}\n"
+      },
+      "config": {
+        "layers": {
+          "domain": { "roots": ["internal/domain"], "import_markers": ["\"github.com/acme/app/internal/domain"] },
+          "application": { "roots": ["internal/application"], "import_markers": ["\"github.com/acme/app/internal/application"] }
+        },
+        "allowed_dependencies": { "domain": [], "application": ["domain"] }
+      },
+      "expect": {
+        "violations": [],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 0
+      }
     }
   ]
 }

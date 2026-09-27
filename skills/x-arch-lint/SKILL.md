@@ -177,7 +177,8 @@ keys can follow when the boundaries are agreed.
 non-zero. `--self-test` exits 0, which proves the fixtures it ships with still describe the rules it claims to
 enforce, each pinned to its rule, file and line. Those cases are data in `evals/fixtures/arch-cases.json`, one
 object per rule, so a change that moves a violation, a rated group or a line number fails there rather than in a
-review, and a new case needs no change to the checker.
+review, and a new case needs no change to the checker. They are read from that path beside the script, so install
+the skill whole rather than copying one file out of it.
 
 ## Files
 
@@ -185,7 +186,7 @@ review, and a new case needs no change to the checker.
   and `--self-test`.
 - `scripts/scaffold.mjs` — the proposal: one layer per code directory with the observed directions, checked
   against `arch-check.mjs` by its own `--self-test`.
-- `evals/fixtures/arch-cases.json` — the twelve cases `--self-test` runs, each with the tree, the declaration and
-  the report expected of it.
+- `evals/fixtures/arch-cases.json` — the thirteen cases `--self-test` runs, each with the tree, the declaration
+  and the report expected of it. The checker reads it by that relative path, so it ships with the skill.
 - `references/python.md` — a declaration for a Python tree, the Go shape beside it, and what neither marker
   form can see.

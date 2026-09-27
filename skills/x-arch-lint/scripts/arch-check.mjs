@@ -16,7 +16,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const DEFAULT_CONFIG_PATH = ".x-skills/config/arch.json";
 
@@ -349,7 +349,11 @@ export function runCheck({ root, configPath, explainCoverage = false } = {}) {
 const FIXTURE_FILE = new URL("../evals/fixtures/arch-cases.json", import.meta.url);
 
 export function fixtureCases() {
-  return JSON.parse(fs.readFileSync(FIXTURE_FILE, "utf8")).cases;
+  try {
+    return JSON.parse(fs.readFileSync(FIXTURE_FILE, "utf8")).cases;
+  } catch (error) {
+    throw new Error(`the cases are read from ${fileURLToPath(FIXTURE_FILE)}, which ships beside this skill: ${error.message}`);
+  }
 }
 
 function writeTree(dir, tree) {

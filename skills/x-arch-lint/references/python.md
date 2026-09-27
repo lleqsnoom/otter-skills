@@ -2,9 +2,9 @@
 
 Nothing in `arch-check.mjs` knows what a language is. A layer is a set of path prefixes, and an import of
 that layer is a regular expression matched line by line, so the same declaration shape carries a Python tree
-or a Go one. This file is the worked version of that claim, and the Python half of it is the case
-"a Python tree, declared with line markers" in `evals/fixtures/arch-cases.json`, so it is checked rather than
-asserted.
+or a Go one. This file is the worked version of that claim, and both halves of it are cases in
+`evals/fixtures/arch-cases.json`: "a Python tree, declared with line markers" and "a Go tree, declared with its
+quoted import paths" ship the trees below, so each is checked rather than asserted.
 
 ## Python
 
@@ -77,5 +77,7 @@ Go has no import statement to anchor on in the Python sense, so the marker is th
 
 The trailing half of the quote is left off on purpose: `"…/internal/domain"` is the import, and
 `"…/internal/domainkit"` is a different package that a stricter pattern would have to exclude explicitly. The
-same caveat applies here as everywhere else: a declaration records the directions the tree takes, and this
-one is a shape to widen by hand rather than a proposal to trust as written.
+case named above ships this tree and this declaration, so a Go repo can start from a pair that passes rather
+than from a shape that reads well. The caveat that applies everywhere else applies here too: the passing pair
+records a tree with no wrong-way import to catch, so widen each entry by hand rather than trusting this one as
+written.
