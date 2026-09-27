@@ -20,7 +20,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { emptyListWarning, findFiles, homeDir, readHead, readJsonl, textOf } from "./shared.mjs";
+import { emptyListWarning, findFiles, homeDir, readHead, readJsonl, textOf } from "./session-logs.mjs";
 
 /** `system` records are compression markers, slash-command replays and UI telemetry, not turns. */
 const TURN_TYPES = { user: "user", assistant: "assistant", tool_result: "assistant" };

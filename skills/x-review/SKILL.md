@@ -33,6 +33,7 @@ node <path-to>/scripts/save-plan.mjs --slug <topic>   # create plan file with al
 2. The script prints the full path. Open that file with `edit` or `write`, then insert your review content directly into it using the format below.
 3. **Run the comments pass (always, using x-comments)** — apply the rules in the x-comments skill's `SKILL.md` (`~/.agents/skills/x-comments/SKILL.md` for a global install, `.agents/skills/x-comments/SKILL.md` for a local one) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Route comment issues to `x-comments` in Next Steps.
 4. **Run the bloat pass (always, using x-unbloat)** — apply the ladder in the x-unbloat skill's `SKILL.md` (`~/.agents/skills/x-unbloat/SKILL.md` for a global install, `.agents/skills/x-unbloat/SKILL.md` for a local one) to every reviewed file. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. Never flag what x-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are x-fix's job.
+5. **Run the architecture pass (always, using x-arch and x-arch-lint)** — apply the rules in the x-arch skill's `SKILL.md` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) to every reviewed file, and run `node ~/.agents/skills/x-arch-lint/scripts/arch-check.mjs --root .` (`.agents/skills/x-arch-lint/scripts/arch-check.mjs` for a local install). Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are x-fix's job.
 
 The complexity script auto-installs tree-sitter if missing (global install). Each script prints JSON, and the keys mislead on first read — `functions` is nested inside a file, and `duplicatedBlocks` is a **count**, not the list:
 
@@ -56,6 +57,7 @@ For engineering principles definitions and violation patterns, see `references/p
 - **x-refactor** — Use after reviewing this plan to get automated refactoring suggestions (extract method, rename variables, replace conditionals). Run `x-refactor` on flagged files for before/after comparisons. Note: `x-refactor` provides analysis only; apply changes manually based on its suggestions.
 - **x-debug** — For runtime errors or behavioral issues that require hypothesis-driven investigation rather than static code analysis.
 - **x-unbloat** — Required on every review. Finds code that does not need to exist: speculative abstractions, pass-through wrappers, unused options, dead code, re-implemented stdlib. Route bloat findings to `x-fix`, which applies them per x-unbloat's rules.
+- **x-arch** — Required on every review, with **x-arch-lint**. Judges where a unit lives, what it is called, what its one responsibility is and which way its dependencies point; `x-arch-lint` checks the same tree against `.x-skills/config/arch.json` and reports `file:line` violations. Route architecture findings to `x-fix`.
 - **x-comments** — Required on every review. Enforces commentary rules (remove obvious comments, refactor over-commented blocks into named functions, keep only `why` comments). Route comment findings here.
 
 ## Severity
@@ -109,8 +111,10 @@ Apply fixes manually based on review findings. Track progress by updating checkb
 
 A plan without a `[Comments]` section is **incomplete, not clean**: the comments pass is step 3 of every
 review, including a re-run, and its findings belong under that heading (say so plainly when it found
-nothing). On a re-run, carry each earlier finding forward as resolved or still open, and list pre-existing
-findings apart from the ones this branch introduced, so the counts describe the change under review.
+nothing). `[Bloat]` and `[Architecture]` are the same: steps 4 and 5 run on every review, so a plan missing
+either heading is incomplete rather than clean. On a re-run, carry each earlier finding forward as resolved or
+still open, and list pre-existing findings apart from the ones this branch introduced, so the counts describe
+the change under review.
 
 ## Next Steps — Which Skill to Use
 
@@ -122,6 +126,7 @@ After saving the plan file, recommend the appropriate next skill based on what w
 | Structural refactoring suggestions without applying changes | `x-refactor` | Analysis-only — produces before/after comparisons but doesn't edit code |
 | Behavioral bugs or runtime errors that need investigation | `x-debug` | Hypothesis-driven debugging — reproduce, isolate root cause, then fix with x-fix |
 | Bloat — speculative abstractions, wrappers, unused options, dead code | `x-unbloat` | Walks the ladder, cuts one thing at a time, and keeps what the *Never Cut* list protects |
+| Architecture — a bag name, a crossed boundary, a misplaced responsibility, a wrong-way import | `x-arch` | Judges placement and naming by hand, and `x-arch-lint` checks the declaration for `file:line` violations |
 | Comment noise, obvious comments, over-commented blocks | `x-comments` | Removes noisy comments and refactors over-explained blocks into named functions |
 
 For most review workflows: **use `x-fix`** to resolve issues from your plan. Use `x-refactor` only when you want suggestions without applying changes.

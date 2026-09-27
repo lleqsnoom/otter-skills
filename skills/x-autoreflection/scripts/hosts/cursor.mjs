@@ -15,7 +15,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { anthropicMessages, emptyListWarning, findFiles, homeDir, readDir, readJsonl } from "./shared.mjs";
+import { anthropicMessages } from "./anthropic-transcript.mjs";
+import { emptyListWarning, findFiles, homeDir, readDir, readJsonl } from "./session-logs.mjs";
 
 export function cursorProjectsDir(env = process.env) {
   return path.join(homeDir(env), ".cursor", "projects");

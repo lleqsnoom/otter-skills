@@ -1,6 +1,6 @@
 ---
 name: x-implement
-description: Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work and x-unbloat to every change, red-green-refactor per task, verify with x-review + x-fix, gate on plan completion
+description: Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work, x-arch for placement and naming, and x-unbloat to every change, red-green-refactor per task, verify with x-review + x-fix, gate on plan completion
 version: 1.4.0
 author: Community
 tags: [tdd, implementation, test-driven, red-green-refactor, production-code, parallel, ui]
@@ -28,7 +28,7 @@ node <path-to-save-plan.mjs> --epic <slug>
 The flag is named for the artifact the run was decomposed from — the run's plan, or a legacy `E<nn>-epic.md` — and resolves it either way. The script creates the staging directory. Read all `.md` files inside it — one file per user story.
 
 ## Directory Organization
-Assign each responsibility to its own directory (models/, services/, controllers/, utils/, tests/). One file per concern, imports flow top-down, never cycle. See `references/dir-organization.md` for full guidance.
+Place a unit with the code that owns it, and name its directory for a domain concept (`orders/`, `billing/`) rather than a file shape (`models/`, `services/`, `controllers/`). A bag name (`utils`, `common`, `shared`, `helpers`, `tools`, `misc`, `other`) says nothing and is not allowed. One file per concern, imports flow from volatile to stable, never in a cycle. `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) is the fuller statement; see `references/dir-organization.md` for the shape this repo uses.
 
 ## Comments
 
@@ -42,6 +42,10 @@ Code must document itself. Comments are a last resort, reserved for what the cod
 ## No Bloat
 
 Write the least code that works. Follow x-unbloat (`~/.agents/skills/x-unbloat/SKILL.md` for a global install, `.agents/skills/x-unbloat/SKILL.md` for a local one): its ladder before GREEN, and its ladder, table and Never Cut list in REFACTOR. Its rules are not repeated here, so read them there.
+
+## Architecture
+
+Before GREEN, read `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.x-skills/config/arch.json`, `x-arch-lint` is the check that proves the task did not cross a declared boundary.
 
 ## Functional Style
 
@@ -84,7 +88,7 @@ For each task file in `<run folder>/E<nn>-tasks/`:
 
 1. **RED** — Write the minimal failing test for the task's acceptance criterion. It must fail for the *right reason*.
 2. **GREEN** — Write the minimum implementation to pass that test. Nothing more. Walk the x-unbloat ladder before writing.
-3. **REFACTOR** — Evaluate against SOLID/clean code, the comment rules, the x-unbloat pass (steps 3, 5 and 7), and the functional style above. Strip comments that restate code; extract explained blocks into named functions; push side effects to the edges and prefer pure, immutable functions. State what you assessed and what (if anything) improved — or why no changes were needed.
+3. **REFACTOR** — Evaluate against SOLID/clean code, the comment rules, the x-unbloat pass (steps 3, 5 and 7), the x-arch pass (placement, naming, responsibility, direction, inheritance), and the functional style above. Strip comments that restate code; extract explained blocks into named functions; push side effects to the edges and prefer pure, immutable functions. State what you assessed and what (if anything) improved — or why no changes were needed.
    - **One-sentence test:** every function you wrote must be describable in one sentence; if not, split it.
    - **Reporting test:** if deleting a phase's `push`/output call leaves the phase unusable, the phase was never a unit. Delegate each phase to a named helper that returns data and let the orchestrator collect the report in one place.
 4. **VERIFY — x-review + x-fix + test.** Run on every finished task before committing:

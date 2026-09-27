@@ -34,6 +34,8 @@ Layer 3 (Polish)       → Task 3.1: add monitoring + documentation
 
 **Key rule:** After any task completes, the system must be in a working state. You should never have "Task 1 done but nothing runs yet."
 
+**Read the architecture before cutting.** `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) decides placement, naming, responsibility and dependency direction, and `.x-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the effort cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
+
 ## Triage Rule
 
 A layer is a coherent increment and a task is one step inside it. Some "steps" are not steps at all: they are subsystems with their own contract, their own layers, and their own unknowns. Written as a task file they hand the implementer an interface nobody agreed on and blow the effort cap. Triage is the pass that catches this before a single file exists.

@@ -124,8 +124,8 @@ unverified rewrite.
 - `scripts/rewrite-brief.mjs` — ranked edit list + plain-word swaps.
 - `scripts/verify.mjs` — target + meaning + noise checks; exit 0/1.
 - `scripts/save-report.mjs` — writes a numbered humanize report into the run folder.
-- `scripts/utils/metrics.mjs` — pure metrics (formulas, syllables, noise).
-- `scripts/utils/io.mjs` — input resolution (file / stdin / commit / PR).
+- `scripts/metrics.mjs` — pure metrics (formulas, syllables, noise).
+- `scripts/text-input.mjs` — input resolution (file / stdin / commit / PR).
 - `references/metrics.md` — formula definitions, thresholds, CEFR map.
 - `references/simplifications.json` — common hard→plain word swaps.
 - `references/familiar-words.json` — New Dale-Chall word list (MIT).

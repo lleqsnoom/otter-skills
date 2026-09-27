@@ -22,7 +22,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { emptyListWarning, findFiles, firstLine, homeDir, readHead, readJsonl, textOf } from "./shared.mjs";
+import { emptyListWarning, findFiles, firstLine, homeDir, readHead, readJsonl, textOf } from "./session-logs.mjs";
 
 const TURN_TYPES = { user: "user", gemini: "assistant" };
 

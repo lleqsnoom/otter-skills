@@ -9,7 +9,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import * as shared from "./shared.mjs";
+import * as runFolder from "./run-folder.mjs";
 
 /**
  * The artifact whose layers these tasks belong to: the plan, or the epic of a run written before the merge. A
@@ -18,40 +18,40 @@ import * as shared from "./shared.mjs";
 function layersArtifact(runDir) {
   return (
     ["plan", "epic"]
-      .map((kind) => ({ kind, file: shared.resolveArtifact(runDir, kind, "md") }))
+      .map((kind) => ({ kind, file: runFolder.resolveArtifact(runDir, kind, "md") }))
       .find((candidate) => fs.existsSync(candidate.file)) ?? null
   );
 }
 
 function main() {
-  const args = shared.parseArgs(process.argv.slice(2), {
+  const args = runFolder.parseArgs(process.argv.slice(2), {
     "--epic": "epic", "-e": "epic",
     "--run": "run",
   });
 
-  shared.log("x-decompose", "parsing arguments");
+  runFolder.log("x-decompose", "parsing arguments");
 
   if (!args.epic) {
     process.stderr.write("Usage: node save-tasks.mjs --epic <slug>\n");
     process.exit(1);
   }
 
-  const slug = shared.sanitizeSlug(args.epic);
+  const slug = runFolder.sanitizeSlug(args.epic);
 
-  const runDir = shared.resolveRunDir(slug, { run: args.run === undefined ? null : Number(args.run) });
+  const runDir = runFolder.resolveRunDir(slug, { run: args.run === undefined ? null : Number(args.run) });
   const source = layersArtifact(runDir);
 
   if (source) {
-    shared.log("x-decompose", `resolved ${source.kind} path: ${path.relative(process.cwd(), source.file)}`);
+    runFolder.log("x-decompose", `resolved ${source.kind} path: ${path.relative(process.cwd(), source.file)}`);
   } else {
-    shared.log("x-decompose", "no plan or epic file found for slug");
+    runFolder.log("x-decompose", "no plan or epic file found for slug");
   }
 
-  const taskDir = shared.resolveArtifact(runDir, "tasks", "");
+  const taskDir = runFolder.resolveArtifact(runDir, "tasks", "");
 
   try {
-    shared.ensureDir(taskDir);
-    shared.log("x-decompose", `tasks directory ready: ${taskDir}`);
+    runFolder.ensureDir(taskDir);
+    runFolder.log("x-decompose", `tasks directory ready: ${taskDir}`);
     console.log(taskDir);
   } catch (err) {
     process.stderr.write(`Error: ${err.message}\n`);

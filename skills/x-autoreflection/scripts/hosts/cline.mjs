@@ -17,7 +17,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { anthropicMessages, homeDir, readDir } from "./shared.mjs";
+import { anthropicMessages } from "./anthropic-transcript.mjs";
+import { homeDir, readDir } from "./session-logs.mjs";
 
 /** Where each editor keeps extension storage, per platform. `XDG_CONFIG_HOME` wins on Linux. */
 export function editorRoots(env = process.env) {

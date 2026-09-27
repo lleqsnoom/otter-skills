@@ -5,7 +5,7 @@
 
 const errorText = process.argv[2] || ""; // pass error description as CLI arg
 if (!errorText) {
-  console.error("Usage: node repro-web.js '<error description>'");
+  console.error("Usage: node repro-web.mjs '<error description>'");
   process.exit(1);
 }
 

@@ -22,7 +22,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { emptyListWarning, homeDir, readDir, readHead, readJsonl, textOf } from "./shared.mjs";
+import { emptyListWarning, homeDir, readDir, readHead, readJsonl, textOf } from "./session-logs.mjs";
 
 export function copilotHome(env = process.env) {
   return env.COPILOT_HOME || path.join(homeDir(env), ".copilot");

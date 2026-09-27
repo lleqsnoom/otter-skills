@@ -1,5 +1,5 @@
 {
-  "note": "Labelled stall corpus: sessions where the agent waited on a command that never finished, and sessions where it did not. Positives were verified by hand (the user's own words and, where expect lists blocking-wait, a wait tool result that still says the job is running). Negatives were screened mechanically: no wait on a still-running job, no complaint about a stalled run. Read with tools/measure-stalls.mjs.",
+  "note": "Labelled stall corpus: sessions where the agent waited on a command that never finished, and sessions where it did not. Positives were verified by hand (the user's own words and, where expect lists blocking-wait, a wait tool result that still says the job is running). Negatives were screened mechanically: no wait on a still-running job, no complaint about a stalled run. Read with scripts/measure-stalls.mjs.",
   "positives": [
     {
       "id": "d290ab66-ec98-41f9-bf12-14c81c703dda",

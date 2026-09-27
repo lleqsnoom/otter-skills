@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { formatStamp, resolveRunDir, resolveArtifact } from "./shared.mjs";
+import { formatStamp, resolveRunDir, resolveArtifact } from "./run-folder.mjs";
 
 export const SKILL = "x-plan";
 export const REPORT_ROOT = ".x-skills/runs";

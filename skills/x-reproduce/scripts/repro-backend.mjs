@@ -2,7 +2,7 @@
 "use strict";
 const errorText = process.argv[2] || "";
 if (!errorText) {
-  console.error("Usage: node repro-backend.js '<error description>'");
+  console.error("Usage: node repro-backend.mjs '<error description>'");
   process.exit(1);
 }
 

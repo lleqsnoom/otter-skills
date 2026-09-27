@@ -14,22 +14,22 @@ user-invocable: true
 ## Artifact Location
 
 ```bash
-node <path-to-x-reproduce-skill>/scripts/<repro-<platform>.js> '<error description>'
+node <path-to-x-reproduce-skill>/scripts/<repro-<platform>.mjs> '<error description>'
 ```
 
 ## Workflow
 
 1. **READ** `<run folder>/E<nn>-triage.md` for the `Platform:` field
 2. **SELECT** appropriate template script based on platform:
-   - `backend` → `repro-backend.js` (Node.js standalone script using built-in modules)
-   - `web` → `repro-web.js` (browser console script or Puppeteer-style repro snippet)
-   - `mobile` → `repro-mobile.js` (documented ADB/Logcat steps)
-3. **GENERATE** `<run folder>/E<nn>-repro-<platform>.js` with the template content customized for the specific bug pattern
+   - `backend` → `repro-backend.mjs` (Node.js standalone script using built-in modules)
+   - `web` → `repro-web.mjs` (browser console script or Puppeteer-style repro snippet)
+   - `mobile` → `repro-mobile.mjs` (documented ADB/Logcat steps)
+3. **GENERATE** `<run folder>/E<nn>-repro-<platform>.mjs` with the template content customized for the specific bug pattern
 4. **RUN** reproduction: exits 1 when bug is present, exits 0 after fix
 
 ## Platform Templates
 
-### Backend (`repro-backend.js`)
+### Backend (`repro-backend.mjs`)
 Standalone Node.js script using only built-in modules. Minimal and deterministic.
 
 ```javascript
@@ -37,7 +37,7 @@ Standalone Node.js script using only built-in modules. Minimal and deterministic
 "use strict";
 const errorText = process.argv[2] || "";
 if (!errorText) {
-  console.error("Usage: node repro-backend.js '<error description>'");
+  console.error("Usage: node repro-backend.mjs '<error description>'");
   process.exit(1);
 }
 
@@ -48,7 +48,7 @@ console.log("Error to reproduce:", errorText);
 process.exit(1); // placeholder: replace with actual repro that triggers the bug
 ```
 
-### Web (`repro-web.js`)
+### Web (`repro-web.mjs`)
 Browser console script or Puppeteer-style repro snippet for frontend bugs.
 
 ```javascript
@@ -59,7 +59,7 @@ Browser console script or Puppeteer-style repro snippet for frontend bugs.
 
 const errorText = process.argv[2] || ""; // pass error description as CLI arg
 if (!errorText) {
-  console.error("Usage: node repro-web.js '<error description>'");
+  console.error("Usage: node repro-web.mjs '<error description>'");
   process.exit(1);
 }
 
@@ -74,7 +74,7 @@ console.log("Error to reproduce:", errorText);
 process.exit(1); // placeholder: replace with actual repro that triggers the bug
 ```
 
-### Mobile (`repro-mobile.js`)
+### Mobile (`repro-mobile.mjs`)
 Documents ADB/Logcat steps rather than running code. For mobile, TV, gaming platforms.
 
 ```javascript
@@ -83,7 +83,7 @@ Documents ADB/Logcat steps rather than running code. For mobile, TV, gaming plat
 // Mobile reproduction: documents ADB/Logcat steps rather than running code.
 const errorText = process.argv[2] || "";
 if (!errorText) {
-  console.error("Usage: node repro-mobile.js '<error description>'");
+  console.error("Usage: node repro-mobile.mjs '<error description>'");
   process.exit(1);
 }
 
@@ -104,7 +104,7 @@ The three templates above are **scaffolds**, not working reproductions. Each end
 `process.exit(1)` and a "customize with actual bug pattern" line — that is a placeholder,
 not the bug. You must replace the placeholder block with the real trigger taken from the
 triage brief (and `x-debug` / `x-investigate` evidence) before the script reproduces
-anything. A delivered `repro-<platform>.js` that still contains the placeholder text has
+anything. A delivered `repro-<platform>.mjs` that still contains the placeholder text has
 not been customized: treat it as not done. Only a script that exits 1 for the *bug's own
 reason* (and 0 once fixed) is a reproduction.
 

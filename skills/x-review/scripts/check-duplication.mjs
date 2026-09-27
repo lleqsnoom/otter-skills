@@ -17,8 +17,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { findSourceFiles } from "./utils/file-discovery.mjs";
-import { normalizeLines } from "./utils/text-normalization.mjs";
+import { findSourceFiles } from "./file-discovery.mjs";
+import { normalizeLines } from "./text-normalization.mjs";
 
 /** The directory this script sits in: ESM has no __dirname, and the config resolves from here. */
 const HERE = path.dirname(fileURLToPath(import.meta.url));

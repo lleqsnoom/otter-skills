@@ -2,8 +2,8 @@
 
 /**
  * Validate a conventional commit message against the spec.
- * Usage: node scripts/validate-commit.js "<message>"
- *    or: echo "<message>" | node scripts/validate-commit.js
+ * Usage: node scripts/validate-commit.mjs "<message>"
+ *    or: echo "<message>" | node scripts/validate-commit.mjs
  * Exit 0 = valid, exit 1 = invalid.
  */
 
@@ -40,8 +40,8 @@ if (process.argv.length > 2) {
 
 function runValidation(message) {
   if (!message || !message.trim()) {
-    console.error("Usage: validate-commit.js '<message>'");
-    console.error("   or: echo '<message>' | node validate-commit.js");
+    console.error("Usage: validate-commit.mjs '<message>'");
+    console.error("   or: echo '<message>' | node validate-commit.mjs");
     process.exit(2);
   }
 

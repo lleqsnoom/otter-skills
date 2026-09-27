@@ -10,7 +10,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import * as shared from "./shared.mjs";
+import * as runFolder from "./run-folder.mjs";
 
 /**
  * The artifact whose layers these tasks belong to: the plan, or the epic of a run written before the merge. A run
@@ -20,7 +20,7 @@ import * as shared from "./shared.mjs";
 function layersArtifact(runDir) {
   return (
     ["plan", "epic"]
-      .map((kind) => ({ kind, file: shared.resolveArtifact(runDir, kind, "md") }))
+      .map((kind) => ({ kind, file: runFolder.resolveArtifact(runDir, kind, "md") }))
       .find((candidate) => fs.existsSync(candidate.file)) ?? null
   );
 }
@@ -31,45 +31,45 @@ function declaration(label, value) {
 }
 
 function main() {
-  const args = shared.parseArgs(process.argv.slice(2), {
+  const args = runFolder.parseArgs(process.argv.slice(2), {
     "--epic": "epic", "-e": "epic",
     "--branch": "branch",
     "--run": "run",
   });
 
-  shared.log("x-implement", "parsing arguments");
+  runFolder.log("x-implement", "parsing arguments");
 
   if (!args.epic) {
     process.stderr.write("Usage: node save-plan.mjs --epic <slug> [--branch <name>]\n");
     process.exit(1);
   }
 
-  const slug = shared.sanitizeSlug(args.epic);
-  const branch = args.branch || shared.getBranch();
-  const date = shared.formatStamp();
+  const slug = runFolder.sanitizeSlug(args.epic);
+  const branch = args.branch || runFolder.getBranch();
+  const date = runFolder.formatStamp();
 
-  const runDir = shared.resolveRunDir(slug, { run: args.run === undefined ? null : Number(args.run) });
+  const runDir = runFolder.resolveRunDir(slug, { run: args.run === undefined ? null : Number(args.run) });
   const source = layersArtifact(runDir);
 
-  const fullPath = shared.resolveArtifact(runDir, "implement", "md");
+  const fullPath = runFolder.resolveArtifact(runDir, "implement", "md");
 
   try {
-    shared.ensureDir(runDir);
+    runFolder.ensureDir(runDir);
 
     let header = `# Tasks — ${args.epic}\n\n**Date:** ${date}\n**Branch:** ${branch}\n\n---\n\n`;
 
     if (source) {
       header += declaration(source.kind, path.relative(process.cwd(), source.file));
-      shared.log("x-implement", `resolved ${source.kind} path: ${path.relative(process.cwd(), source.file)}`);
+      runFolder.log("x-implement", `resolved ${source.kind} path: ${path.relative(process.cwd(), source.file)}`);
     } else {
       header += declaration("plan", "<run folder>/E00-plan.md");
-      shared.log("x-implement", "no plan or epic file found for slug — placeholder left");
+      runFolder.log("x-implement", "no plan or epic file found for slug — placeholder left");
     }
 
-    shared.log("x-implement", `writing tasks file: ${fullPath}`);
-    shared.writeFile(fullPath, header);
+    runFolder.log("x-implement", `writing tasks file: ${fullPath}`);
+    runFolder.writeFile(fullPath, header);
 
-    shared.log("x-implement", `plan ready: ${fullPath}`);
+    runFolder.log("x-implement", `plan ready: ${fullPath}`);
     console.log(fullPath);
   } catch (err) {
     process.stderr.write(`Error: ${err.message}\n`);

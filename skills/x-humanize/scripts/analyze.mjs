@@ -4,8 +4,8 @@
 
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
-import { analyzeText, GRADE_TARGETS, DEFAULT_TARGET } from "./utils/metrics.mjs";
-import { readTextInput } from "./utils/io.mjs";
+import { analyzeText, GRADE_TARGETS, DEFAULT_TARGET } from "./metrics.mjs";
+import { readTextInput } from "./text-input.mjs";
 
 export function runAnalyze({ text, source = "text", target = DEFAULT_TARGET } = {}) {
   return { source, ...analyzeText(text, { target }) };
