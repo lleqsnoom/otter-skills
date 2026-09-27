@@ -31,7 +31,7 @@ function runCommit(message) {
 
   const trimmed = message.trim();
 
-  // Inline validation (mirrors validate-commit.js to keep this script self-contained)
+  // Inline validation (mirrors validate-commit.mjs to keep this script self-contained)
   const VALID_TYPES = [
     "feat", "fix", "docs", "style", "refactor", "perf",
     "test", "build", "ci", "chore", "revert",

@@ -17,7 +17,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { findFiles, firstLine, homeDir } from "./shared.mjs";
+import { findFiles, firstLine, homeDir } from "./session-logs.mjs";
 
 const ROLE = { user: "user", assistant: "assistant", developer: "system", system: "system" };
 const CALL_TYPES = new Set(["function_call", "custom_tool_call"]);

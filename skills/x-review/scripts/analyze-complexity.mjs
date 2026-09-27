@@ -20,7 +20,7 @@ import os from "node:os";
 import cp from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { findSourceFiles, findTrackedSourceFiles } from "./utils/file-discovery.mjs";
+import { findSourceFiles, findTrackedSourceFiles } from "./file-discovery.mjs";
 
 /** The directory this script sits in: ESM has no __dirname, and config and assets are resolved from here. */
 const HERE = path.dirname(fileURLToPath(import.meta.url));

@@ -3,7 +3,7 @@
 // Mobile reproduction: documents ADB/Logcat steps rather than running code.
 const errorText = process.argv[2] || "";
 if (!errorText) {
-  console.error("Usage: node repro-mobile.js '<error description>'");
+  console.error("Usage: node repro-mobile.mjs '<error description>'");
   process.exit(1);
 }
 

@@ -32,10 +32,10 @@ Read `<run folder>/E<nn>-triage.md` to extract:
 
 ### 1. Generate Ranked Hypotheses
 
-Run `hypothesize.js` with the error text from triage evidence to get a ranked list:
+Run `hypothesize.mjs` with the error text from triage evidence to get a ranked list:
 
 ```bash
-node <path-to>/scripts/hypothesize.js --error "<error text>" [--context .]
+node <path-to>/scripts/hypothesize.mjs --error "<error text>" [--context .]
 ```
 
 The script outputs JSON array of `{rank, id, description, test, likelihood}`. If no patterns match, proceed with manual hypothesis generation based on code context and stack traces — do not abort.
@@ -68,7 +68,7 @@ Read the triage brief's **Platform** field and use corresponding tools from x-tr
 ### 4. Test Each Hypothesis Systematically
 
 For each ranked hypothesis:
-1. Run the designed isolation test from `hypothesize.js` output
+1. Run the designed isolation test from `hypothesize.mjs` output
 2. Observe results against the reproduction script behavior
 3. Mark `[x] Confirmed` or `[ ] Rejected` in `<run folder>/E<nn>-investigate.md`
 4. Eliminate candidates until exactly one root cause remains

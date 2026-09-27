@@ -20,7 +20,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { findSourceFiles } from "./utils/file-discovery.mjs";
+import { findSourceFiles } from "./file-discovery.mjs";
 
 // ── Thresholds ────────────────────────────────────────────────────────
 

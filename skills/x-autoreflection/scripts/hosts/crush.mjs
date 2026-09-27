@@ -9,7 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { HOUR_MS, firstLine } from "./shared.mjs";
+import { HOUR_MS, firstLine } from "./session-logs.mjs";
 
 const DEFAULT_PROJECT_LOOKBACK_HOURS = 72;
 

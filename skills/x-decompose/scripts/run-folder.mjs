@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Shared helpers for x-plan / x-decompose / x-implement save scripts.
+ * Run-folder resolution for one skill: the run directory, its slug and stamp, and the artifact paths inside it.
  * Each skill ships its own copy so the skills remain independent install units.
  */
 

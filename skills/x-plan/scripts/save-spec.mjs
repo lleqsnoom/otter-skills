@@ -6,7 +6,7 @@
  * Output (stdout): path to the created spec file.
  */
 
-import { parseArgs, sanitizeSlug, getBranch, formatStamp, resolveRunDir, resolveArtifact, log, ensureDir, writeFile } from "./shared.mjs";
+import { parseArgs, sanitizeSlug, getBranch, formatStamp, resolveRunDir, resolveArtifact, log, ensureDir, writeFile } from "./run-folder.mjs";
 
 function main() {
   const args = parseArgs(process.argv.slice(2), {

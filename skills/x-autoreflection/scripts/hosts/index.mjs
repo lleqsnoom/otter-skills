@@ -31,7 +31,7 @@ export {
   homeDir,
   withModifiedMs,
   withinWindow,
-} from "./shared.mjs";
+} from "./session-logs.mjs";
 
 /** Every CLI this skill knows how to read, most-installed first. */
 export const HOSTS = [opencode, claude, codex, gemini, cursor, cline, goose, crush, qwen, kilo, roo, copilot];

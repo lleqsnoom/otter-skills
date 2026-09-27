@@ -210,7 +210,7 @@ Artifact must exist on disk with required declarations (contract, invariant, tes
 ## Files
 
 - `scripts/scenario.mjs` — the run graph, guards, memory, and report writer.
-- `scripts/shared.mjs` — run-folder resolution, slug and stamp helpers; the module `scenario.mjs` imports.
+- `scripts/run-folder.mjs` — run-folder resolution, slug and stamp helpers; the module `scenario.mjs` imports.
 - `scripts/check-questions.mjs` — enforces the B2 panel rules (`references/questions.md`).
 - `scripts/save-spec.mjs` — writes the richer spec skeleton (`contract`/`invariant`/`test` + layers).
 - `references/questions.md` — how to ask as a panel, and when to stop asking.

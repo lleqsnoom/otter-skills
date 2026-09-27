@@ -1,7 +1,7 @@
 # Metrics reference — x-humanize
 
 All formulas are the published standard forms. They are computed by
-`scripts/utils/metrics.mjs` (pure, zero-dependency, Node built-ins only).
+`scripts/metrics.mjs` (pure, zero-dependency, Node built-ins only).
 
 ## Counts
 

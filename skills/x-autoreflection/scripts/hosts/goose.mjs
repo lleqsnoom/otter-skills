@@ -15,7 +15,7 @@
  * `created_timestamp` is the same instant as Unix seconds, and is what the adapter trusts.
  */
 import path from "node:path";
-import { homeDir } from "./shared.mjs";
+import { homeDir } from "./session-logs.mjs";
 import { columnsOf, openReadOnly, tablesOf } from "./sqlite.mjs";
 
 export function gooseDataDir(env = process.env) {

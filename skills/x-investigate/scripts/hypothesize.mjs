@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
-// scripts/hypothesize.js — Generate ranked hypotheses from error evidence.
-// Usage: node hypothesize.js "<error text>" [--context .]
+// scripts/hypothesize.mjs — Generate ranked hypotheses from error evidence.
+// Usage: node hypothesize.mjs "<error text>" [--context .]
 // Output: JSON array of {rank, id, description, test, likelihood}
 
 const PATTERNS = [
@@ -46,7 +46,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 if (!errorText) {
-  process.stderr.write("Usage: node hypothesize.js --error '<text>' [--context .]\n");
+  process.stderr.write("Usage: node hypothesize.mjs --error '<text>' [--context .]\n");
   process.exit(1);
 }
 

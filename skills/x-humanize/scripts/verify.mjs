@@ -5,8 +5,8 @@
 
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
-import { analyzeText, GRADE_TARGETS, DEFAULT_TARGET, findFiller, FILLER_PHRASES, tokenizeWords } from "./utils/metrics.mjs";
-import { readTextInput } from "./utils/io.mjs";
+import { analyzeText, GRADE_TARGETS, DEFAULT_TARGET, findFiller, FILLER_PHRASES, tokenizeWords } from "./metrics.mjs";
+import { readTextInput } from "./text-input.mjs";
 
 const URL_RE = /https?:\/\/[^\s)>"']+/g;
 const CODE_RE = /```[\s\S]*?```|~~~[\s\S]*?~~~/g;
