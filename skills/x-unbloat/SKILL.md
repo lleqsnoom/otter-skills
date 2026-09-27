@@ -116,3 +116,7 @@ Run the scripts from this skill's folder: `~/.agents/skills/x-unbloat/scripts/` 
 - Follow the project's style.
 - On its own, commit the simplification by itself, apart from feature work.
 - If a cut removes a capability on purpose, say so.
+- This skill decides whether a unit should exist. Where it lives, what it is called, what its one responsibility
+  is and which way its dependencies point belong to `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global
+  install, `.agents/skills/x-arch/SKILL.md` for a local one). A finding both could claim is reported once, by
+  whichever owns it: a one-implementation interface here as speculative abstraction, a misplaced module there.

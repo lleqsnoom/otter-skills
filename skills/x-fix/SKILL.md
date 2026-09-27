@@ -33,4 +33,5 @@ user-invocable: true
 - **NEVER silence errors** — do NOT add try/catch wrappers that swallow errors, do NOT disable error reporting. Fix the root cause so the error cannot occur.
 - **Minimal changes** — only modify what's needed to resolve the specific issue
 - **`[Bloat]` issues follow x-unbloat** (`~/.agents/skills/x-unbloat/SKILL.md` for a global install, `.agents/skills/x-unbloat/SKILL.md` for a local one): check every call site before inlining or deleting, and keep what its *Keep it if* column or *Never Cut* list protects
+- **`[Architecture]` issues follow x-arch** (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one): one change per finding — a move, a split, a rename or a repointed dependency, never two at once — check every call site before moving or deleting, and keep what its *Never Cut* list protects. When the repo declares `.x-skills/config/arch.json`, finish with `x-arch-lint`'s `arch-check.mjs --root .` to confirm the fix did not cross another boundary
 - **If ambiguous**, make smallest reasonable fix and note uncertainty
