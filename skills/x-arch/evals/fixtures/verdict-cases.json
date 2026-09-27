@@ -89,6 +89,20 @@
       "tree": { "src/a.mjs": "export const a = 1;\n" },
       "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for what it holds | `src/a.mjs:1` |\n",
       "expect": { "ok": false, "rules": ["declaration-unresolved"] }
+    },
+    {
+      "name": "the record the worked example shows",
+      "why": "the shape the skill's page shows a reader is the shape this check passes, over a tree that has the lines those rows cite, the declined unit included",
+      "tree": {
+        "src/utils/index.mjs": "export const formatOrderDate = (date) => date.toISOString().slice(0, 10);\nexport const isWeekend = (date) => [0, 6].includes(date.getDay());\nexport const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\nexport const withRetry = async (run, attempts) => {\n  for (let attempt = 0; ; attempt++) {\n    try {\n      return await run();\n    } catch (error) {\n      if (attempt >= attempts) throw error;\n      await wait(2 ** attempt);\n    }\n  }\n};\nexport const orderTotal = (lines) => lines.reduce((sum, line) => sum + line.amount, 0);\nexport const isPaid = (order) => order.paidAt !== null;\nexport const isShipped = (order) => order.shippedAt !== null;\n",
+        "src/orders/retry.mjs": "import { vendorClient } from \"vendor-client\";\n\nexport const run = (order) => vendorClient.charge(order);\n",
+        "src/orders/totals.mjs": "export const total = (lines) => lines.length;\n",
+        "src/legacy/frozen_export.mjs": "export const frozenExport = true;\n",
+        "src/web/report_controller.mjs": "export const handle = (request) => request.body;\n",
+        ".x-skills/config/arch.json": "{}\n"
+      },
+      "record": "# Architecture pass — 2026-09-27\n\n**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/utils/index.mjs` | naming | violated | The name describes no domain concept, so no reader can say what may be added to it | `src/utils/index.mjs:1` |\n| `src/utils/index.mjs` | responsibilities | violated | Two reasons to change: a date format and an order invariant | `src/utils/index.mjs:14` |\n| `src/orders/retry.mjs` | dependencies | violated | The order policy imports the vendor client directly, so a vendor change reaches the rule | `src/orders/retry.mjs:3` |\n| `src/orders/totals.mjs` | naming | ok | Named for the value it computes, and it holds nothing else | `src/orders/totals.mjs:1` |\n| `src/legacy/frozen_export.mjs` | responsibilities | unrated | Excluded by the accepted-violation record in its header; the migration that removes it is owned elsewhere | `src/legacy/frozen_export.mjs:1` |\n| `src/web/report_controller.mjs` | naming | unrated | Named by the framework's router, which will not load it under another name; the parsing behind it is a finding for another task | `src/web/report_controller.mjs:1` |\n",
+      "expect": { "ok": true, "rules": [] }
     }
   ]
 }

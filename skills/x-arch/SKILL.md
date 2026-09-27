@@ -220,9 +220,10 @@ Every step ends on a criterion you can check, so a half-finished run is visible 
    A standalone run writes `<run folder>/Enn-arch.md`: a `**Scope:**` line, a `**Declaration:**` line naming the
    declaration it read or `none`, then one row per unit in scope — unit, group, verdict, reason, and the evidence
    that verdict rests on (`file:line`, or `-` for an unrated row). The shape is shown in the worked example above.
-   **Completion:** `node scripts/verdicts.mjs --file <record>` exits 0. That is the check rather than a
-   reading: every group named, every verdict one of `ok`, `violated` or `unrated`, every evidence cell resolving
-   to a real line, and no `ok` claimed for a group a `none` declaration left unrated.
+   **Completion:** `node scripts/verdicts.mjs --file <record>` exits 0 on a standalone record. That is the check
+   rather than a reading: every group named, every verdict one of `ok`, `violated` or `unrated`, every evidence
+   cell resolving to a real line, and no `ok` claimed for a group a `none` declaration left unrated. A pass
+   inside `x-review` has no such file, and its completion is the rows in that plan.
 
 ## Worked Example
 
@@ -242,10 +243,17 @@ same address.
 | `src/orders/retry.mjs` | dependencies | violated | The order policy imports the vendor client directly, so a vendor change reaches the rule | `src/orders/retry.mjs:3` |
 | `src/orders/totals.mjs` | naming | ok | Named for the value it computes, and it holds nothing else | `src/orders/totals.mjs:1` |
 | `src/legacy/frozen_export.mjs` | responsibilities | unrated | Excluded by the accepted-violation record in its header; the migration that removes it is owned elsewhere | `src/legacy/frozen_export.mjs:1` |
+| `src/web/report_controller.mjs` | naming | unrated | Named by the framework's router, which will not load it under another name; the parsing behind it is a finding for another task | `src/web/report_controller.mjs:1` |
 
 **The one change proposed.** A move, not a split and not a rename together with it: `formatOrderDate` goes to
 `src/orders/order_date.mjs`, where the code that owns the concept already lives. Its two call sites are listed in
 the row, and the retry wrapper stays until a second caller exists (the rule of three: today there is one).
+
+**One unit it declined to act on.** `src/web/report_controller.mjs` is named for its role, which the naming rule
+would rename and the responsibility rule would split. Both rules lose to `Where These Rules Do Not Apply`: the
+framework's router resolves the file by that name, so the name is the platform's, and the parsing behind it is a
+task rather than a step of this pass. The row says `unrated` and gives the reason, which is the other half of what
+a record is for.
 
 **The record written**, `<run folder>/E01-arch.md`:
 
@@ -276,7 +284,9 @@ row marked `ok` in a run with no declaration all exit 1 with the row named.
 ## References
 
 - `scripts/verdicts.mjs` — the record checker: `--file <record>` exits 0 on a finished record, 1 with the row
-  that is not, and `--self-test` proves the twelve cases it ships with still describe the shape it enforces.
+  that is not, and `--self-test` proves the thirteen cases it ships with still describe the shape it enforces.
+  Those cases are read from `evals/fixtures/verdict-cases.json` beside this file, so install the skill whole
+  rather than copying the script on its own.
 - `references/naming.md` — the routing table, directory names, and names that are not yours to change.
 - `references/boundaries.md` — the four layer kinds, capability grouping, the composition root, ports, how to
   choose a boundary, humble adapters, and layer theater.

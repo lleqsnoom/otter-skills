@@ -17,7 +17,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const GROUPS = ["naming", "boundaries", "responsibilities", "dependencies", "composition"];
 export const VERDICTS = ["ok", "violated", "unrated"];
@@ -149,7 +149,11 @@ export function checkRecord({ recordPath, text }) {
 const FIXTURE_FILE = new URL("../evals/fixtures/verdict-cases.json", import.meta.url);
 
 export function fixtureCases() {
-  return JSON.parse(fs.readFileSync(FIXTURE_FILE, "utf8")).cases;
+  try {
+    return JSON.parse(fs.readFileSync(FIXTURE_FILE, "utf8")).cases;
+  } catch (error) {
+    throw new Error(`the cases are read from ${fileURLToPath(FIXTURE_FILE)}, which ships beside this skill: ${error.message}`);
+  }
 }
 
 function writeTree(dir, tree) {
