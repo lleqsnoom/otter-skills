@@ -8,6 +8,9 @@
  *
  * Usage: node arch-check.mjs [--root <dir>] [--config <path>] [--explain-coverage] [--self-test]
  * Exit:  0 clean (or nothing to be in parity with) · 1 violations · 2 usage or config error
+ *
+ * The self-test cases live beside the skill, in `evals/fixtures/arch-cases.json`, so a new case is data
+ * rather than a change to this file.
  */
 
 import fs from "node:fs";
@@ -339,42 +342,15 @@ export function runCheck({ root, configPath, explainCoverage = false } = {}) {
 
 // #region self-test
 
-const CLEAN_TREE = {
-  "src/domain/order_entity.mjs": "export const total = (lines) => lines.reduce((n, line) => n + line.amount, 0);\n",
-  "src/domain/order_repository.mjs": "export const findById = async (id) => ({ id });\n",
-};
+/**
+ * The cases `--self-test` runs. Kept as data so a third party adds one without editing this file:
+ * a tree, the declaration it is checked against, and the report expected of it.
+ */
+const FIXTURE_FILE = new URL("../evals/fixtures/arch-cases.json", import.meta.url);
 
-const DIRTY_TREE = {
-  ...CLEAN_TREE,
-  "src/utils/string.mjs": "export const pad = (value) => ` ${value}`;\n",
-  "src/domain/date-utils.mjs": "export const isWeekend = (day) => [0, 6].includes(day.getDay());\n",
-};
-
-/** The declared fixture the acceptance criterion names: domain reaches into application, with a controller in domain. */
-const DECLARED_CONFIG = {
-  layers: {
-    domain: { roots: ["src/domain"], import_markers: ["application/billing"] },
-    application: { roots: ["src/application"], import_markers: ["application/billing"] },
-  },
-  allowed_dependencies: { domain: [], application: ["domain"] },
-  naming: [{ applies_to: "domain", must_not_match: "controller", message: "a controller belongs in the interface layer, not in domain" }],
-};
-
-const DECLARED_TREE = {
-  "src/domain/order_controller.mjs": 'import { charge } from "../application/billing.mjs";\nexport const handle = (order) => charge(order);\n',
-  "src/application/billing.mjs": "export const charge = (order) => order;\n",
-};
-
-const NO_CONFIG = { violations: [], rated: ["naming"], unrated: ["dependency-direction", "boundaries"], unplaced: 0, unplacedFiles: null };
-
-/** A tree whose third file sits in no declared layer, which is what `--explain-coverage` exists to show. */
-const COVERAGE_TREE = {
-  "src/domain/order_entity.mjs": CLEAN_TREE["src/domain/order_entity.mjs"],
-  "src/application/billing.mjs": "export const charge = (order) => order;\n",
-  "src/legacy/old_orders.mjs": "export const old = true;\n",
-};
-
-const BOTH_GROUPS = { rated: ["naming", "dependency-direction", "boundaries"], unrated: [] };
+export function fixtureCases() {
+  return JSON.parse(fs.readFileSync(FIXTURE_FILE, "utf8")).cases;
+}
 
 function writeTree(dir, tree) {
   for (const [rel, text] of Object.entries(tree)) {
@@ -384,18 +360,22 @@ function writeTree(dir, tree) {
   }
 }
 
-/** A fixture tree in its own directory, plus the config file it is checked against (or none). */
-function fixture(scratch, { name, tree, config }) {
+/**
+ * A fixture tree in its own directory, plus the declaration it is checked against. The declaration sits
+ * beside the tree unless the case sends it inside the tree with `configHome`, which a subtree case needs.
+ */
+function fixture(scratch, { name, tree, config, configHome }) {
   const dir = path.join(scratch, name);
   writeTree(dir, tree);
   if (!config) return { name, dir, configPath: null };
-  const configPath = path.join(scratch, `${name}-arch.json`);
+  const configPath = configHome ? path.join(dir, configHome) : path.join(scratch, `${name}-arch.json`);
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
   fs.writeFileSync(configPath, JSON.stringify(config));
   return { name, dir, configPath };
 }
 
 /** Both sides of a case pass through this, so a fixture compares values rather than key order. */
-const caseShape = ({ violations, rated, unrated, unplaced, unplacedFiles }) => ({ violations, rated, unrated, unplaced, unplacedFiles });
+const caseShape = ({ violations, rated, unrated, unplaced, unplacedFiles }) => ({ violations, rated, unrated, unplaced, unplacedFiles: unplacedFiles ?? null });
 
 const caseOf = ({ name, dir, configPath }, expected, { explainCoverage = false } = {}) => {
   const result = runCheck({ root: dir, configPath, explainCoverage });
@@ -410,74 +390,19 @@ const caseOf = ({ name, dir, configPath }, expected, { explainCoverage = false }
   return { name, pass: JSON.stringify(got) === JSON.stringify(want), expected: want, got };
 };
 
-function undeclaredCases(scratch) {
-  return [
-    [fixture(scratch, { name: "clean", tree: CLEAN_TREE }), NO_CONFIG],
-    [fixture(scratch, { name: "dirty", tree: DIRTY_TREE }), { ...NO_CONFIG, violations: ["naming src/domain/date-utils.mjs:1", "naming src/utils/:1"] }],
-    [fixture(scratch, { name: "excluded", tree: { ...CLEAN_TREE, "node_modules/left-pad/utils/index.mjs": "export const x = 1;\n" } }), NO_CONFIG],
-  ].map(([target, expected]) => caseOf(target, expected));
-}
-
-function declaredCases(scratch) {
-  const declared = fixture(scratch, { name: "declared", tree: DECLARED_TREE, config: DECLARED_CONFIG });
-  const half = fixture(scratch, { name: "half-declared", tree: DECLARED_TREE, config: { layers: DECLARED_CONFIG.layers } });
-  const placed = fixture(scratch, { name: "coverage", tree: COVERAGE_TREE, config: DECLARED_CONFIG });
-  return [
-    caseOf(declared, {
-      ...BOTH_GROUPS,
-      violations: ["dependency-direction src/domain/order_controller.mjs:1", "naming src/domain/order_controller.mjs:1"],
-      unplaced: 0,
-      unplacedFiles: null,
-    }),
-    caseOf(half, { violations: [], rated: ["naming", "boundaries"], unrated: ["dependency-direction"], unplaced: 0, unplacedFiles: null }),
-    caseOf(placed, { ...BOTH_GROUPS, violations: [], unplaced: 1, unplacedFiles: ["src/legacy/old_orders.mjs"] }, { explainCoverage: true }),
-  ];
-}
-
-function driftCases(scratch) {
-  const drifted = fixture(scratch, {
-    name: "drifted",
-    tree: CLEAN_TREE,
-    config: {
-      layers: { domain: { roots: ["src/domain"] }, persistence: { roots: ["src/persistence"] } },
-      allowed_dependencies: { domain: [], persistence: [] },
-    },
-  });
-  return [caseOf(drifted, { ...BOTH_GROUPS, violations: ["boundaries src/persistence/:1"], unplaced: 0, unplacedFiles: null })];
-}
-
-/** A run scoped to a subtree of a declared repo: the roots live at the declaration's home, not at the root. */
-function subtreeCases(scratch) {
-  const declared = fixture(scratch, { name: "subtree", tree: DECLARED_TREE, config: DECLARED_CONFIG });
-  const home = path.join(declared.dir, ".x-skills", "config");
-  fs.mkdirSync(home, { recursive: true });
-  const configPath = path.join(home, "arch.json");
-  fs.renameSync(declared.configPath, configPath);
-  const scoped = { name: "a subtree root reports no root as missing", dir: path.join(declared.dir, "src"), configPath };
-  return [caseOf(scoped, { violations: [], rated: BOTH_GROUPS.rated, unrated: [], unplaced: 2, unplacedFiles: null })];
-}
-
-function cycleCases(scratch) {
-  const cyclic = fixture(scratch, {
-    name: "cyclic",
-    tree: { "src/a/one.mjs": "export const a = 1;\n", "src/b/two.mjs": "export const b = 2;\n" },
-    config: {
-      layers: { a: { roots: ["src/a"] }, b: { roots: ["src/b"] } },
-      allowed_dependencies: { a: ["b"], b: ["a"] },
-    },
-  });
-  return [caseOf(cyclic, { ...BOTH_GROUPS, violations: ["dependency-direction .x-skills/config/arch.json:1"], unplaced: 0, unplacedFiles: null })];
-}
-
 /**
- * The fixtures the acceptance criterion names, run in-process so `--self-test` is hermetic: no
- * network, no git, and nothing written outside a temporary directory it removes.
+ * Every case in `evals/fixtures/arch-cases.json`, run in-process so `--self-test` is hermetic: no network,
+ * no git, and nothing written outside a temporary directory it removes. A case may check a subtree of its
+ * tree (`root`) and may put the declaration inside the tree (`configHome`).
  */
 export function selfTest() {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "arch-check-selftest-"));
   let cases = [];
   try {
-    cases = [...undeclaredCases(scratch), ...declaredCases(scratch), ...driftCases(scratch), ...cycleCases(scratch), ...subtreeCases(scratch)];
+    cases = fixtureCases().map(({ name, tree, config = null, configHome, root = ".", explainCoverage = false, expect }) => {
+      const target = fixture(scratch, { name: name.replace(/[^\w.-]+/g, "-"), tree, config, configHome });
+      return caseOf({ name, dir: path.resolve(target.dir, root), configPath: target.configPath }, expect, { explainCoverage });
+    });
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
@@ -487,6 +412,18 @@ export function selfTest() {
 // #endregion self-test
 
 const USAGE = "usage: arch-check.mjs [--root <dir>] [--config <path>] [--explain-coverage] [--self-test]";
+
+const KNOWN_FLAGS = ["--root", "--config", "--explain-coverage", "--self-test", "--help", "-h"];
+const VALUED_FLAGS = ["--root", "--config"];
+
+/**
+ * The first option the checker does not take, or undefined. An unrecognised option is a usage error rather
+ * than a word to ignore: a mistyped flag would otherwise drop what the caller asked for and still report a
+ * clean tree, which is the reading this tool exists to prevent.
+ */
+function unknownFlag(argv) {
+  return argv.find((arg, at) => arg.startsWith("-") && !KNOWN_FLAGS.includes(arg) && !VALUED_FLAGS.includes(argv[at - 1]));
+}
 
 /** A flag with no value is a usage error, not a silent fall back to the default. */
 function readFlag(argv, flag) {
@@ -508,9 +445,14 @@ function parseTarget(argv) {
 }
 
 function printSelfTest() {
-  const { pass, cases } = selfTest();
-  console.log(JSON.stringify({ selfTest: pass, cases }, null, 2));
-  process.exit(pass ? 0 : 1);
+  try {
+    const { pass, cases } = selfTest();
+    console.log(JSON.stringify({ selfTest: pass, cases }, null, 2));
+    process.exit(pass ? 0 : 1);
+  } catch (error) {
+    console.error(JSON.stringify({ error: error.message }, null, 2));
+    process.exit(2);
+  }
 }
 
 function runTarget(argv) {
@@ -531,6 +473,11 @@ function runTarget(argv) {
 }
 
 function main(argv) {
+  const unknown = unknownFlag(argv);
+  if (unknown) {
+    console.error(`${USAGE}\nunknown option: ${unknown}`);
+    process.exit(2);
+  }
   if (argv.includes("--self-test")) printSelfTest();
   if (argv.includes("--help") || argv.includes("-h")) {
     console.log(USAGE);

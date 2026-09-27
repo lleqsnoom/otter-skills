@@ -75,7 +75,7 @@ export function proposeDeclaration({ root, exclude = [] }) {
     allowed[layer] = [...new Set(byLayer.get(layer).flatMap((rel) => outgoingLayers(rootAbs, rel)))].sort();
   }
   return {
-    note: "Proposed from the tree as it is: these directions are the ones a static relative import already takes. An import built at run time (path.join with __dirname), an absolute specifier and a re-export are all invisible here, so an empty list means nothing was observed rather than nothing is imported: widen each entry to what the layer may do before ratifying, and treat a later change to this file as a decision rather than an edit.",
+    note: "Proposed from the tree as it is: these directions are the ones a static relative import already takes. An import built at run time (path.join with __dirname), an absolute specifier and a re-export are all invisible here, so an empty list means nothing was observed rather than nothing is imported: widen each entry to what the layer may do before ratifying, and treat a later change to this file as a decision rather than an edit. Once it is ratified, check that the commit takes: `.x-skills/` is ignored in some repos, and `git check-ignore -v .x-skills/config/arch.json` names the rule that does it, so force-add the file or keep the declaration where the repo already tracks its configuration.",
     layers,
     allowed_dependencies: allowed,
   };
@@ -129,6 +129,17 @@ export function selfTest() {
 
 const USAGE = "usage: scaffold.mjs [--root <dir>] [--out <path>] [--force] [--self-test]";
 
+const KNOWN_FLAGS = ["--root", "--out", "--force", "--self-test", "--help", "-h"];
+const VALUED_FLAGS = ["--root", "--out"];
+
+/**
+ * The first option the scaffold does not take, or undefined. An unrecognised option is a usage error rather
+ * than a word to ignore, so a mistyped flag cannot quietly write a declaration somewhere you did not name.
+ */
+function unknownFlag(argv) {
+  return argv.find((arg, at) => arg.startsWith("-") && !KNOWN_FLAGS.includes(arg) && !VALUED_FLAGS.includes(argv[at - 1]));
+}
+
 const readFlag = (argv, flag) => {
   const at = argv.indexOf(flag);
   if (at === -1) return { given: false, value: null };
@@ -152,7 +163,7 @@ function writeOrPrint(target, text, force) {
 function run(argv) {
   const root = readFlag(argv, "--root");
   const out = readFlag(argv, "--out");
-  if (root.given && !root.value) {
+  if ((root.given && !root.value) || (out.given && !out.value)) {
     console.error(USAGE);
     return 2;
   }
@@ -162,6 +173,11 @@ function run(argv) {
 }
 
 function main(argv) {
+  const unknown = unknownFlag(argv);
+  if (unknown) {
+    console.error(`${USAGE}\nunknown option: ${unknown}`);
+    process.exit(2);
+  }
   if (argv.includes("--self-test")) {
     const { pass, cases } = selfTest();
     console.log(JSON.stringify({ selfTest: pass, cases }, null, 2));
