@@ -1,0 +1,94 @@
+{
+  "why": "The cases `--self-test` runs. Each one is a tree, the record checked against it, and the rule names expected of it, so a change that stops catching one of these fails here. Add a case by adding one object; nothing in the checker needs editing.",
+  "cases": [
+    {
+      "name": "a finished record",
+      "why": "two header lines, evidence that resolves, and a declaration a real file backs, so the dependencies row may claim ok",
+      "tree": {
+        "src/a.mjs": "export const a = 1;\nexport const b = 2;\nexport const c = 3;\n",
+        "src/utils/index.mjs": "export const pad = (value) => ` ${value}`;\n",
+        "src/orders/totals.mjs": "export const total = (lines) => lines.length;\n",
+        ".x-skills/config/arch.json": "{}\n"
+      },
+      "record": "# Architecture pass\n\n**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for the value it holds | `src/a.mjs:1` |\n| `src/utils/index.mjs` | naming | violated | a bag: the name says nothing about what may be added to it | `src/utils/index.mjs:1` |\n| `src/orders/totals.mjs` | dependencies | ok | imports nothing outside its layer | `src/orders/totals.mjs:1` |\n",
+      "expect": { "ok": true, "rules": [] }
+    },
+    {
+      "name": "a row that names no group of the five",
+      "why": "a group outside the five is a row the pass cannot have judged",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | structure | ok | looks tidy | `src/a.mjs:1` |\n",
+      "expect": { "ok": false, "rules": ["group-unknown"] }
+    },
+    {
+      "name": "a verdict that is not one of the three",
+      "why": "a fourth verdict is a judgement the next reader cannot act on",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | clean | fine for now | `src/a.mjs:1` |\n",
+      "expect": { "ok": false, "rules": ["verdict-unknown"] }
+    },
+    {
+      "name": "evidence that does not resolve to a line",
+      "why": "a verdict resting on a line the file does not have is a claim nothing backs",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | violated | surprising | `src/a.mjs:99` |\n",
+      "expect": { "ok": false, "rules": ["evidence-unresolved"] }
+    },
+    {
+      "name": "a verdict with no evidence at all",
+      "why": "only an unrated row may write a dash, because it is the one row making no claim",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | the name reads well | - |\n",
+      "expect": { "ok": false, "rules": ["evidence-missing"] }
+    },
+    {
+      "name": "a run with no declaration claiming a declared group is ok",
+      "why": "with nothing declaring the allowed directions, the dependency group cannot be rated, so an ok there claims a check that never ran",
+      "tree": { "src/a.mjs": "export const a = 1;\n" },
+      "record": "**Scope:** src/\n**Declaration:** none\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | dependencies | ok | depends on nothing else | `src/a.mjs:1` |\n| `src/a.mjs` | responsibilities | unrated | no declaration, and nothing to weigh it against | - |\n",
+      "expect": { "ok": false, "rules": ["unrated-without-declaration"] }
+    },
+    {
+      "name": "a declared group recorded as unrated",
+      "why": "the honest version of the case above: the row says unrated, carries its reason, and writes a dash for evidence",
+      "tree": { "src/a.mjs": "export const a = 1;\n" },
+      "record": "**Scope:** src/\n**Declaration:** none\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for what it holds | `src/a.mjs:1` |\n| `src/a.mjs` | dependencies | unrated | no declaration to check the direction against | - |\n",
+      "expect": { "ok": true, "rules": [] }
+    },
+    {
+      "name": "a table that does not name a verdict",
+      "why": "the checker reads its columns by name, so a table without them is not a record it can judge at all",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Reason | Evidence |\n|------|-------|--------|----------|\n| `src/a.mjs` | naming | looks fine | `src/a.mjs:1` |\n",
+      "expect": { "ok": false, "rules": ["table-missing"] }
+    },
+    {
+      "name": "a record with no scope",
+      "why": "without the scope there is no way to tell which units the rows cover",
+      "tree": { "src/a.mjs": "export const a = 1;\n" },
+      "record": "**Declaration:** none\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for what it holds | `src/a.mjs:1` |\n",
+      "expect": { "ok": false, "rules": ["header-missing-scope"] }
+    },
+    {
+      "name": "a record with no declaration line",
+      "why": "a run that does not say what it read against is a run whose coverage cannot be judged",
+      "tree": { "src/a.mjs": "export const a = 1;\n" },
+      "record": "**Scope:** src/\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for what it holds | `src/a.mjs:1` |\n",
+      "expect": { "ok": false, "rules": ["header-missing-declaration"] }
+    },
+    {
+      "name": "a row with no reason",
+      "why": "a verdict with no sentence beside it is unarguable, which is the opposite of what a record is for",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok |  | `src/a.mjs:1` |\n",
+      "expect": { "ok": false, "rules": ["reason-empty"] }
+    },
+    {
+      "name": "a declaration this tree does not have",
+      "why": "a record naming a declaration the clone never received is the case where the whole gate is a wish",
+      "tree": { "src/a.mjs": "export const a = 1;\n" },
+      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for what it holds | `src/a.mjs:1` |\n",
+      "expect": { "ok": false, "rules": ["declaration-unresolved"] }
+    }
+  ]
+}

@@ -4,6 +4,13 @@ A module is a file; a **component** is a unit of release: a package, a jar, a ge
 The rules here are the principles of `boundaries.md` one level up. They govern what goes inside a component and
 which way components may point.
 
+The three cohesion principles, the stable-abstractions principle and the Main Sequence are Robert C. Martin's
+component principles, *Clean Architecture*, part IV. The formulas, the zones and `D = |A+I-1|` as this file
+states them are reproduced in these book notes:
+<https://github.com/presmihaylov/booknotes/blob/4b8c25f0125dc32190cd4106d9f5767659214acd/architecture/clean-architecture/part-4/README.md>.
+The dependency magnet is this file's name for the shape those principles fail to produce, not a term borrowed
+with them.
+
 ## As abstract as it is stable
 
 A component many others depend on is hard to change, so it has to offer something to extend rather than

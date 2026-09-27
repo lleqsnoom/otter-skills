@@ -10,7 +10,7 @@ compose the rest.
 | Signal | What it costs | The move |
 |--------|---------------|----------|
 | A base class with one subclass | Two files to read for one behaviour, and the base cannot change without auditing a class nobody instantiates | Use the concrete class; if a boundary is wanted, extract a delegate |
-| Depth beyond one level | Every level is a decision the reader must hold; overrides at three levels are untraceable | Flatten into small collaborators |
+| Depth beyond one level | Every level is a decision the reader must hold; overrides at three levels are untraceable | Flatten into small collaborators. One level survives only as the template method under "Where inheritance is right" |
 | A subclass overriding a method to do nothing | The base's interface is wider than its use | Delete the method from the base and the override together |
 | A subclass reading the base's protected state | The two are one class with a seam in the middle | Pass the state in, or compose an object that owns it |
 | Shared behaviour in two siblings | The base accumulates unrelated code for each new sibling | Move the shared piece to a collaborator both hold |
@@ -20,7 +20,9 @@ compose the rest.
 ## The rule of three
 
 Two call sites may duplicate. The third is when a shared abstraction starts to pay, and until then the
-duplication is cheaper than the guess:
+duplication is cheaper than the guess. Don Roberts' rule, quoted by Martin Fowler in *Refactoring*, ch. 2;
+the passage as reproduced in a set of book notes, "Three strikes, then you refactor":
+<https://github.com/jemmy512/book-notes/blob/ea362ce121a8f62449b0ebb74fc7058c201221eb/se/refactoring-2.md>.
 
 - An abstraction extracted from two examples is fitted to those two. The third reveals the real axis of
   variation, and by then the abstraction is in use and hard to reshape.
@@ -61,15 +63,16 @@ BaseRetryPolicy        (delay() abstract, attempt() loop)
 Two files, one behaviour, and the loop cannot be tested without a subclass. Composed instead:
 
 ```js
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const exponential = (base, factor) => ({ delay: (attempt) => base * factor ** attempt });
 
-const withRetry = (policy, run) => {
+const withRetry = async (policy, run) => {
   for (let attempt = 0; ; attempt++) {
     try {
       return run();
     } catch (error) {
       if (attempt >= policy.attempts) throw error;
-      wait(policy.delay(attempt));
+      await sleep(policy.delay(attempt));
     }
   }
 };

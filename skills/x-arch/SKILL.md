@@ -106,9 +106,11 @@ the split is agreed. `references/responsibilities.md` covers data ownership and 
 ## 4. Dependencies
 
 Dependencies point from volatile to stable: policy inward, I/O at the edges. That is the Stable Dependencies
-Principle (Robert C. Martin, *Agile Software Development*): depend in the direction of stability, so a module
-may depend on things steadier than itself and never on things less steady. A module that knows what a
-database, a framework or a vendor API is, is at the edge.
+Principle (Robert C. Martin, *Agile Software Development*, part V): depend in the direction of stability, so a
+module may depend on things steadier than itself and never on things less steady. A module that knows what a
+database, a framework or a vendor API is, is at the edge. The instability metric the principle turns on is
+quoted with its source in the dependency-cruiser rules reference:
+<https://github.com/sverweij/dependency-cruiser/blob/918d9193edfae3fe1fb76cfe3d06cc0624539b91/doc/rules-reference.md>.
 
 - **No cycles.** A cycle means the two modules are one module with a lint error.
 - **A stable module never imports a volatile one.** If it must, the abstraction is missing: define the port
@@ -129,20 +131,27 @@ lets a caller take exactly the parts it needs.
 | Signal | Verdict |
 |--------|---------|
 | A base class with one subclass | Composition, or the concrete class: the hierarchy is a placeholder |
-| Depth beyond one level | Flatten it; small pieces of behaviour compose, deep trees do not |
+| Depth beyond one level | Flatten it, unless the skeleton is genuinely shared and no protected state is involved: one level survives as the template method in `references/composition.md` |
 | A subclass overrides a method only to do nothing | Delete the override and the method; the base was too broad |
 | A subclass reaches into protected state of the base | Compose a delegate the subclass can hold instead |
 | A shared bit of behaviour in two siblings | Move it to a collaborator both compose, not to a deeper base |
 | A `switch` or type check selecting behaviour | A map of strategies; the map is the composition |
 
-**The rule of three** (Don Roberts, quoted by Martin Fowler in *Refactoring*, ch. 2). Two call sites may
-duplicate; the third is when a shared abstraction pays. Before that,
+**The rule of three** (Don Roberts, quoted by Martin Fowler in *Refactoring*, ch. 2; the passage as
+reproduced at <https://github.com/jemmy512/book-notes/blob/ea362ce121a8f62449b0ebb74fc7058c201221eb/se/refactoring-2.md>).
+Two call sites may duplicate; the third is when a shared abstraction pays. Before that,
 copy the code: an abstraction extracted from two examples usually guesses the axis of variation wrong, and a
 wrong abstraction costs more than the duplication it removed. When you find one that was stretched with flags
 and conditionals to fit a case it did not expect, the repair is to inline it back into each caller and delete
 the parts each caller does not need. `references/composition.md` works an example.
 
-## Never Cut
+## Where These Rules Do Not Apply
+
+Three things sit outside the rules above: what they never authorise cutting, the trees they were not written for,
+and the violations accepted on purpose. They are one section because one reader asks all three, usually as "may
+I do this?", and one answer is easier to find than three.
+
+**Never cut**, whatever else a pass decided:
 
 - A published or exported name: it is a contract, not a preference.
 - A framework- or platform-mandated name, and a framework-required class.
@@ -150,6 +159,34 @@ the parts each caller does not need. `references/composition.md` works an exampl
 - Validation at a trust boundary, whatever file it sits in.
 - A module boundary that costs nothing and hides something: depth is the point of a module.
 - Anything the user asked for. Suggest the smaller option instead.
+
+**The advice does not apply to:**
+
+- **A tree of two or three files.** A bag module is honest at that size; splitting it costs more than it saves.
+  The naming rule still holds, because a name costs nothing to get right.
+- **A table of static data, a generated file, or a long literal list.** Length is not a responsibility, and a
+  role folder holding data rather than behaviour is not a boundary.
+- **A framework that mandates a base class or a directory.** The platform's contract outranks this preference.
+  Say so where the code is written, so the next reader does not reopen the same question.
+- **A published surface.** Renaming an exported symbol is a migration with a deprecation path, so it is a task
+  rather than a pass.
+- **A module nobody will change again.** Architecture pays back over edits; a frozen module does not earn a
+  refactor.
+
+**Accepting a violation.** Some cannot be fixed today: a framework that will not invert, a table another team
+owns, a deadline the business set. Accepting one is a decision, and an undocumented decision quietly becomes the
+convention.
+
+- **Record it where the code is**, in the module header, in one sentence: what is violated, why it is accepted,
+  and what would have to change for the fix to become possible.
+- **Keep it at the outermost layer.** A compromise in an adapter is a compromise about a detail; the same
+  compromise inside a use case is a rule bent for a mechanism.
+- **Never silence the checker with it.** An `allowed_dependencies` entry that exists only to permit a mistake
+  turns a gate into a shrug. Where the declaration must carry an exception, it carries a reason beside it.
+- **Keep the path back.** The record names the change that removes it, so the next reader can act instead of
+  re-deriving the decision.
+- **Report it up.** An accepted violation goes in the pass's record and in the review plan, so it is known debt
+  rather than an unnoticed one.
 
 ## Steps
 
@@ -165,7 +202,8 @@ Every step ends on a criterion you can check, so a half-finished run is visible 
 3. **Read the declaration, if there is one.** `.x-skills/config/arch.json` decides which directions are allowed
    and which names are banned here. Where it says nothing, the group is unrated rather than judged. A repo with
    no declaration runs `x-arch-lint`'s scaffold to have one proposed from the tree, ratifies it by hand, and
-   commits it; until then the naming group is the whole of what this skill may enforce.
+   commits it, checking that the commit takes: `.x-skills/` is ignored in some repos, and a declaration no clone
+   receives enforces nothing. Until there is one, the naming group is the whole of what this skill may enforce.
    **Completion:** the declaration has been read, or the run is recorded as naming-only.
 4. **Judge each unit** against its group. Stop at the first question that fits: one responsibility? named for a
    concept? living with the code that owns it? depending inward?
@@ -179,24 +217,52 @@ Every step ends on a criterion you can check, so a half-finished run is visible 
    **Completion:** every row reported instead of performed carries the reason, against the 4h and 2-file cap
    `x-decompose` uses.
 8. **Write the record.** A pass inside `x-review` writes its rows into that review's plan under `[Architecture]`.
-   A standalone run writes `<run folder>/Enn-arch.md`, one row per unit in scope: unit, group, verdict, reason,
-   and the `file:line` it rests on.
-   **Completion:** the record has a row per unit in scope, every verdict cites a `file:line`, and every group
-   you could not rate is named there instead of being left to silence.
+   A standalone run writes `<run folder>/Enn-arch.md`: a `**Scope:**` line, a `**Declaration:**` line naming the
+   declaration it read or `none`, then one row per unit in scope — unit, group, verdict, reason, and the evidence
+   that verdict rests on (`file:line`, or `-` for an unrated row). The shape is shown in the worked example above.
+   **Completion:** `node scripts/verdicts.mjs --file <record>` exits 0. That is the check rather than a
+   reading: every group named, every verdict one of `ok`, `violated` or `unrated`, every evidence cell resolving
+   to a real line, and no `ok` claimed for a group a `none` declaration left unrated.
 
-## When This Advice Does Not Apply
+## Worked Example
 
-- **A tree of two or three files.** A bag module is honest at that size; splitting it costs more than it saves.
-  The naming rule still holds, because a name costs nothing to get right.
-- **A table of static data, a generated file, or a long literal list.** Length is not a responsibility, and a
-  role folder holding data rather than behaviour is not a boundary.
-- **A framework that mandates a base class or a directory.** The platform's contract outranks this preference.
-  Say so where the code is written, so the next reader does not reopen the same question.
-- **A published surface.** Renaming an exported symbol is a migration with a deprecation path, so it is a task
-  rather than a pass.
-- **A module nobody will change again.** Architecture pays back over edits; a frozen module does not earn a
-  refactor.
+One run, end to end, on a tree small enough to check by eye. The scope is `src/`, the declaration is the one
+`x-arch-lint`'s scaffold proposed and a human widened.
 
+**The pain, in one sentence** (`src/utils/index.mjs:1`): a bag module that holds a date formatter, a retry
+wrapper and two order checks, so nothing it holds is findable and every change to any of them is a change to the
+same address.
+
+**The units judged**, one row each, stop at the first question that fits:
+
+| Unit | Group | Verdict | Reason | Evidence |
+|------|-------|---------|--------|----------|
+| `src/utils/index.mjs` | naming | violated | The name describes no domain concept, so no reader can say what may be added to it | `src/utils/index.mjs:1` |
+| `src/utils/index.mjs` | responsibilities | violated | Two reasons to change: a date format and an order invariant | `src/utils/index.mjs:14` |
+| `src/orders/retry.mjs` | dependencies | violated | The order policy imports the vendor client directly, so a vendor change reaches the rule | `src/orders/retry.mjs:3` |
+| `src/orders/totals.mjs` | naming | ok | Named for the value it computes, and it holds nothing else | `src/orders/totals.mjs:1` |
+| `src/legacy/frozen_export.mjs` | responsibilities | unrated | Excluded by the accepted-violation record in its header; the migration that removes it is owned elsewhere | `src/legacy/frozen_export.mjs:1` |
+
+**The one change proposed.** A move, not a split and not a rename together with it: `formatOrderDate` goes to
+`src/orders/order_date.mjs`, where the code that owns the concept already lives. Its two call sites are listed in
+the row, and the retry wrapper stays until a second caller exists (the rule of three: today there is one).
+
+**The record written**, `<run folder>/E01-arch.md`:
+
+```markdown
+# Architecture pass — 2026-09-27
+
+**Scope:** src/
+**Declaration:** .x-skills/config/arch.json
+
+| Unit | Group | Verdict | Reason | Evidence |
+|------|-------|---------|--------|----------|
+...
+```
+
+`node scripts/verdicts.mjs --file <run folder>/E01-arch.md` is what tells you that record is finished: a
+missing group, a verdict that is not one of the three, an evidence cell that does not resolve, or a `dependencies`
+row marked `ok` in a run with no declaration all exit 1 with the row named.
 
 ## Rules
 
@@ -207,24 +273,10 @@ Every step ends on a criterion you can check, so a half-finished run is visible 
 - A change that needs more than one task is a finding, not a task. `x-decompose` caps a task at 4h and 2 files.
 - Follow the repo's own style where it differs from an example here, and say so when you do.
 
-## Accepted Violations
-
-Some violations cannot be fixed today: a framework that will not invert, a table another team owns, a deadline
-the business set. Accepting one is a decision, and an undocumented decision quietly becomes the convention.
-
-- **Record it where the code is**, in the module header, in one sentence: what is violated, why it is accepted,
-  and what would have to change for the fix to become possible.
-- **Keep it at the outermost layer.** A compromise in an adapter is a compromise about a detail; the same
-  compromise inside a use case is a rule bent for a mechanism.
-- **Never silence the checker with it.** An `allowed_dependencies` entry that exists only to permit a mistake
-  turns a gate into a shrug. Where the declaration must carry an exception, it carries a reason beside it.
-- **Keep the path back.** The record names the change that removes it, so the next reader can act instead of
-  re-deriving the decision.
-- **Report it up.** An accepted violation goes in the pass's record and in the review plan, so it is known debt
-  rather than an unnoticed one.
-
 ## References
 
+- `scripts/verdicts.mjs` — the record checker: `--file <record>` exits 0 on a finished record, 1 with the row
+  that is not, and `--self-test` proves the twelve cases it ships with still describe the shape it enforces.
 - `references/naming.md` — the routing table, directory names, and names that are not yours to change.
 - `references/boundaries.md` — the four layer kinds, capability grouping, the composition root, ports, how to
   choose a boundary, humble adapters, and layer theater.
