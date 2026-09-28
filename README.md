@@ -519,6 +519,45 @@ project's tasks, documents and code say without reading a tree by hand. Point a 
 It takes no arguments of its own. It reads the same `otter-pm.config.json`, `$OTTER_PM_ROOTS` and Orca list the
 board reads, so the board and an agent cannot disagree about which repositories exist.
 
+**Running it.** There is nothing to keep running. The client starts the server itself over stdio and stops it by
+closing the pipe, so there is no service, no port and no `--help`: the block above is the whole configuration when
+the package is installed and the bin is on `PATH`. From a checkout, point the client at the script instead:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"] }
+    }
+  }
+}
+```
+
+Nothing is published yet, so today that is the one that works. The roots decide what it can see, exactly as they
+do for the board: `OTTER_PM_ROOTS=/code/app node scripts/mcp.mjs` asks about one repository without touching the
+config file, and `--root` works the same way.
+
+**Checking it answers**, without a client — this speaks the protocol by hand and prints each reply as a line:
+
+```bash
+printf '%s\n%s\n%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"shell","version":"1"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+  | node scripts/mcp.mjs
+```
+
+The last line of that output is the `tools/list` reply — twelve tools. Swap the third line for a call and the same
+command answers one:
+
+```bash
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_projects","arguments":{}}}' \
+  | node scripts/mcp.mjs
+```
+
+`list_projects` answers with the projects in the reply's first text block, which is where every tool's answer
+lands — as JSON, so an agent reads the same shape a person sees here.
+
 **Twelve tools, in two halves.** The exact ones read the files, so their answer is what the repository says:
 
 | Tool | Answers |
