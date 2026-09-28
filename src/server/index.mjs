@@ -22,12 +22,22 @@ import { tasksOf } from './work.mjs';
  * repository to answer one question.
  *
  * Two clients that share a checkout run a server each and both write this directory, so every write is one commit
- * that replaces a row rather than a delete followed by an add — see `replaceRows`.
+ * that replaces a row rather than a delete followed by an add, and one the engine refuses is retried — see
+ * `replaceRows` and `retryWrite`.
  */
 
 const DATABASE_DIRECTORY = 'knowledge.lance';
 const CONTENT_TABLES = ['tasks', 'docs', 'code'];
 const TABLES = [...CONTENT_TABLES, 'drift', 'board'];
+
+/**
+ * How a refused write is retried: enough attempts, spaced, for the writers of one checkout to settle. The pause
+ * matters as much as the count — a table being created is briefly listed before its dataset can be read, and that
+ * window is not bounded by anything this side of the process, so a tight loop retries back into it. Measured worst
+ * case for the four writers one checkout can hold is well under this budget; a permanent failure pays it once.
+ */
+const WRITE_ATTEMPTS = 8;
+const WRITE_PAUSE_MS = 80;
 
 /** What a row's text is truncated to before embedding: a long file is represented by its start, not in full. */
 const TEXT_FOR_EMBEDDING = 4000;
@@ -163,20 +173,27 @@ const mergeInto = ({ table, rows, prune }) => {
   return (prune ? merge.whenNotMatchedBySourceDelete({ where: prune }) : merge).execute(rows);
 };
 
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * Create the table, or join the one another process created first.
+ * Run a write, retrying it whole when another process made it unresolvable.
  *
- * Only the creation is not a commit, so it is the one write LanceDB cannot retry for us: the second client that got
- * there first makes `createTable` throw, and the rows still belong in the table it made.
+ * LanceDB retries a conflicting commit from within its own budget, but it *refuses* one class outright: an update
+ * that lands on a concurrent overwrite, which is what a merge into a table another process is creating looks like.
+ * The retry re-resolves the table rather than repeating the call, so a creation this process lost becomes a merge.
+ * Every write here is keyed by row id and so is idempotent, which is what makes retrying on any failure safe.
  */
-async function createOrJoin({ db, name, rows, prune }) {
-  try {
-    await db.createTable(name, rows);
-  } catch (error) {
-    const raced = await tableOf(db, name);
-    if (!raced) throw error;
-    await mergeInto({ table: raced, rows, prune });
+async function retryWrite(write) {
+  let refused;
+  for (let attempt = 1; attempt <= WRITE_ATTEMPTS; attempt += 1) {
+    try {
+      return await write();
+    } catch (error) {
+      refused = error;
+      if (attempt < WRITE_ATTEMPTS) await pause(WRITE_PAUSE_MS);
+    }
   }
+  throw refused;
 }
 
 /**
@@ -189,10 +206,21 @@ async function createOrJoin({ db, name, rows, prune }) {
  * changed must leave it out, because its unchanged rows are absent from `rows` too.
  */
 async function replaceRows({ db, name, rows, prune }) {
-  const table = await tableOf(db, name);
-  if (table) return mergeInto({ table, rows, prune });
-  if (!rows.length) return;
-  await createOrJoin({ db, name, rows, prune });
+  await retryWrite(async () => {
+    const table = await tableOf(db, name);
+    if (table) return mergeInto({ table, rows, prune });
+    if (!rows.length) return;
+    return db.createTable(name, rows);
+  });
+}
+
+/** Drop rows by id, re-resolving the table so an attempt after a lost race still finds the one that stands. */
+async function deleteRows(db, name, ids) {
+  if (!ids.length) return;
+  await retryWrite(async () => {
+    const table = await tableOf(db, name);
+    if (table) await table.delete(inList(ids));
+  });
 }
 
 const changedIn = (desired, existing) => {
@@ -218,8 +246,7 @@ async function syncTable(db, name, desired) {
   const gone = goneFrom(desired, existing);
   if (!changed.length && !gone.length) return { embedded: 0, removed: 0 };
 
-  const table = await tableOf(db, name);
-  if (table && gone.length) await table.delete(inList(gone.map((row) => row.id)));
+  await deleteRows(db, name, gone.map((row) => row.id));
   if (changed.length) {
     const vectors = await embed(changed.map((row) => row.text));
     await replaceRows({ db, name, rows: changed.map((row, index) => ({ ...row, vector: vectors[index] })) });
