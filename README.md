@@ -459,7 +459,8 @@ highlighter.
 `skills/` is where the skills live: 31 of them, each a `SKILL.md` with its `scripts/`, `references/` and
 `assets/`. They write the `.x-skills` trees this board reads, so both halves of the loop sit in one checkout.
 They run from wherever they are installed, so this repository is the source of truth: edit a skill here, then
-install it where an agent runs it (`xskills install <skill> -g` copies it to `~/.agents/skills/`).
+`npm run install` links the whole set into `~/.agents/skills/` — and mirrors each one in `~/.claude/skills/` —
+so the next agent to run it runs this checkout's copy.
 
 Nothing in the app imports them, and `files` keeps them out of the published package.
 
