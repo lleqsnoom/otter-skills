@@ -1,5 +1,6 @@
 import * as z from 'zod';
 
+import { CODE_TOOLS } from './code.mjs';
 import { PROJECT_TOOLS } from './projects.mjs';
 import { stub } from './stub.mjs';
 import { WORK_TOOLS } from './work.mjs';
@@ -17,36 +18,7 @@ import { WORK_TOOLS } from './work.mjs';
 export const TOOLS = [
   ...PROJECT_TOOLS,
   ...WORK_TOOLS,
-  {
-    name: 'search_code',
-    description: 'Search tracked source for a literal or regular expression, exactly as the files hold it',
-    inputSchema: {
-      project: z.string().optional().describe('the project id'),
-      query: z.string().describe('what to look for'),
-      regex: z.boolean().optional().describe('treat the query as a regular expression'),
-    },
-    handler: stub('search_code'),
-  },
-  {
-    name: 'read_code',
-    description: 'Read a tracked file, or a line range of it, with line numbers',
-    inputSchema: {
-      project: z.string().optional().describe('the project id'),
-      path: z.string().describe('the file path, relative to the repository'),
-      start: z.number().int().positive().optional().describe('first line, 1-based'),
-      end: z.number().int().positive().optional().describe('last line, inclusive'),
-    },
-    handler: stub('read_code'),
-  },
-  {
-    name: 'find_symbols',
-    description: 'Find where a name is declared, by declaration shape — a heuristic, and it says so',
-    inputSchema: {
-      project: z.string().optional().describe('the project id'),
-      name: z.string().describe('the name to look for'),
-    },
-    handler: stub('find_symbols'),
-  },
+  ...CODE_TOOLS,
   {
     name: 'search_knowledge',
     description: "Search a project's tasks, documents and code by meaning, from its own index",

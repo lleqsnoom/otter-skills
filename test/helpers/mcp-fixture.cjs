@@ -57,7 +57,8 @@ function makeRepo({ name = 'fixture-repo', git = true } = {}) {
 
   write(path.join(repo, 'README.md'), `# Fixture\n\nSee \`src/thing.mjs\` for the one function.\n`);
   write(path.join(repo, 'package.json'), `${JSON.stringify({ name: 'fixture', scripts: { test: 'node --test' } }, null, 2)}\n`);
-  write(path.join(repo, 'src', 'thing.mjs'), `export function thing() {\n  return 1;\n}\n`);
+  write(path.join(repo, 'src', 'thing.mjs'), `export function thing() {\n  return 'needle';\n}\n`);
+  write(path.join(repo, 'src', 'logo.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
   write(path.join(root, 'tasks', '2026-01-01-1000-R01-first.md'), TASK);
   write(path.join(root, 'plan', 'E00-plan.md'), PLAN);
   write(path.join(root, 'docs', 'roadmap.md'), '# Roadmap\n\nWhat is planned, and what is not.\n');

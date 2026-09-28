@@ -76,8 +76,7 @@ export function repoFiles(repoPath) {
   return { mode: tracked === null ? 'walk' : 'tracked', files: [...new Set(all)].sort() };
 }
 
-/** One repository file's text, or a refusal saying why it was not read. */
-export function readRepoFile(repoPath, relPath, { maxBytes = MAX_FILE_BYTES } = {}) {
+/** One repository file's text, or a refusal saying why it was not read. */export function readRepoFile(repoPath, relPath, { maxBytes = MAX_FILE_BYTES } = {}) {
   const full = resolveInside(repoPath, relPath);
   if (!full) return { status: 400, error: `path escapes the repository: ${relPath}` };
 
@@ -102,4 +101,117 @@ export function readRepoFile(repoPath, relPath, { maxBytes = MAX_FILE_BYTES } = 
     mtime: new Date(stat.mtimeMs).toISOString(),
     lines: raw.split('\n').length,
   };
+}
+
+/**
+ * What a search stops at. Without a cap a query would read an entire monorepo into memory; with one that went
+ * unmentioned, a cut walk would look like "this is not in the code", which is the one wrong answer that matters.
+ */
+const SEARCH_LIMITS = { matches: 200, files: 8000, bytes: 4_000_000 };
+const MAX_READ_LINES = 2000;
+const DEFAULT_RANGE = 200;
+
+const escapePattern = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The declaration-shaped lines that name `name`. A heuristic by construction: it reads tokens rather than parsing,
+ * so it finds a declaration in any language whose shape it recognises and misses any it does not — which is why
+ * every answer says so.
+ */
+const DECLARATION_TOKENS = [
+  'function', 'class', 'const', 'let', 'var', 'def', 'fn', 'func', 'type', 'interface', 'struct', 'enum', 'trait',
+  'impl', 'module', 'namespace', 'export', 'public', 'private', 'static', 'async',
+];
+
+const declarationPatterns = (name) =>
+  DECLARATION_TOKENS.map((token) => ({
+    token,
+    pattern: new RegExp(`\\b${token}\\b[^\\n]*\\b${escapePattern(name)}\\b`),
+  }));
+
+function textFiles(repoPath, files) {
+  return files.filter((relPath) => isTextPath(relPath));
+}
+
+/** Every line of every text file that matches, up to the caps, with the reason it stopped when it did. */
+export function searchRepo(repoPath, { query, regex = false } = {}) {
+  const pattern = regex ? new RegExp(query) : new RegExp(escapePattern(query));
+  const { mode, files } = repoFiles(repoPath);
+  const candidates = textFiles(repoPath, files);
+
+  const matches = [];
+  let inspected = 0;
+  let bytes = 0;
+  let capped = false;
+  let reason = null;
+
+  for (const relPath of candidates) {
+    if (inspected >= SEARCH_LIMITS.files || bytes >= SEARCH_LIMITS.bytes || matches.length >= SEARCH_LIMITS.matches) {
+      capped = true;
+      reason =
+        matches.length >= SEARCH_LIMITS.matches
+          ? `stopped at ${SEARCH_LIMITS.matches} matches`
+          : inspected >= SEARCH_LIMITS.files
+            ? `stopped after ${SEARCH_LIMITS.files} files`
+            : `stopped after ${SEARCH_LIMITS.bytes} bytes`;
+      break;
+    }
+
+    const read = readRepoFile(repoPath, relPath);
+    if (read.status !== 200) continue;
+    inspected += 1;
+    bytes += read.text.length;
+
+    read.text.split('\n').forEach((text, index) => {
+      if (matches.length >= SEARCH_LIMITS.matches) return;
+      if (pattern.test(text)) matches.push({ relPath, line: index + 1, text: text.trim() });
+    });
+  }
+
+  return { matches, mode, inspected, capped, reason };
+}
+
+/** A range of one file's lines, numbered, with the total so a caller can tell a cut range from the end of the file. */
+export function readLines(repoPath, relPath, { start = 1, end } = {}) {
+  const read = readRepoFile(repoPath, relPath);
+  if (read.status !== 200) return read;
+
+  const all = read.text.split('\n');
+  const from = Math.max(1, Number(start) || 1);
+  const wanted = end ? Math.max(from, Number(end)) : from + DEFAULT_RANGE - 1;
+  const to = Math.min(wanted, from + MAX_READ_LINES - 1, all.length);
+
+  return {
+    status: 200,
+    relPath,
+    language: extname(relPath).replace('.', '') || 'text',
+    lines: all.slice(from - 1, to).map((text, index) => ({ n: from + index, text })),
+    total: all.length,
+    truncated: to < all.length || read.truncated,
+  };
+}
+
+/** Where a name is declared, by declaration shape. */
+export function findSymbols(repoPath, name) {
+  const { mode, files } = repoFiles(repoPath);
+  const patterns = declarationPatterns(name);
+  const matches = [];
+
+  for (const relPath of textFiles(repoPath, files)) {
+    if (matches.length >= SEARCH_LIMITS.matches) break;
+    const read = readRepoFile(repoPath, relPath);
+    if (read.status !== 200) continue;
+
+    read.text.split('\n').forEach((text, index) => {
+      if (matches.length >= SEARCH_LIMITS.matches) return;
+      // The earliest token on the line names the declaration: `export function thing()` is an export, and
+      // reporting `function` for it would send a reader looking for the wrong thing.
+      const found = patterns
+        .filter((candidate) => candidate.pattern.test(text))
+        .sort((a, b) => text.search(a.pattern) - text.search(b.pattern))[0];
+      if (found) matches.push({ relPath, line: index + 1, text: text.trim(), kind: found.token });
+    });
+  }
+
+  return { matches, mode, heuristic: true };
 }
