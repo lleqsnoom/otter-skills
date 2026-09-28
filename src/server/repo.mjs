@@ -14,7 +14,7 @@ import { TEXT_EXTENSIONS } from './scan.mjs';
  * which of the two it used: an agent should know how complete a list is.
  */
 
-const IGNORED_DIRECTORIES = new Set(['.git', 'node_modules', 'dist', '.astro', 'vendor']);
+const IGNORED_DIRECTORIES = new Set(['.git', 'node_modules', 'dist', '.astro', 'vendor', 'knowledge.lance']);
 const MAX_WALK_DEPTH = 6;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 

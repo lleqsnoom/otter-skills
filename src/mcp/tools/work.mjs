@@ -1,8 +1,8 @@
 import * as z from 'zod';
 
-import { epicIndex, epicOfSelf, epicOfTasks } from '../../lib/epics.mjs';
 import { listDocuments, readDocument } from '../../server/docs.mjs';
 import { boardForProject } from '../../server/board.mjs';
+import { epicsOf, tasksOf } from '../../server/work.mjs';
 import { asText, projectOrThrow, resolveProjects } from '../context.mjs';
 
 /**
@@ -20,33 +20,6 @@ import { asText, projectOrThrow, resolveProjects } from '../context.mjs';
 const COLUMN_OF_STATUS = { done: 'done', active: 'active', todo: 'todo' };
 
 const SKILLS = '.x-skills';
-
-function taskCategoryOf(project) {
-  return project.categories.find((category) => category.work === 'task') ?? null;
-}
-
-function epicCategoryExists(project) {
-  return project.categories.some((category) => category.work === 'epic');
-}
-
-/** Every task, loose or in a folder, with the plan it belongs to. */
-function tasksOf(project) {
-  const category = taskCategoryOf(project);
-  if (!category) return [];
-
-  const index = epicIndex(project.categories);
-  const tasks = [];
-
-  for (const group of category.groups ?? []) {
-    const epic = epicOfTasks(index, group);
-    for (const item of group.items ?? []) tasks.push({ item, epic, container: group.relPath });
-  }
-  for (const item of category.items ?? []) {
-    tasks.push({ item, epic: epicOfSelf(index, item), container: null });
-  }
-
-  return tasks;
-}
 
 const skillsPath = (relPath) => `${SKILLS}/${relPath}`;
 
@@ -75,13 +48,10 @@ export const WORK_TOOLS = [
     handler: async ({ project }) => {
       const context = resolveProjects();
       const found = projectOrThrow(context, project);
-      if (!epicCategoryExists(found)) return { text: asText({ project: found.id, epics: [] }) };
-
       const board = boardForProject({ root: found.root, projectId: found.id });
-      const index = epicIndex(found.categories);
       const tasks = tasksOf(found).map((task) => present(task, found.id, board));
 
-      const epics = [...index.values()].map((epic) => ({
+      const epics = epicsOf(found).map((epic) => ({
         path: skillsPath(epic.relPath),
         title: epic.title,
         step: epic.step,
