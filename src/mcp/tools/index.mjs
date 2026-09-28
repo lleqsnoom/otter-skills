@@ -1,5 +1,6 @@
 import * as z from 'zod';
 
+import { PROJECT_TOOLS } from './projects.mjs';
 import { stub } from './stub.mjs';
 
 /**
@@ -8,20 +9,12 @@ import { stub } from './stub.mjs';
  * A definition is `{ name, description, inputSchema, handler }`: `inputSchema` is a raw Zod shape and the handler
  * returns `{ text }`. Nothing here knows MCP's wire format — `server.mjs` owns that — so a handler stays a plain
  * function over the repository. `project` is a configured root's id, the same id the board uses.
+ *
+ * A tool whose reader has not landed yet is `stub(name)`, which echoes the call: the surface stays complete and
+ * testable while the readers arrive one family at a time.
  */
 export const TOOLS = [
-  {
-    name: 'list_projects',
-    description: "List every repository this machine reads, with each project's id and paths",
-    inputSchema: {},
-    handler: stub('list_projects'),
-  },
-  {
-    name: 'get_project',
-    description: "Get one project's identity, paths, board file and index state",
-    inputSchema: { project: z.string().describe('the project id') },
-    handler: stub('get_project'),
-  },
+  ...PROJECT_TOOLS,
   {
     name: 'list_epics',
     description: "List a project's plans and epics with the tasks under each",

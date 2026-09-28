@@ -1,0 +1,45 @@
+import { boardForProject } from '../server/board.mjs';
+import { resolveRoots } from '../server/config.mjs';
+import { scanRoot } from '../server/scan.mjs';
+
+/**
+ * The roots and the projects read from them, resolved once per call.
+ *
+ * This is the one place the MCP server decides what exists, and it decides it by calling the board's own resolver:
+ * `resolveRoots` reads `--root`, the config file, `$OTTER_PM_ROOTS`, discovery and the Orca list in that order. The
+ * alternative — a second resolution that agrees today — is how an agent ends up asking about a repository the board
+ * has stopped reading.
+ */
+export function resolveProjects({ argv, env, cwd } = {}) {
+  const resolved = resolveRoots({ argv, env, cwd });
+  const projects = [];
+  const failures = [];
+
+  for (const root of resolved.roots) {
+    try {
+      projects.push(scanRoot(root, resolved.rootMeta[root]));
+    } catch (error) {
+      failures.push({ root, error: error.message });
+    }
+  }
+
+  projects.sort((a, b) => a.name.localeCompare(b.name));
+  return { ...resolved, projects, failures };
+}
+
+/** A project named by id, or a refusal that says which ids would have worked. */
+export function projectOrThrow(context, id) {
+  const project = context.projects.find((candidate) => candidate.id === id);
+  if (project) return project;
+
+  const known = context.projects.map((candidate) => candidate.id).sort();
+  if (!known.length) throw new Error(`unknown project ${id}: this machine reads no repositories`);
+  throw new Error(`unknown project ${id}: known ids are ${known.join(', ')}`);
+}
+
+export function boardOf(project) {
+  return boardForProject({ root: project.root, projectId: project.id });
+}
+
+/** Pretty-printed JSON, because an agent reads it and a stable shape matters more than a byte saved. */
+export const asText = (value) => JSON.stringify(value, null, 2);
