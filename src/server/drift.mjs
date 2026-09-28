@@ -31,28 +31,29 @@ const FENCE = /^```(\S*)/;
 const BACKTICKED = /`([^`\n]+)`/g;
 const IDENTIFIER = /^[A-Za-z_$][\w$.-]*$/;
 
-/** Every backticked token on a line, with the line number it was on. */
+/** Every token a document claims with, and the line it was on. */
 function tokensOf(lines) {
   const found = [];
   let fence = null;
 
   lines.forEach((line, index) => {
+    const lineNumber = index + 1;
     const opening = FENCE.exec(line.trim());
     if (opening) {
-      if (fence === null) fence = opening[1].toLowerCase();
-      else fence = null;
-      return;
-    }
-    if (fence !== null) {
-      if (!SCANNED_LANGUAGES.has(fence)) return;
-      // Inside a fence that names a language this repository reads, the line is the code: a command there is not
-      // written in backticks, and skipping it would miss the examples a document is most explicit about.
-      const bare = line.trim();
-      if (bare && !bare.startsWith('#') && !bare.startsWith('//')) found.push({ token: bare, line: index + 1 });
+      fence = fence === null ? opening[1].toLowerCase() : null;
       return;
     }
 
-    for (const match of line.matchAll(BACKTICKED)) found.push({ token: match[1].trim(), line: index + 1 });
+    if (fence === null) {
+      for (const match of line.matchAll(BACKTICKED)) found.push({ token: match[1].trim(), line: lineNumber });
+      return;
+    }
+
+    // Inside a fence that names a language this repository reads, the line is the code: a command there is not
+    // written in backticks, and skipping it would miss the examples a document is most explicit about.
+    if (!SCANNED_LANGUAGES.has(fence)) return;
+    const bare = line.trim();
+    if (bare && !bare.startsWith('#') && !bare.startsWith('//')) found.push({ token: bare, line: lineNumber });
   });
 
   return found;
@@ -103,24 +104,32 @@ function resolvePath(claim, { docPath, tracked, exists }) {
   return null;
 }
 
+const PACKAGE_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun']);
+
+/** A script name, checked against the manifest's `scripts`. */
+function resolveScript(name, readText) {
+  const manifest = readText('package.json');
+  if (!manifest) return { verdict: 'uncheckable', reason: 'there is no package.json to read the scripts from' };
+
+  let scripts;
+  try {
+    scripts = JSON.parse(manifest).scripts ?? {};
+  } catch {
+    return { verdict: 'uncheckable', reason: 'package.json is not valid JSON' };
+  }
+
+  return Object.hasOwn(scripts, name)
+    ? { verdict: 'resolves', reason: `package.json defines the script ${name}` }
+    : { verdict: 'missing', reason: `package.json defines no script named ${name}` };
+}
+
 function resolveCommand(claim, { tracked, readText }) {
   const [first, second, third] = claim.split(/\s+/);
 
-  if (first === 'npm' || first === 'pnpm' || first === 'yarn' || first === 'bun') {
-    if (second === 'run' && third) {
-      const manifest = readText('package.json');
-      if (!manifest) return { verdict: 'uncheckable', reason: 'there is no package.json to read the scripts from' };
-      let scripts = {};
-      try {
-        scripts = JSON.parse(manifest).scripts ?? {};
-      } catch {
-        return { verdict: 'uncheckable', reason: 'package.json is not valid JSON' };
-      }
-      return Object.hasOwn(scripts, third)
-        ? { verdict: 'resolves', reason: `package.json defines the script ${third}` }
-        : { verdict: 'missing', reason: `package.json defines no script named ${third}` };
-    }
-    return { verdict: 'uncheckable', reason: 'only `run <script>` can be checked against package.json' };
+  if (PACKAGE_MANAGERS.has(first)) {
+    return second === 'run' && third
+      ? resolveScript(third, readText)
+      : { verdict: 'uncheckable', reason: 'only `run <script>` can be checked against package.json' };
   }
 
   if (first === 'node' && second) {

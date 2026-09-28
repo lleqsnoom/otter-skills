@@ -14,10 +14,10 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const ROOT = path.join(__dirname, '..');
-const { makeRepo, withRoots } = require('./helpers/mcp-fixture.cjs');
+const { makeRepo, withRoots } = require('./fixtures/repository.cjs');
 
 const handlerOf = async (name) => {
-  const { WORK_TOOLS } = await import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'tools', 'work.mjs')).href);
+  const { WORK_TOOLS } = await import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'work.mjs')).href);
   const tool = WORK_TOOLS.find((candidate) => candidate.name === name);
   assert.ok(tool, `${name} is registered`);
   return tool.handler;

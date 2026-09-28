@@ -1,8 +1,8 @@
 import * as z from 'zod';
 
-import { embed } from '../../server/embed.mjs';
-import { relatedProject, searchProject, syncProject } from '../../server/index.mjs';
-import { asText, projectOrThrow, resolveProjects } from '../context.mjs';
+import { embed } from '../server/embed.mjs';
+import { relatedProject, searchProject, syncProject } from '../server/index.mjs';
+import { asText, projectOrThrow, resolveProjects } from './context.mjs';
 
 /**
  * The fuzzy half, read from the project's own database.

@@ -13,9 +13,9 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const ROOT = path.join(__dirname, '..');
-const { makeRepo, withRoots } = require('./helpers/mcp-fixture.cjs');
+const { makeRepo, withRoots } = require('./fixtures/repository.cjs');
 
-const projects = () => import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'tools', 'projects.mjs')).href);
+const projects = () => import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'projects.mjs')).href);
 
 const handlerOf = async (name) => {
   const { PROJECT_TOOLS } = await projects();

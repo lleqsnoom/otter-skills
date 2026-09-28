@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import { TOOLS } from './tools/index.mjs';
+import { TOOLS } from './registry.mjs';
 
 /**
  * The MCP server, assembled from the tool registry.

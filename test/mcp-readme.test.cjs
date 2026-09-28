@@ -22,7 +22,7 @@ const README = path.join(ROOT, 'README.md');
 const GUIDE = path.join(ROOT, 'docs', 'install.md');
 
 const registry = () =>
-  import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'tools', 'index.mjs')).href).then((module) => module.TOOLS);
+  import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'registry.mjs')).href).then((module) => module.TOOLS);
 
 test('every registered tool is named in the README, and the README names no others', async () => {
   const readme = fs.readFileSync(README, 'utf8');

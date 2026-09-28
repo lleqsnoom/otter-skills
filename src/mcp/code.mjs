@@ -1,7 +1,7 @@
 import * as z from 'zod';
 
-import { findSymbols, readLines, searchRepo } from '../../server/repo.mjs';
-import { asText, projectOrThrow, resolveProjects } from '../context.mjs';
+import { findSymbols, readLines, searchRepo } from '../server/repo.mjs';
+import { asText, projectOrThrow, resolveProjects } from './context.mjs';
 
 /**
  * The code tools: the authoritative half of the server.

@@ -12,10 +12,10 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const ROOT = path.join(__dirname, '..');
-const { makeRepo, withRoots } = require('./helpers/mcp-fixture.cjs');
+const { makeRepo, withRoots } = require('./fixtures/repository.cjs');
 
 const handlerOf = async (name) => {
-  const { KNOWLEDGE_TOOLS } = await import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'tools', 'knowledge.mjs')).href);
+  const { KNOWLEDGE_TOOLS } = await import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'knowledge.mjs')).href);
   const tool = KNOWLEDGE_TOOLS.find((candidate) => candidate.name === name);
   assert.ok(tool, `${name} is registered`);
   return tool.handler;
@@ -117,7 +117,7 @@ test('get_project reports the index state without building one', async () => {
   const fixture = makeRepo();
   try {
     await withRoots([fixture.repo], async () => {
-      const { PROJECT_TOOLS } = await import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'tools', 'projects.mjs')).href);
+      const { PROJECT_TOOLS } = await import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'projects.mjs')).href);
       const handler = PROJECT_TOOLS.find((tool) => tool.name === 'get_project').handler;
 
       const before = parse(await handler({ project: fixture.id }));

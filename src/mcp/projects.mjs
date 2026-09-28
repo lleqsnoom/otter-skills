@@ -1,7 +1,7 @@
 import * as z from 'zod';
 
-import { indexState } from '../../server/index.mjs';
-import { asText, boardOf, projectOrThrow, resolveProjects } from '../context.mjs';
+import { indexState } from '../server/index.mjs';
+import { asText, boardOf, projectOrThrow, resolveProjects } from './context.mjs';
 
 /**
  * The two tools that answer what this machine reads: every project, and one project.

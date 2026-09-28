@@ -1,11 +1,11 @@
 import * as z from 'zod';
 
-import { listDocuments, readDocument } from '../../server/docs.mjs';
-import { boardForProject } from '../../server/board.mjs';
-import { driftFor } from '../../server/drift.mjs';
-import { writeDrift } from '../../server/index.mjs';
-import { epicsOf, tasksOf } from '../../server/work.mjs';
-import { asText, projectOrThrow, resolveProjects } from '../context.mjs';
+import { listDocuments, readDocument } from '../server/docs.mjs';
+import { boardForProject } from '../server/board.mjs';
+import { driftFor } from '../server/drift.mjs';
+import { writeDrift } from '../server/index.mjs';
+import { epicsOf, tasksOf } from '../server/work.mjs';
+import { asText, projectOrThrow, resolveProjects } from './context.mjs';
 
 /**
  * The work tree and its documents: the tasks a project holds, the plans they belong to, and the README and

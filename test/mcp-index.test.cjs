@@ -15,7 +15,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const ROOT = path.join(__dirname, '..');
-const { makeRepo } = require('./helpers/mcp-fixture.cjs');
+const { makeRepo } = require('./fixtures/repository.cjs');
 
 const load = async () => {
   const [index, embed] = await Promise.all([
