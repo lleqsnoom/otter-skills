@@ -145,6 +145,30 @@ systemctl --user restart oc-otter-pm
 oc-otter-pm port     # may print a different port; it is published, not fixed
 ```
 
+## The MCP server
+
+The board's data is also an MCP server, for an agent that wants to ask about a repository rather than read it by
+hand. It is the same checkout, so nothing is installed twice:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "otter-pm": { "command": "otter-pm-mcp" }
+    }
+  }
+}
+```
+
+`otter-pm-mcp` is the second bin in this repository's `package.json` (`scripts/mcp.mjs`), and it takes no
+arguments: it reads `otter-pm.config.json`, `$OTTER_PM_ROOTS` and the Orca list exactly as the board does, so both
+halves see the same repositories.
+
+It is a command a client starts itself, not a service — there is no unit for it and nothing to restart. Each
+project keeps its own index at `<repo>/.x-skills/knowledge.lance/`; deleting that directory is safe, and the next
+fuzzy search rebuilds it. The first build downloads the embedding model once per machine, so a machine that must
+stay offline is better served by the exact tools, which read the files and need neither a model nor the index.
+
 ## Troubleshooting
 
 **The port is not 4321.** Nothing is broken: the board takes the first free port at or after `--port`/`$PORT`/4321, so
