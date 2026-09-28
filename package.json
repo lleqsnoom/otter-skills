@@ -1,7 +1,7 @@
 {
   "name": "@lleqsnoom/otter-pm",
   "version": "0.1.0",
-  "private": false,
+  "private": true,
   "type": "module",
   "description": "A local project board over one or more repositories' .x-skills trees: what is in progress, what is waiting, and what is done.",
   "bin": {
@@ -50,9 +50,6 @@
   },
   "devDependencies": {
     "typescript": "^7.0.2"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "license": "MIT",
   "repository": {
