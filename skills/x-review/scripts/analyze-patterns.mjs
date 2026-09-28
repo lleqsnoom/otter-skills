@@ -278,13 +278,18 @@ function analyzeFile(filePath, thresholds) {
 
 // ── Main ──────────────────────────────────────────────────────────────
 
+/**
+ * No `process.exit` here, deliberately: `console.log` to a pipe is asynchronous, so exiting on the next line
+ * discards whatever had not drained and the consumer parses a document cut mid-string. Returning lets Node flush
+ * first. `test/x-review-patterns-json.test.cjs` is the check that this stays true.
+ */
 function main() {
   const { thresholds } = parseArgs(process.argv);
   const files = findSourceFiles(process.argv.slice(2));
 
   if (files.length === 0) {
     console.log(JSON.stringify({ results: [], totalFiles: 0, message: "No source files found." }, null, 2));
-    process.exit(0);
+    return;
   }
 
   const results = [];
@@ -297,7 +302,6 @@ function main() {
 
   const output = { results, totalFiles: files.length };
   console.log(JSON.stringify(output, null, 2));
-  process.exit(0);
 }
 
 main();

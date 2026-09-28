@@ -459,7 +459,9 @@ highlighter.
 `skills/` is where the skills live: 31 of them, each a `SKILL.md` with its `scripts/`, `references/` and
 `assets/`. They write the `.x-skills` trees this board reads, so both halves of the loop sit in one checkout.
 They run from wherever they are installed, so this repository is the source of truth: edit a skill here, then
-install it where an agent runs it (`xskills install <skill> -g` copies it to `~/.agents/skills/`).
+`npm run install` links the whole set into `~/.agents/skills/`, mirrors each one in `~/.claude/skills/`, and
+registers the MCP server below with each agent config it finds — so the next agent to run a skill runs this
+checkout's copy, and can ask this checkout's board a question.
 
 Nothing in the app imports them, and `files` keeps them out of the published package.
 
@@ -501,6 +503,112 @@ and `import`/`export` — a `.cjs` file is the escape hatch for a script that mu
 | `x-triage` | Structured intake conversation — ask targeted panels (single / multi / open / confirm) to classify a bug’s platform, type, and evidence before touching any tools. Outputs `<run folder>/E<nn>-triage.md`. |
 | `x-unbloat` | Cut code to what the task needs — a YAGNI ladder that removes needless abstractions, wrappers, unused options and dead code, keeps behavior and protective code, and measures the result. Use when asked to unbloat, simplify, or remove over-engineering; x-implement, x-review and x-refactor run it as a pass. |
 | `x-ui` | Design and audit app UIs to be clean, clear, and effective — framework-agnostic method (Vue/React/HTML) with component-selection, row-action, and pre-flight rules. |
+
+## The MCP server
+
+`otter-pm-mcp` is a second bin for the same repositories: an MCP server over stdio, so an agent can ask what a
+project's tasks, documents and code say without reading a tree by hand.
+
+**Installing it.** `npm run install` writes the entry into the config of each agent on this machine that already has
+one, leaving the rest of that file — its other servers and its own keys — where it is. Claude Code's
+`~/.claude.json` holds them under `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"] }
+  }
+}
+```
+
+and Crush's `~/.config/crush/crush.json` holds them under `mcp`, where each entry also carries its `type`:
+
+```json
+{
+  "mcp": {
+    "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"], "type": "stdio" }
+  }
+}
+```
+
+An agent that has no config is left alone rather than given one, the same rule the skills follow. Nothing is
+published yet, so the entry names this checkout's script; once the package is installed and `otter-pm-mcp` is on
+`PATH`, the whole entry is `{ "command": "otter-pm-mcp" }`.
+
+It takes no arguments of its own. It reads the same `otter-pm.config.json`, `$OTTER_PM_ROOTS` and Orca list the
+board reads, so the board and an agent cannot disagree about which repositories exist.
+
+**Running it.** There is nothing to keep running. The client starts the server itself over stdio and stops it by
+closing the pipe, so there is no service, no port and no `--help`. The roots decide what it can see, exactly as they
+do for the board: `OTTER_PM_ROOTS=/code/app node scripts/mcp.mjs` asks about one repository without touching the
+config file, and `--root` works the same way. Two sessions in one checkout are two servers over one index, which is
+safe — see the note on the database below.
+
+**Checking it answers**, without a client — this speaks the protocol by hand and prints each reply as a line:
+
+```bash
+printf '%s\n%s\n%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"shell","version":"1"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+  | node scripts/mcp.mjs
+```
+
+The last line of that output is the `tools/list` reply — twelve tools. Swap the third line for a call and the same
+command answers one:
+
+```bash
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_projects","arguments":{}}}' \
+  | node scripts/mcp.mjs
+```
+
+`list_projects` answers with the projects in the reply's first text block, which is where every tool's answer
+lands — as JSON, so an agent reads the same shape a person sees here.
+
+**Twelve tools, in two halves.** The exact ones read the files, so their answer is what the repository says:
+
+| Tool | Answers |
+|------|---------|
+| `list_projects` | every repository this machine reads, with each project's id and paths |
+| `get_project` | one project's identity, paths, board file and index state |
+| `list_epics` | a project's plans and epics with the tasks under each |
+| `list_tasks` | tasks with their state, epic, lane and archived flag |
+| `get_task` | one task in full, with its parsed fields, lane and archived flag |
+| `list_docs` | the README and the project's other documents |
+| `read_doc` | one document, **always** with its drift report against the code |
+| `search_code` | tracked source, by literal or regular expression, as `path:line` |
+| `read_code` | a tracked file, or a line range of it, with line numbers |
+| `find_symbols` | where a name is declared, by declaration shape — a heuristic, and it says so |
+
+The fuzzy ones read the project's own index and report the freshness they were served from, so a ranked hit is
+never mistaken for the file:
+
+| Tool | Answers |
+|------|---------|
+| `search_knowledge` | tasks, documents and code by meaning, ranked, with the stamp the answer came from |
+| `find_related` | what is nearest a path — the file linking |
+
+**Code is the authority.** `read_doc` never returns a document without also returning what the code says about it:
+every path, `npm run` script and symbol it names is resolved against the tracked files, and each claim comes back
+`resolves`, `declared`, `missing` or `uncheckable`. A sentence the check cannot decide is reported `uncheckable`
+with the reason, never as drift — calling an unverifiable sentence drift would be a lie about the code.
+
+**Each project keeps its own database.** The fuzzy tools read `<repo>/.x-skills/knowledge.lance/`, built from the
+project's tasks, documents, source and drift, beside its `board.json` so it travels with the checkout. It is
+derived and rebuildable: deleting it costs the next fuzzy call a rebuild and nothing else. A rebuild re-embeds only
+the files that changed, and the local embedding model (`Xenova/all-MiniLM-L6-v2`, downloaded once per machine)
+means no key and no network after the first build. A machine with no model, or no LanceDB binary for its platform,
+still answers every exact tool — the index says it is unavailable and says why.
+
+**More than one client may run it.** Each client starts its own server over stdio, so two sessions in one checkout are
+two processes against one database directory. That is safe rather than merely tolerated: every write is a single
+commit that replaces a row instead of a delete followed by an add, so a file is indexed once no matter how the two
+interleave; a write the engine refuses outright is retried rather than lost; and since the index is derived, the worst
+case is a rebuild.
+
+**The server writes exactly one thing**, that database directory, and never a repository file. It is read-only by
+construction rather than by permission.
+
 ## Endpoints
 
 | Route | What it answers |

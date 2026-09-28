@@ -154,7 +154,10 @@ function main(argv) {
   try {
     const result = record ? measureRecord(record) : measure({ base: base ?? "HEAD" });
     console.log(JSON.stringify(result, null, 2));
-    process.exit(result.depsAdded.length ? 1 : 0);
+    // The dependency count decides the exit status, so it is set rather than exited with: `process.exit` here
+    // would discard whatever of that write had not drained, and the caller parses this document.
+    process.exitCode = result.depsAdded.length ? 1 : 0;
+    return;
   } catch (error) {
     console.error(`measure.mjs: ${error.stderr?.toString().trim() || error.message}`);
     process.exit(2);

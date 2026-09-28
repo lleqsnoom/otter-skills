@@ -145,6 +145,47 @@ systemctl --user restart oc-otter-pm
 oc-otter-pm port     # may print a different port; it is published, not fixed
 ```
 
+## The MCP server
+
+The board's data is also an MCP server, for an agent that wants to ask about a repository rather than read it by
+hand. It is the same checkout, so nothing is installed twice: `npm run install` writes the entry into the config of
+each agent on this machine that already has one. Claude Code's `~/.claude.json` holds it under `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"] }
+  }
+}
+```
+
+and Crush's `~/.config/crush/crush.json` holds it under `mcp`, where each entry also carries its `type`:
+
+```json
+{
+  "mcp": {
+    "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"], "type": "stdio" }
+  }
+}
+```
+
+An agent that has no config is left alone rather than given one, and the rest of a file it does write into is left
+alone too. `npm run install -- --dry-run` says what it would change and writes nothing.
+
+`otter-pm-mcp` is the second bin in this repository's `package.json` (`scripts/mcp.mjs`), and it takes no
+arguments: it reads `otter-pm.config.json`, `$OTTER_PM_ROOTS` and the Orca list exactly as the board does, so both
+halves see the same repositories. Nothing is published yet, so the entry names the checkout's script; once the bin
+is installed and on `PATH`, that is what it can name instead.
+
+It is a command a client starts itself, not a service — there is no unit for it and nothing to restart. Each
+project keeps its own index at `<repo>/.x-skills/knowledge.lance/`; deleting that directory is safe, and the next
+fuzzy search rebuilds it. The first build downloads the embedding model once per machine, so a machine that must
+stay offline is better served by the exact tools, which read the files and need neither a model nor the index.
+
+Each client starts its own server, so two sessions in one checkout are two processes over one index. That is safe:
+the index is derived, each write is a single commit, and a write the engine refuses is retried — so the two can only
+cost a file being embedded twice.
+
 ## Troubleshooting
 
 **The port is not 4321.** Nothing is broken: the board takes the first free port at or after `--port`/`$PORT`/4321, so
