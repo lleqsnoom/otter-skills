@@ -181,13 +181,17 @@ function main(argv) {
   if (argv.includes("--self-test")) {
     const { pass, cases } = selfTest();
     console.log(JSON.stringify({ selfTest: pass, cases }, null, 2));
-    process.exit(pass ? 0 : 1);
+    // `process.exit` would discard whatever of that write had not drained, and the caller parses this document.
+    // Setting the code keeps the exit status identical and lets Node flush stdout first.
+    process.exitCode = pass ? 0 : 1;
+    return;
   }
   if (argv.includes("--help") || argv.includes("-h")) {
     console.log(USAGE);
     process.exit(0);
   }
-  process.exit(run(argv));
+  // `run` prints the config it proposes, so exiting here would truncate that too; the value it returns is the status.
+  process.exitCode = run(argv);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {

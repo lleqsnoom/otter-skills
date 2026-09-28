@@ -242,7 +242,10 @@ function main(args) {
     const base = baseOf(text);
     const result = { file, ...checkVerdicts(text, base && removedSince(base)) };
     console.log(JSON.stringify(result, null, 2));
-    process.exit(result.violations.length ? 1 : 0);
+    // The violation count is the exit contract; setting it lets Node flush stdout first, where `process.exit`
+    // would discard whatever had not drained and leave the caller parsing a truncated document.
+    process.exitCode = result.violations.length ? 1 : 0;
+    return;
   }
   fail("usage: verdicts.mjs new --slug <topic> | check --file <path>", 2);
 }

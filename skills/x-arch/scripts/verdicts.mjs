@@ -208,7 +208,10 @@ function printSelfTest() {
   try {
     const { pass, cases } = selfTest();
     console.log(JSON.stringify({ selfTest: pass, cases }, null, 2));
-    process.exit(pass ? 0 : 1);
+    // `process.exit` would discard whatever of that write had not drained, and the caller parses this document.
+    // Setting the code keeps the exit status identical and lets Node flush stdout first.
+    process.exitCode = pass ? 0 : 1;
+    return;
   } catch (error) {
     console.error(JSON.stringify({ error: error.message }, null, 2));
     process.exit(2);
@@ -237,7 +240,10 @@ function main(argv) {
     console.error(`${USAGE}\nunknown option: ${unknown}`);
     process.exit(2);
   }
-  if (argv.includes("--self-test")) printSelfTest();
+  if (argv.includes("--self-test")) {
+    printSelfTest();
+    return;
+  }
   if (argv.includes("--help") || argv.includes("-h")) {
     console.log(USAGE);
     process.exit(0);
