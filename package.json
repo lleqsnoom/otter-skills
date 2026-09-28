@@ -22,6 +22,7 @@
   ],
   "scripts": {
     "test": "node --test --test-concurrency=1 test/*.test.cjs",
+    "install": "node scripts/install.mjs",
     "dev": "node scripts/dev.mjs",
     "demo": "node scripts/seed-demo.mjs",
     "build": "astro build",
