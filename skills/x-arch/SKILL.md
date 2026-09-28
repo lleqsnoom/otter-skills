@@ -1,7 +1,7 @@
 ---
 name: x-arch
 description: Keep a codebase's architecture honest — where a unit lives, what it is called, what its one responsibility is, and which way its dependencies point; names banned (utils, helpers, common, tools, misc, other, shared), composition over inheritance, and the rule of three before extracting. Use when asked to fix a directory layout, a vague or role-shaped name, inheritance growth, where new code belongs, or a layer boundary; x-implement, x-decompose, x-review and x-fix run it as a pass.
-version: 1.0.0
+version: 1.1.0
 author: Community
 tags: [architecture, naming, boundaries, responsibilities, dependency-direction, composition, solid, placement]
 user-invocable: true
@@ -76,7 +76,8 @@ Decide which code owns which behaviour, then let the directories follow. Two tes
   `models/`, `services/` and `controllers/` means those four folders are one module, and splitting it by
   technical role has hidden the boundary rather than drawn it.
 - **The owner test.** Which module protects the invariant? That module owns the data, whether or not it is the
-  one that reads it most often.
+  one that reads it most often. The invariant belongs in that module's type rather than in a check every reader
+  repeats: a value another module can build wrongly is a value whose owner has not been decided.
 
 Group by capability when a capability has its own vocabulary, its own failure modes, or changes at its own
 rate: `orders/`, `billing/`, `sessions/`. Keep code local to the feature that uses it, and lift it only when a

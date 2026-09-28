@@ -1,7 +1,7 @@
 ---
 name: x-plan
 description: Plan before coding — research the project and the web first, ask short plain questions until the user is sure, propose three approaches with trade-offs, then write a layered spec (contract, invariant, test) as a graph-driven scenario with guards and a memory file; gate on user approval
-version: 2.2.0
+version: 2.3.0
 author: Community
 tags: [plan, spec, requirements, architecture, clarification, testable, layers, prototype]
 user-invocable: true
@@ -117,6 +117,11 @@ deferred:     <decided later>
 **Required:** `contract`, `invariant`, `test`. The gate refuses to hand off without all three, so a spec
 that genuinely has no invariant is a spec with an unanswered question, not a shorter spec — go back and
 clarify. `goal`, `constraint` and `deferred` are written only when they apply.
+
+Write an `invariant:` as a property of the design, not as a check that catches its violation: say which
+representation makes the bad state impossible to build — a narrowed type, a parsed value, a schema constraint,
+a hidden transition — rather than what the code does when it occurs. A bad state the design does not exclude is
+a state `x-implement` has to handle; the rule is *Make the Bad State Impossible* in its `SKILL.md`.
 
 Decision tree for classification: input/output → contract, system property → invariant, acceptance criterion → test, performance/security → constraint, postponed → deferred. If none match → clarify first. **No question → no section.**
 
