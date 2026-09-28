@@ -7,6 +7,10 @@
  * directory. Both point back here, so a skill edited in this checkout is the skill the next agent runs and nothing
  * has to be installed again.
  *
+ * The MCP server is installed the same way, into the config of each agent that already has one on this machine. The
+ * entry names this checkout's `scripts/mcp.mjs` rather than the published bin, because a checkout can guarantee its
+ * own path and the bin is not published yet.
+ *
  * The name is `install`, which npm also fires by itself for `npm install` and `npm ci`. Those are dependency
  * installs rather than this one, and they are skipped — a published copy of the app does not ship `skills/` at all.
  *
@@ -15,7 +19,19 @@
  *   npm run install -- --dry-run   # say what would change and write nothing
  *   npm run install -- --target ~/.agents/skills
  */
-import { existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, rmSync, symlinkSync, unlinkSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,22 +39,40 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = join(ROOT, 'skills');
 const TOOL = 'otter-pm install';
+const SERVER = 'otter-pm';
+const MCP_SCRIPT = join(ROOT, 'scripts', 'mcp.mjs');
+
+/**
+ * Where each agent keeps its MCP servers and what its entry needs beyond the command. Both shapes were read off the
+ * clients rather than guessed: Claude Code holds them under `mcpServers`, and Crush holds them directly under `mcp`,
+ * where every entry carries its `type`.
+ */
+const AGENTS = [
+  { config: join(home(), '.claude.json'), section: 'mcpServers', extra: {} },
+  { config: join(configHome(), 'crush', 'crush.json'), section: 'mcp', extra: { type: 'stdio' } },
+];
 
 const USAGE = [
-  "otter-pm install — link this checkout's skills where the agents read them.",
+  "otter-pm install — link this checkout's skills, and its MCP server, where the agents look for them.",
   '',
   'Usage:',
   '  npm run install [-- --dry-run] [-- --target <dir>]',
   '',
   'Flags:',
   '  --dry-run       Say what would change, write nothing',
-  '  --target <dir>  Where to link them (default $HOME/.agents/skills)',
+  '  --target <dir>  Where to link the skills (default $HOME/.agents/skills)',
   '  --help, -h      Show this help',
+  '',
+  'An agent whose MCP config already exists is given an `otter-pm` server entry; one without a config is left alone.',
   '',
 ].join('\n');
 
 function home() {
   return process.env.HOME || homedir();
+}
+
+function configHome() {
+  return process.env.XDG_CONFIG_HOME || join(home(), '.config');
 }
 
 function parseArgs(argv) {
@@ -94,6 +128,119 @@ function mirrorSkill(name, skillsHome, args) {
   return link(file, relative(dirname(file), join(skillsHome, name)), args);
 }
 
+/**
+ * An entry compared as we would write it, so a run that changed nothing does nothing, and a key order somebody edited
+ * by hand is not mistaken for a change.
+ */
+const canonical = (entry) => JSON.stringify(Object.fromEntries(Object.entries(entry ?? {}).sort()));
+
+/** One rename, so a kill mid-write cannot leave an agent holding a half-written config. */
+function writeJson(file, document) {
+  const temporary = `${file}.otter-pm-install`;
+  writeFileSync(temporary, `${JSON.stringify(document, null, 2)}\n`);
+  renameSync(temporary, file);
+}
+
+/** The JSON an agent left behind, or the reason it cannot be used. */
+function readDocument(file) {
+  let document;
+  try {
+    document = JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    return { failed: error.message };
+  }
+  if (typeof document !== 'object' || document === null) return { failed: 'it does not hold a JSON object' };
+  return { document };
+}
+
+/**
+ * One agent's config and the servers already in it, or the reason it cannot be filled.
+ *
+ * A file this process did not write is read defensively: one that cannot be parsed, or whose server section is not an
+ * object, is reported rather than replaced — it belongs to the agent, and losing it would cost more than the entry.
+ */
+function openConfig(agent) {
+  if (!existsSync(agent.config)) return { action: 'absent' };
+
+  const read = readDocument(agent.config);
+  if (read.failed) return { action: 'failed', detail: read.failed };
+
+  const servers = read.document[agent.section] ?? {};
+  if (typeof servers !== 'object' || Array.isArray(servers)) {
+    return { action: 'failed', detail: `\`${agent.section}\` is not an object` };
+  }
+  return { document: read.document, servers };
+}
+
+/** One agent's config: the entry added, updated or kept, or the reason it was left alone. */
+function registerOne(agent, launch, args) {
+  const config = openConfig(agent);
+  if (config.action) return config;
+
+  const wanted = { ...launch, ...agent.extra };
+  const current = config.servers[SERVER];
+  if (canonical(current) === canonical(wanted)) return { action: 'kept' };
+
+  const action = current === undefined ? 'added' : 'updated';
+  if (!args.dryRun) {
+    writeJson(agent.config, { ...config.document, [agent.section]: { ...config.servers, [SERVER]: wanted } });
+  }
+  return { action };
+}
+
+/**
+ * Register this checkout's MCP server with every agent that already has a config — the rule the skills follow too:
+ * this fills a config that exists rather than writing one into a directory the agent does not use.
+ */
+function registerMcp(args) {
+  const launch = { command: 'node', args: [MCP_SCRIPT] };
+  const lines = [];
+  let registered = 0;
+  let failed = 0;
+
+  for (const agent of AGENTS) {
+    const { action, detail } = registerOne(agent, launch, args);
+    if (action === 'failed') {
+      process.stderr.write(`${TOOL}: ${agent.config}: ${detail}\n`);
+      failed += 1;
+    }
+    if (action === 'added' || action === 'updated') registered += 1;
+    lines.push(`${TOOL}: ${action.padEnd(8)} ${SERVER} mcp in ${agent.config}`);
+  }
+
+  return { lines, registered, failed };
+}
+
+/** Link every skill, collecting the line each one earns and how many were not already right. */
+function installSkills(args) {
+  const names = skills();
+  const mirror = existsSync(join(home(), '.claude'));
+  const lines = [];
+  let linked = 0;
+
+  for (const name of names) {
+    const action = link(join(args.target, name), relative(args.target, join(SOURCE, name)), args);
+    const mirrored = mirror ? mirrorSkill(name, args.target, args) : 'absent';
+    if (action === 'linked') linked += 1;
+    lines.push(`${TOOL}: ${action.padEnd(6)} ${name}${mirror ? ` (${mirrored})` : ''}`);
+  }
+
+  return { names, mirror, linked, lines };
+}
+
+/** What the run did, in two lines, so that `main` only has to print them. */
+function summary(args, installed, mcp) {
+  const skillsLine =
+    `${TOOL}: ${args.dryRun ? 'would link' : 'linked'} ${installed.linked} of ${installed.names.length}` +
+    ` skills to ${ROOT} from ${args.target}` +
+    (installed.mirror ? `, mirrored under ${join(home(), '.claude', 'skills')}` : '');
+  const mcpLine =
+    `${TOOL}: ${args.dryRun ? 'would register' : 'registered'} ${SERVER} mcp with ` +
+    `${mcp.registered} of ${AGENTS.length} agents`;
+
+  return `${skillsLine}\n${mcpLine}\n`;
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -112,22 +259,13 @@ function main() {
     return;
   }
 
-  const names = skills();
-  const mirror = existsSync(join(home(), '.claude'));
-  let changed = 0;
+  const installed = installSkills(args);
+  const mcp = registerMcp(args);
 
-  for (const name of names) {
-    const action = link(join(args.target, name), relative(args.target, join(SOURCE, name)), args);
-    const mirrored = mirror ? mirrorSkill(name, args.target, args) : 'absent';
-    if (action === 'linked') changed += 1;
-    process.stdout.write(`${TOOL}: ${action.padEnd(6)} ${name}${mirror ? ` (${mirrored})` : ''}\n`);
-  }
+  for (const line of [...installed.lines, ...mcp.lines]) process.stdout.write(`${line}\n`);
+  process.stdout.write(summary(args, installed, mcp));
 
-  process.stdout.write(
-    `${TOOL}: ${args.dryRun ? 'would link' : 'linked'} ${changed} of ${names.length} skills to ${ROOT} from ${args.target}` +
-      (mirror ? `, mirrored under ${join(home(), '.claude', 'skills')}` : '') +
-      '\n',
-  );
+  if (mcp.failed) process.exitCode = 1;
 }
 
 main();

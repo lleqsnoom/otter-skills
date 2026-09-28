@@ -459,8 +459,9 @@ highlighter.
 `skills/` is where the skills live: 31 of them, each a `SKILL.md` with its `scripts/`, `references/` and
 `assets/`. They write the `.x-skills` trees this board reads, so both halves of the loop sit in one checkout.
 They run from wherever they are installed, so this repository is the source of truth: edit a skill here, then
-`npm run install` links the whole set into `~/.agents/skills/` — and mirrors each one in `~/.claude/skills/` —
-so the next agent to run it runs this checkout's copy.
+`npm run install` links the whole set into `~/.agents/skills/`, mirrors each one in `~/.claude/skills/`, and
+registers the MCP server below with each agent config it finds — so the next agent to run a skill runs this
+checkout's copy, and can ask this checkout's board a question.
 
 Nothing in the app imports them, and `files` keeps them out of the published package.
 
@@ -502,41 +503,46 @@ and `import`/`export` — a `.cjs` file is the escape hatch for a script that mu
 | `x-triage` | Structured intake conversation — ask targeted panels (single / multi / open / confirm) to classify a bug’s platform, type, and evidence before touching any tools. Outputs `<run folder>/E<nn>-triage.md`. |
 | `x-unbloat` | Cut code to what the task needs — a YAGNI ladder that removes needless abstractions, wrappers, unused options and dead code, keeps behavior and protective code, and measures the result. Use when asked to unbloat, simplify, or remove over-engineering; x-implement, x-review and x-refactor run it as a pass. |
 | `x-ui` | Design and audit app UIs to be clean, clear, and effective — framework-agnostic method (Vue/React/HTML) with component-selection, row-action, and pre-flight rules. |
+
 ## The MCP server
 
 `otter-pm-mcp` is a second bin for the same repositories: an MCP server over stdio, so an agent can ask what a
-project's tasks, documents and code say without reading a tree by hand. Point a client at it:
+project's tasks, documents and code say without reading a tree by hand.
+
+**Installing it.** `npm run install` writes the entry into the config of each agent on this machine that already has
+one, leaving the rest of that file — its other servers and its own keys — where it is. Claude Code's
+`~/.claude.json` holds them under `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"] }
+  }
+}
+```
+
+and Crush's `~/.config/crush/crush.json` holds them under `mcp`, where each entry also carries its `type`:
 
 ```json
 {
   "mcp": {
-    "servers": {
-      "otter-pm": { "command": "otter-pm-mcp" }
-    }
+    "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"], "type": "stdio" }
   }
 }
 ```
+
+An agent that has no config is left alone rather than given one, the same rule the skills follow. Nothing is
+published yet, so the entry names this checkout's script; once the package is installed and `otter-pm-mcp` is on
+`PATH`, the whole entry is `{ "command": "otter-pm-mcp" }`.
 
 It takes no arguments of its own. It reads the same `otter-pm.config.json`, `$OTTER_PM_ROOTS` and Orca list the
 board reads, so the board and an agent cannot disagree about which repositories exist.
 
 **Running it.** There is nothing to keep running. The client starts the server itself over stdio and stops it by
-closing the pipe, so there is no service, no port and no `--help`: the block above is the whole configuration when
-the package is installed and the bin is on `PATH`. From a checkout, point the client at the script instead:
-
-```json
-{
-  "mcp": {
-    "servers": {
-      "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"] }
-    }
-  }
-}
-```
-
-Nothing is published yet, so today that is the one that works. The roots decide what it can see, exactly as they
+closing the pipe, so there is no service, no port and no `--help`. The roots decide what it can see, exactly as they
 do for the board: `OTTER_PM_ROOTS=/code/app node scripts/mcp.mjs` asks about one repository without touching the
-config file, and `--root` works the same way.
+config file, and `--root` works the same way. Two sessions in one checkout are two servers over one index, which is
+safe — see the note on the database below.
 
 **Checking it answers**, without a client — this speaks the protocol by hand and prints each reply as a line:
 
