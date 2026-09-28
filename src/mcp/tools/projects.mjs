@@ -1,5 +1,6 @@
 import * as z from 'zod';
 
+import { indexState } from '../../server/index.mjs';
 import { asText, boardOf, projectOrThrow, resolveProjects } from '../context.mjs';
 
 /**
@@ -44,7 +45,9 @@ export const PROJECT_TOOLS = [
       const found = projectOrThrow(context, project);
       const board = boardOf(found);
 
-      return { text: asText({ ...summarise(found), boardFile: board.file }) };
+      // Read, never built: asking about a project must not start an index build the caller did not ask for.
+      const index = await indexState(found);
+      return { text: asText({ ...summarise(found), boardFile: board.file, index }) };
     },
   },
 ];

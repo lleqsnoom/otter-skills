@@ -1,8 +1,8 @@
 import * as z from 'zod';
 
 import { CODE_TOOLS } from './code.mjs';
+import { KNOWLEDGE_TOOLS } from './knowledge.mjs';
 import { PROJECT_TOOLS } from './projects.mjs';
-import { stub } from './stub.mjs';
 import { WORK_TOOLS } from './work.mjs';
 
 /**
@@ -12,31 +12,10 @@ import { WORK_TOOLS } from './work.mjs';
  * returns `{ text }`. Nothing here knows MCP's wire format — `server.mjs` owns that — so a handler stays a plain
  * function over the repository. `project` is a configured root's id, the same id the board uses.
  *
- * A tool whose reader has not landed yet is `stub(name)`, which echoes the call: the surface stays complete and
- * testable while the readers arrive one family at a time.
  */
 export const TOOLS = [
   ...PROJECT_TOOLS,
   ...WORK_TOOLS,
   ...CODE_TOOLS,
-  {
-    name: 'search_knowledge',
-    description: "Search a project's tasks, documents and code by meaning, from its own index",
-    inputSchema: {
-      project: z.string().optional().describe('the project id'),
-      query: z.string().describe('what to look for'),
-      limit: z.number().int().positive().optional().describe('most rows to return'),
-    },
-    handler: stub('search_knowledge'),
-  },
-  {
-    name: 'find_related',
-    description: 'Find what is related to a path, from the project index — the file linking',
-    inputSchema: {
-      project: z.string().optional().describe('the project id'),
-      path: z.string().describe('the path to find neighbours for'),
-      limit: z.number().int().positive().optional().describe('most rows to return'),
-    },
-    handler: stub('find_related'),
-  },
+  ...KNOWLEDGE_TOOLS,
 ];

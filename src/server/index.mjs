@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import * as lancedb from '@lancedb/lancedb';
 
-import { listDocuments } from './docs.mjs';
+import { isDocumentPath, listDocuments } from './docs.mjs';
 import { EMBEDDING_DIMENSIONS, embed } from './embed.mjs';
 import { isTextPath, readRepoFile, repoFiles } from './repo.mjs';
 import { tasksOf } from './work.mjs';
@@ -62,7 +62,7 @@ export function desiredRows(project) {
 
   const { files } = repoFiles(repoPath);
   for (const relPath of files) {
-    if (!isTextPath(relPath)) continue;
+    if (!isTextPath(relPath) || isDocumentPath(relPath)) continue;
     const read = readRepoFile(repoPath, relPath);
     if (read.status !== 200) continue;
     rows.code.push(rowOf('code', relPath, read.text, statSync(join(repoPath, relPath), { throwIfNoEntry: false }), {
@@ -251,6 +251,63 @@ export async function searchProject({ project, vector, tables = ['tasks', 'docs'
 
     results.sort((a, b) => a.distance - b.distance);
     return { ok: true, index: { rebuilt: synced.rebuilt, stamp: synced.stamp }, results: results.slice(0, limit) };
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
+}
+
+/**
+ * What is nearest a path, according to the index: the file linking.
+ *
+ * The query vector is the row's own stored vector rather than a fresh embedding of its text, so a document is
+ * related to what it *was* when it was indexed, and the answer says which stamp it came from. A path the index does
+ * not hold is a refusal naming the path — the alternative, an empty list, reads as "nothing is related to this",
+ * which is a different and much stronger claim.
+ */
+export async function relatedProject({ project, relPath, tables = ['tasks', 'docs', 'code'], limit = 10 }) {
+  try {
+    const synced = await syncProject(project);
+    if (!synced.ok) return synced;
+
+    const db = await lancedb.connect(databasePath(project.root));
+    let found = null;
+
+    for (const name of tables) {
+      const table = await tableOf(db, name);
+      if (!table) continue;
+      const rows = (await table.query().toArray()).filter((row) => row.relPath === relPath);
+      if (rows.length) {
+        found = { ...rows[0], table: name };
+        break;
+      }
+    }
+
+    if (!found) return { ok: false, reason: `not in the index: ${relPath}` };
+
+    const results = [];
+    for (const name of tables) {
+      const table = await tableOf(db, name);
+      if (!table) continue;
+      const rows = await table.search(found.vector).limit(limit + 1).toArray();
+      for (const row of rows) {
+        if (row.relPath === relPath && name === found.table) continue;
+        results.push({
+          table: name,
+          relPath: row.relPath,
+          text: row.text,
+          title: row.title ?? null,
+          distance: row._distance,
+        });
+      }
+    }
+
+    results.sort((a, b) => a.distance - b.distance);
+    return {
+      ok: true,
+      index: { rebuilt: synced.rebuilt, stamp: synced.stamp },
+      related: { path: relPath, table: found.table },
+      results: results.slice(0, limit),
+    };
   } catch (error) {
     return { ok: false, reason: error.message };
   }

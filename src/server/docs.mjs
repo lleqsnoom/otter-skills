@@ -12,7 +12,9 @@ import { readRepoFile, repoFiles } from './repo.mjs';
 
 const MARKDOWN = new Set(['.md', '.markdown']);
 
-const isMarkdown = (relPath) => MARKDOWN.has(relPath.slice(relPath.lastIndexOf('.')).toLowerCase());
+/** Whether a path is a document. Exported so the index files a markdown file in `docs` and not also in `code`:
+ * one file, one row, or a search answers the same document twice. */
+export const isDocumentPath = (relPath) => MARKDOWN.has(relPath.slice(relPath.lastIndexOf('.')).toLowerCase());
 
 /** The title a document leads with, or its file name. */
 function titleOf(relPath, text) {
@@ -29,7 +31,7 @@ function titleOf(relPath, text) {
 export function listDocuments({ repoPath, skillsDocuments = [] } = {}) {
   const { mode, files } = repoFiles(repoPath);
 
-  const repository = files.filter((relPath) => !relPath.startsWith('.x-skills/') && isMarkdown(relPath));
+  const repository = files.filter((relPath) => !relPath.startsWith('.x-skills/') && isDocumentPath(relPath));
   const documents = [
     ...repository.map((relPath) => ({ relPath, source: 'repository' })),
     ...skillsDocuments.map((relPath) => ({ relPath: `.x-skills/${relPath}`, source: 'skills' })),
