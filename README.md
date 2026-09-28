@@ -596,7 +596,8 @@ still answers every exact tool — the index says it is unavailable and says why
 **More than one client may run it.** Each client starts its own server over stdio, so two sessions in one checkout are
 two processes against one database directory. That is safe rather than merely tolerated: every write is a single
 commit that replaces a row instead of a delete followed by an add, so a file is indexed once no matter how the two
-interleave, and the cost of a race is a file embedded twice, never a stale or doubled answer.
+interleave; a write the engine refuses outright is retried rather than lost; and since the index is derived, the worst
+case is a rebuild.
 
 **The server writes exactly one thing**, that database directory, and never a repository file. It is read-only by
 construction rather than by permission.
