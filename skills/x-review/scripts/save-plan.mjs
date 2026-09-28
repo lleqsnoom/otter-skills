@@ -13,7 +13,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 /** The directory this script sits in: ESM has no __dirname, and the siblings are spawned from here. */
@@ -140,6 +140,9 @@ function scriptPath(rel) {
   return path.join(SKILL_DIR, "scripts", rel);
 }
 
+/** A whole-repo analyzer document runs to megabytes, and the 1 MiB default would cut it into `ENOBUFS`. */
+const ANALYSIS_OUTPUT_LIMIT = 512 * 1024 * 1024;
+
 /**
  * Run one analysis script. The result carries `ok` so the caller can tell "found nothing" from
  * "never ran": a crashed analyzer that reports zero issues is a false all-clear, and the plan must
@@ -147,11 +150,12 @@ function scriptPath(rel) {
  */
 function runAnalysis(scriptName, args = []) {
   try {
-    const output = execSync(`node "${scriptPath(scriptName)}" ${args.join(" ")}`, {
+    const output = execFileSync("node", [scriptPath(scriptName), ...args], {
       cwd: process.cwd(),
       timeout: 120_000,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      maxBuffer: ANALYSIS_OUTPUT_LIMIT,
     });
     return { ok: true, data: JSON.parse(output) };
   } catch (err) {
