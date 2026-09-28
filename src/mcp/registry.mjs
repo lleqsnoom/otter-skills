@@ -11,7 +11,6 @@ import { WORK_TOOLS } from './work.mjs';
  * A definition is `{ name, description, inputSchema, handler }`: `inputSchema` is a raw Zod shape and the handler
  * returns `{ text }`. Nothing here knows MCP's wire format — `server.mjs` owns that — so a handler stays a plain
  * function over the repository. `project` is a configured root's id, the same id the board uses.
- *
  */
 export const TOOLS = [
   ...PROJECT_TOOLS,

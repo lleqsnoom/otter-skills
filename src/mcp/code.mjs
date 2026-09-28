@@ -26,7 +26,8 @@ export const CODE_TOOLS = [
       try {
         result = searchRepo(found.repoPath, { query, regex });
       } catch (error) {
-        throw new Error(`could not read ${JSON.stringify(query)} as a ${regex ? 'pattern' : 'literal'}: ${error.message}`);
+        const read = regex ? 'pattern' : 'literal';
+        throw new Error(`could not read ${JSON.stringify(query)} as a ${read}: ${error.message}`);
       }
 
       return { text: asText({ project: found.id, query, ...result }) };

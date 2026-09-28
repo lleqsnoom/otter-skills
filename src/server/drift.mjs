@@ -18,9 +18,13 @@ const MAX_CLAIMS = 200;
  * Fences whose contents are read. An unlabelled fence is an illustration — pseudo-code, a sketch — and reporting
  * the paths inside it would fill a report with claims nobody made.
  */
-const SCANNED_LANGUAGES = new Set(['bash', 'sh', 'shell', 'zsh', 'console', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'py', 'json', 'yaml', 'yml', 'toml']);
+const SCANNED_LANGUAGES = new Set([
+  'bash', 'sh', 'shell', 'zsh', 'console', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'py', 'json', 'yaml', 'yml', 'toml',
+]);
 
-const COMMANDS = ['npm', 'node', 'npx', 'git', 'gh', 'python', 'python3', 'cargo', 'go', 'make', 'pnpm', 'yarn', 'deno', 'bun'];
+const COMMANDS = [
+  'npm', 'node', 'npx', 'git', 'gh', 'python', 'python3', 'cargo', 'go', 'make', 'pnpm', 'yarn', 'deno', 'bun',
+];
 
 const PATH_EXTENSIONS = new Set([
   'md', 'markdown', 'json', 'txt', 'yml', 'yaml', 'sh', 'py', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'mmd', 'csv', 'toml',

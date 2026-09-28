@@ -85,7 +85,9 @@ function docRows(project) {
   for (const document of listDocuments({ repoPath, skillsDocuments }).documents) {
     const read = readRepoFile(repoPath, document.relPath);
     if (read.status !== 200) continue;
-    rows.push(fileRow('docs', repoPath, document.relPath, read.text, { title: document.relPath, source: document.source }));
+    rows.push(
+      fileRow('docs', repoPath, document.relPath, read.text, { title: document.relPath, source: document.source }),
+    );
   }
   return rows;
 }

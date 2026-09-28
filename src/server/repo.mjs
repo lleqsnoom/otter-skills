@@ -76,7 +76,8 @@ export function repoFiles(repoPath) {
   return { mode: tracked === null ? 'walk' : 'tracked', files: [...new Set(all)].sort() };
 }
 
-/** One repository file's text, or a refusal saying why it was not read. */export function readRepoFile(repoPath, relPath, { maxBytes = MAX_FILE_BYTES } = {}) {
+/** One repository file's text, or a refusal saying why it was not read. */
+export function readRepoFile(repoPath, relPath, { maxBytes = MAX_FILE_BYTES } = {}) {
   const full = resolveInside(repoPath, relPath);
   if (!full) return { status: 400, error: `path escapes the repository: ${relPath}` };
 

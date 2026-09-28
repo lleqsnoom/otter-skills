@@ -66,4 +66,3 @@ export const KNOWLEDGE_TOOLS = [
     },
   },
 ];
-
