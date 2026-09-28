@@ -8,11 +8,6 @@
  */
 import { serve } from '../src/mcp/server.mjs';
 
-process.on('uncaughtException', (error) => {
-  process.stderr.write(`otter-pm-mcp: ${error.stack ?? error.message}\n`);
-  process.exit(1);
-});
-
 serve().catch((error) => {
   process.stderr.write(`otter-pm-mcp: ${error.message}\n`);
   process.exit(1);

@@ -19,7 +19,7 @@ const MAX_WALK_DEPTH = 6;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
 /** The absolute path a repository-relative path names, or `null` when it escapes the repository. */
-export function resolveInside(repoPath, relPath) {
+function resolveInside(repoPath, relPath) {
   if (typeof relPath !== 'string' || !relPath.trim()) return null;
   const target = resolve(repoPath, normalize(relPath));
   const base = resolve(repoPath);

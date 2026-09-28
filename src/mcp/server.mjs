@@ -23,11 +23,11 @@ export async function callTool(tool, args) {
   }
 }
 
-/** `tools` is a parameter so a test can register one handler of its own without a repository behind it. */
-export function createServer(tools = TOOLS) {
+/** Register every tool the registry advertises. */
+export function createServer() {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
 
-  for (const tool of tools) {
+  for (const tool of TOOLS) {
     server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema }, (args) =>
       callTool(tool, args),
     );

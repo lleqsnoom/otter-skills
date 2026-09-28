@@ -39,7 +39,7 @@ const inList = (ids) => `id IN (${quoted(ids)})`;
 const statOf = (repoPath, relPath) => statSync(join(repoPath, relPath), { throwIfNoEntry: false });
 
 /** The digest of every file the project holds, as the repository itself lists them. */
-export function stampOf(repoPath) {
+function stampOf(repoPath) {
   const { mode, files } = repoFiles(repoPath);
   const parts = files.map((relPath) => {
     const stat = statOf(repoPath, relPath);
@@ -124,7 +124,7 @@ const stampRow = (counts, stamp) => ({
 });
 
 /** Every row the project's files imply, before any vector is attached. */
-export function desiredRows(project) {
+function desiredRows(project) {
   return {
     tasks: taskRows(project),
     docs: docRows(project),
