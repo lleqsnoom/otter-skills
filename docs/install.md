@@ -174,8 +174,8 @@ alone too. `npm run install -- --dry-run` says what it would change and writes n
 
 `otter-pm-mcp` is the second bin in this repository's `package.json` (`scripts/mcp.mjs`), and it takes no
 arguments: it reads `otter-pm.config.json`, `$OTTER_PM_ROOTS` and the Orca list exactly as the board does, so both
-halves see the same repositories. Nothing is published yet, so the entry names the checkout's script; once the bin
-is installed and on `PATH`, that is what it can name instead.
+halves see the same repositories. The package is private and not on npm, so the entry names the checkout's script;
+install it globally from the checkout (`npm i -g .`) and `otter-pm-mcp` is on `PATH` instead.
 
 It is a command a client starts itself, not a service — there is no unit for it and nothing to restart. Each
 project keeps its own index at `<repo>/.x-skills/knowledge.lance/`; deleting that directory is safe, and the next

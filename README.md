@@ -55,9 +55,9 @@ npm test                     # the app's own tests
 npm run typecheck
 ```
 
-Installed as a package (`otter-pm` once `@lleqsnoom/otter-pm` is published), the same server is the command's whole job:
-it builds the app if `dist/` is missing and then serves it, so the bin and `npm run serve` are one path. The package is
-not on npm yet, so there is nothing to `npx` today.
+Installed as a package (`npm i -g .` from a checkout), the same server is the command's whole job: it builds the app if
+`dist/` is missing and then serves it, so the bin and `npm run serve` are one path. The package is private and is not
+on npm, so there is nothing to fetch and nothing to publish.
 
 `npm run dev` and `npm run serve` print the address and stay in the foreground; ctrl-c stops them. Both start
 their port search at `--port` (or `$PORT`), and **a dev server already running does not block a new one** — the
@@ -463,7 +463,7 @@ They run from wherever they are installed, so this repository is the source of t
 registers the MCP server below with each agent config it finds — so the next agent to run a skill runs this
 checkout's copy, and can ask this checkout's board a question.
 
-Nothing in the app imports them, and `files` keeps them out of the published package.
+Nothing in the app imports them, and `files` keeps them out of the tarball.
 
 A skill's scripts are `.mjs`: this repository's `package.json` says `"type": "module"`, and an installed skill is
 a symlink into this tree, so a `.js` script that calls `require` or writes `module.exports` throws the moment
@@ -531,9 +531,9 @@ and Crush's `~/.config/crush/crush.json` holds them under `mcp`, where each entr
 }
 ```
 
-An agent that has no config is left alone rather than given one, the same rule the skills follow. Nothing is
-published yet, so the entry names this checkout's script; once the package is installed and `otter-pm-mcp` is on
-`PATH`, the whole entry is `{ "command": "otter-pm-mcp" }`.
+An agent that has no config is left alone rather than given one, the same rule the skills follow. The package is
+private and not on npm, so the entry names this checkout's script; install it globally from the checkout and
+`otter-pm-mcp` is on `PATH`, where the whole entry is `{ "command": "otter-pm-mcp" }`.
 
 It takes no arguments of its own. It reads the same `otter-pm.config.json`, `$OTTER_PM_ROOTS` and Orca list the
 board reads, so the board and an agent cannot disagree about which repositories exist.
@@ -641,10 +641,12 @@ network, GitHub or the Orca IDE.
 
 ## Releasing
 
-The package is its own: `@lleqsnoom/otter-pm`, versioned and published on its own commits by
-`.github/workflows/publish.yml`, which runs the tests and skips the publish when the version is already on npm.
-Bump `version` in `package.json` and push to `main`.
+There is nothing to release. `@lleqsnoom/otter-pm` is a `private` package, so `npm publish` refuses it with `EPRIVATE`
+— the guard, not the workflow, is what makes that true. `.github/workflows/ci.yml` runs the tests and the typecheck on
+a pull request and on `main`, and publishes nothing.
 
-The app it publishes is not a library: `files` carries the source, the scripts, `astro.config.mjs`, `tsconfig.json`
+Install it from a checkout with `npm i -g .` to put the bins on `PATH`.
+
+The package is not a library: `files` carries the source, the scripts, `astro.config.mjs`, `tsconfig.json`
 and the config template, and the first run builds `dist/` where the package was installed. `brand/` and `test/`
 stay in the repository, out of the tarball.
