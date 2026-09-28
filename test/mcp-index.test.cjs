@@ -107,6 +107,29 @@ test('editing one file re-embeds that file alone', async () => {
   }
 });
 
+test('syncs racing one database leave exactly one row per file', async () => {
+  const fixture = makeRepo();
+  try {
+    const { syncProject, databasePath } = await load();
+    const project = await projectOf(fixture);
+
+    const runs = await Promise.all(Array.from({ length: 4 }, () => syncProject(project)));
+
+    const failed = runs.find((run) => !run.ok);
+    assert.equal(failed, undefined, `a racing sync failed: ${failed?.reason}`);
+
+    // Two clients in one checkout each run their own server against this directory, so nothing here may assume it
+    // is the only writer: the invariant is that a file has one row however many times it was raced into place.
+    const db = await (await import('@lancedb/lancedb')).connect(databasePath(fixture.root));
+    for (const name of await db.tableNames()) {
+      const ids = (await (await db.openTable(name)).query().toArray()).map((row) => row.id);
+      assert.equal(new Set(ids).size, ids.length, `${name} holds a duplicated row: ${ids.join(', ')}`);
+    }
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test('a deleted file leaves the index', async () => {
   const fixture = makeRepo();
   try {

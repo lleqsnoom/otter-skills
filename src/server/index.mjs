@@ -20,6 +20,9 @@ import { tasksOf } from './work.mjs';
  * The stamp is a digest of the file list with each file's size and mtime. It is cheap, it is exact enough that an
  * edit is noticed on the next call, and it means a rebuild touches only what changed rather than re-embedding a
  * repository to answer one question.
+ *
+ * Two clients that share a checkout run a server each and both write this directory, so every write is one commit
+ * that replaces a row rather than a delete followed by an add — see `replaceRows`.
  */
 
 const DATABASE_DIRECTORY = 'knowledge.lance';
@@ -154,11 +157,42 @@ async function rowsOf(db, name) {
   }
 }
 
-async function writeRows(db, name, rows) {
-  if (!rows.length) return;
+/** One commit per row-set: a matched row is replaced in place, a row that is new is appended. */
+const mergeInto = ({ table, rows, prune }) => {
+  const merge = table.mergeInsert('id').whenMatchedUpdateAll().whenNotMatchedInsertAll();
+  return (prune ? merge.whenNotMatchedBySourceDelete({ where: prune }) : merge).execute(rows);
+};
+
+/**
+ * Create the table, or join the one another process created first.
+ *
+ * Only the creation is not a commit, so it is the one write LanceDB cannot retry for us: the second client that got
+ * there first makes `createTable` throw, and the rows still belong in the table it made.
+ */
+async function createOrJoin({ db, name, rows, prune }) {
+  try {
+    await db.createTable(name, rows);
+  } catch (error) {
+    const raced = await tableOf(db, name);
+    if (!raced) throw error;
+    await mergeInto({ table: raced, rows, prune });
+  }
+}
+
+/**
+ * Put `rows` into their table as one atomic upsert on `id`, creating the table on its first write.
+ *
+ * A changed row has to be *replaced*: deleting it and re-adding its successor are two commits, and the second client
+ * that shares a checkout reads between them, finds the id missing, and inserts a copy of its own.
+ *
+ * `prune` is for the caller writing a whole table, where a row absent from `rows` is gone; a caller writing only what
+ * changed must leave it out, because its unchanged rows are absent from `rows` too.
+ */
+async function replaceRows({ db, name, rows, prune }) {
   const table = await tableOf(db, name);
-  if (table) await table.add(rows);
-  else await db.createTable(name, rows);
+  if (table) return mergeInto({ table, rows, prune });
+  if (!rows.length) return;
+  await createOrJoin({ db, name, rows, prune });
 }
 
 const changedIn = (desired, existing) => {
@@ -174,7 +208,10 @@ const goneFrom = (desired, existing) => {
   return existing.filter((row) => !wanted.has(row.id));
 };
 
-/** One table brought up to date: the rows that changed are re-embedded, the rows whose file is gone are dropped. */
+/**
+ * One table brought up to date. The rows whose file is gone are deleted here rather than left to `replaceRows`:
+ * they are absent from `rows`, and only a caller writing a whole table may ask absence to mean a deletion.
+ */
 async function syncTable(db, name, desired) {
   const existing = await rowsOf(db, name);
   const changed = changedIn(desired, existing);
@@ -185,21 +222,14 @@ async function syncTable(db, name, desired) {
   if (table && gone.length) await table.delete(inList(gone.map((row) => row.id)));
   if (changed.length) {
     const vectors = await embed(changed.map((row) => row.text));
-    const rows = changed.map((row, index) => ({ ...row, vector: vectors[index] }));
-    // A changed row is deleted before its replacement is added, because the id is what identifies it and two rows
-    // with one id would both be search results.
-    if (table) await table.delete(inList(changed.map((row) => row.id)));
-    await writeRows(db, name, rows);
+    await replaceRows({ db, name, rows: changed.map((row, index) => ({ ...row, vector: vectors[index] })) });
   }
 
   return { embedded: changed.length, removed: gone.length };
 }
 
-async function writeStamp(db, counts, stamp) {
-  const board = await tableOf(db, 'board');
-  if (board) await board.delete(`id = '${STAMP_ROW}'`);
-  await writeRows(db, 'board', [stampRow(counts, stamp)]);
-}
+/** The stamp lands as one upsert, so it is never momentarily absent for a process reading the board. */
+const writeStamp = (db, counts, stamp) => replaceRows({ db, name: 'board', rows: [stampRow(counts, stamp)] });
 
 /**
  * Bring the project's database up to date, or say why it could not be.
@@ -353,7 +383,6 @@ export async function relatedProject({ project, relPath, tables = CONTENT_TABLES
 export async function writeDrift({ project, docPath, report }) {
   try {
     const db = await lancedb.connect(databasePath(project.root));
-    const table = await tableOf(db, 'drift');
 
     const rows = report.claims.map((claim, index) => ({
       id: `drift:${docPath}:${index}`,
@@ -370,11 +399,14 @@ export async function writeDrift({ project, docPath, report }) {
       size: 0,
     }));
 
-    if (table) await table.delete(`docPath = '${docPath.replace(/'/g, "''")}'`);
-    if (rows.length) {
-      const vectors = await embed(rows.map((row) => row.text));
-      await writeRows(db, 'drift', rows.map((row, index) => ({ ...row, vector: vectors[index] })));
-    }
+    const docPredicate = `docPath = '${docPath.replace(/'/g, "''")}'`;
+    const vectors = rows.length ? await embed(rows.map((row) => row.text)) : [];
+    await replaceRows({
+      db,
+      name: 'drift',
+      rows: rows.map((row, index) => ({ ...row, vector: vectors[index] })),
+      prune: docPredicate,
+    });
 
     return { ok: true, rows: rows.length };
   } catch (error) {

@@ -85,6 +85,25 @@ test('the same document read twice leaves one set of drift rows', async () => {
   }
 });
 
+test('the same document read at once leaves one set of drift rows', async () => {
+  const fixture = makeRepo();
+  try {
+    await withRoots([fixture.repo], async () => {
+      const handler = await handlerOf('read_doc');
+      // One read first, so the table exists and the race is over the rows rather than over creating it.
+      await handler({ project: fixture.id, path: 'README.md' });
+      await Promise.all(Array.from({ length: 3 }, () => handler({ project: fixture.id, path: 'README.md' })));
+      const rows = await driftRows(fixture, 'README.md');
+
+      const ids = rows.map((row) => row.id);
+      assert.ok(rows.length > 0, 'the racing reads persisted their claims');
+      assert.equal(new Set(ids).size, ids.length, `one document is one set of rows: ${ids.join(', ')}`);
+    });
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test('a document whose only claims are prose reports none, and nothing missing', async () => {
   const fixture = makeRepo();
   try {

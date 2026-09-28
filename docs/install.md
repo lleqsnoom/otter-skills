@@ -169,6 +169,9 @@ project keeps its own index at `<repo>/.x-skills/knowledge.lance/`; deleting tha
 fuzzy search rebuilds it. The first build downloads the embedding model once per machine, so a machine that must
 stay offline is better served by the exact tools, which read the files and need neither a model nor the index.
 
+Each client starts its own server, so two sessions in one checkout are two processes over one index. That is safe:
+the index is derived, and each write is a single commit, so the two can only cost a file being embedded twice.
+
 ## Troubleshooting
 
 **The port is not 4321.** Nothing is broken: the board takes the first free port at or after `--port`/`$PORT`/4321, so

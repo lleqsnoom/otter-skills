@@ -593,6 +593,11 @@ the files that changed, and the local embedding model (`Xenova/all-MiniLM-L6-v2`
 means no key and no network after the first build. A machine with no model, or no LanceDB binary for its platform,
 still answers every exact tool — the index says it is unavailable and says why.
 
+**More than one client may run it.** Each client starts its own server over stdio, so two sessions in one checkout are
+two processes against one database directory. That is safe rather than merely tolerated: every write is a single
+commit that replaces a row instead of a delete followed by an add, so a file is indexed once no matter how the two
+interleave, and the cost of a race is a file embedded twice, never a stale or doubled answer.
+
 **The server writes exactly one thing**, that database directory, and never a repository file. It is read-only by
 construction rather than by permission.
 
