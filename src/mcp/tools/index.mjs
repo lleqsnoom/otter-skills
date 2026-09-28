@@ -2,6 +2,7 @@ import * as z from 'zod';
 
 import { PROJECT_TOOLS } from './projects.mjs';
 import { stub } from './stub.mjs';
+import { WORK_TOOLS } from './work.mjs';
 
 /**
  * The tools the server advertises, in the order a reader meets them.
@@ -15,46 +16,7 @@ import { stub } from './stub.mjs';
  */
 export const TOOLS = [
   ...PROJECT_TOOLS,
-  {
-    name: 'list_epics',
-    description: "List a project's plans and epics with the tasks under each",
-    inputSchema: { project: z.string().optional().describe('the project id') },
-    handler: stub('list_epics'),
-  },
-  {
-    name: 'list_tasks',
-    description: "List a project's tasks with their state, epic, lane and archived flag",
-    inputSchema: {
-      project: z.string().optional().describe('the project id'),
-      state: z.enum(['todo', 'active', 'done']).optional().describe('keep only tasks in this state'),
-      epic: z.string().optional().describe('keep only tasks belonging to this epic'),
-    },
-    handler: stub('list_tasks'),
-  },
-  {
-    name: 'get_task',
-    description: 'Read one task in full, with its parsed fields, lane and archived flag',
-    inputSchema: {
-      project: z.string().optional().describe('the project id'),
-      path: z.string().describe('the task path, relative to the .x-skills root'),
-    },
-    handler: stub('get_task'),
-  },
-  {
-    name: 'list_docs',
-    description: "List a project's README and its other documents",
-    inputSchema: { project: z.string().optional().describe('the project id') },
-    handler: stub('list_docs'),
-  },
-  {
-    name: 'read_doc',
-    description: 'Read one document, always with its drift report against the code',
-    inputSchema: {
-      project: z.string().optional().describe('the project id'),
-      path: z.string().describe('the document path, relative to the repository'),
-    },
-    handler: stub('read_doc'),
-  },
+  ...WORK_TOOLS,
   {
     name: 'search_code',
     description: 'Search tracked source for a literal or regular expression, exactly as the files hold it',

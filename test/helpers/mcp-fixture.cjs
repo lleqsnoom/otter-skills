@@ -60,6 +60,7 @@ function makeRepo({ name = 'fixture-repo', git = true } = {}) {
   write(path.join(repo, 'src', 'thing.mjs'), `export function thing() {\n  return 1;\n}\n`);
   write(path.join(root, 'tasks', '2026-01-01-1000-R01-first.md'), TASK);
   write(path.join(root, 'plan', 'E00-plan.md'), PLAN);
+  write(path.join(root, 'docs', 'roadmap.md'), '# Roadmap\n\nWhat is planned, and what is not.\n');
 
   if (git) {
     const gitIn = (args) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
