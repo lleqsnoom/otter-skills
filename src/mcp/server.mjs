@@ -13,18 +13,24 @@ import { TOOLS } from './tools/index.mjs';
 export const SERVER_NAME = 'otter-pm';
 export const SERVER_VERSION = '0.1.0';
 
-export function createServer() {
+/** One handler call, as a tool result — the only translation between a plain handler and the protocol. */
+export async function callTool(tool, args) {
+  try {
+    const { text } = await tool.handler(args ?? {});
+    return { content: [{ type: 'text', text }] };
+  } catch (error) {
+    return { isError: true, content: [{ type: 'text', text: `${tool.name} failed: ${error.message}` }] };
+  }
+}
+
+/** `tools` is a parameter so a test can register one handler of its own without a repository behind it. */
+export function createServer(tools = TOOLS) {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
 
-  for (const tool of TOOLS) {
-    server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema }, async (args) => {
-      try {
-        const { text } = await tool.handler(args ?? {});
-        return { content: [{ type: 'text', text }] };
-      } catch (error) {
-        return { isError: true, content: [{ type: 'text', text: `${tool.name} failed: ${error.message}` }] };
-      }
-    });
+  for (const tool of tools) {
+    server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema }, (args) =>
+      callTool(tool, args),
+    );
   }
 
   return server;
