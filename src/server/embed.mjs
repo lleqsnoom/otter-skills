@@ -12,7 +12,7 @@ import { pipeline } from '@huggingface/transformers';
  * of failing a call the agent did nothing wrong to make.
  */
 
-export const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
+const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 export const EMBEDDING_DIMENSIONS = 384;
 
 /** Long texts are the tokenizer's problem, and a batch is split so one large repository does not arrive at once. */

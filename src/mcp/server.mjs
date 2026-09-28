@@ -10,8 +10,8 @@ import { TOOLS } from './registry.mjs';
  * a handler that throws becomes an error result carrying the message. A tool that refuses — an unknown project, a path
  * outside the repository — is therefore readable to the agent rather than a connection error it cannot see.
  */
-export const SERVER_NAME = 'otter-pm';
-export const SERVER_VERSION = '0.1.0';
+const SERVER_NAME = 'otter-pm';
+const SERVER_VERSION = '0.1.0';
 
 /** One handler call, as a tool result — the only translation between a plain handler and the protocol. */
 export async function callTool(tool, args) {
@@ -23,7 +23,7 @@ export async function callTool(tool, args) {
   }
 }
 
-/** Register every tool the registry advertises. */
+/** Registration follows the registry's order, which is the order `tools/list` answers in. */
 export function createServer() {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
 

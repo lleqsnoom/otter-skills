@@ -147,10 +147,10 @@ function resolveCommand(claim, { tracked, readText }) {
 }
 
 /**
- * The verdict per claim. `tracked`, `readText` and `findDeclarations` are arguments rather than imports so a test
- * can resolve claims without a disk.
+ * The verdict per claim. `tracked`, `exists`, `readText` and `findDeclarations` are arguments rather than imports so
+ * this half reads claims without touching a disk — `driftFor` is what passes the real ones in.
  */
-export function resolveClaims(claims, { repoPath, tracked, exists, readText, findDeclarations }) {
+function resolveClaims(claims, { repoPath, tracked, exists, readText, findDeclarations }) {
   return claims.map((claim) => {
     if (claim.kind === 'path') {
       const found = resolvePath(claim.claim, { docPath: claim.docPath, tracked, exists });
