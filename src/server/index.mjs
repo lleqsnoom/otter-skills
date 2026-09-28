@@ -312,3 +312,43 @@ export async function relatedProject({ project, relPath, tables = ['tasks', 'doc
     return { ok: false, reason: error.message };
   }
 }
+
+/**
+ * Replace one document's drift rows.
+ *
+ * Replacing rather than appending is what makes reading a document twice idempotent: the rows describe the
+ * document's claims as they stand now, so a claim it dropped must not survive in the index. The report itself was
+ * computed from the files and never depended on the index, so a database that cannot be written costs the
+ * persistence and not the answer.
+ */
+export async function writeDrift({ project, docPath, report }) {
+  try {
+    const db = await lancedb.connect(databasePath(project.root));
+    const table = await tableOf(db, 'drift');
+
+    const rows = report.claims.map((claim, index) => ({
+      id: `drift:${docPath}:${index}`,
+      table: 'drift',
+      relPath: docPath,
+      docPath,
+      claim: claim.claim,
+      kind: claim.kind,
+      verdict: claim.verdict,
+      reason: claim.reason ?? '',
+      text: `${claim.kind} ${claim.claim}`,
+      vector: [],
+      mtime: 0,
+      size: 0,
+    }));
+
+    if (table) await table.delete(`docPath = '${docPath.replace(/'/g, "''")}'`);
+    if (rows.length) {
+      const vectors = await embed(rows.map((row) => row.text));
+      await writeRows(db, 'drift', rows.map((row, index) => ({ ...row, vector: vectors[index] })));
+    }
+
+    return { ok: true, rows: rows.length };
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
+}

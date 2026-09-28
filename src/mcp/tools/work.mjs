@@ -2,6 +2,8 @@ import * as z from 'zod';
 
 import { listDocuments, readDocument } from '../../server/docs.mjs';
 import { boardForProject } from '../../server/board.mjs';
+import { driftFor } from '../../server/drift.mjs';
+import { writeDrift } from '../../server/index.mjs';
 import { epicsOf, tasksOf } from '../../server/work.mjs';
 import { asText, projectOrThrow, resolveProjects } from '../context.mjs';
 
@@ -129,7 +131,7 @@ export const WORK_TOOLS = [
   },
   {
     name: 'read_doc',
-    description: 'Read one document from the repository',
+    description: 'Read one document, always with its drift report against the code',
     inputSchema: {
       project: z.string().optional().describe('the project id'),
       path: z.string().describe('the document path, relative to the repository'),
@@ -141,6 +143,10 @@ export const WORK_TOOLS = [
       const read = readDocument({ repoPath: found.repoPath, relPath: asked });
       if (read.status !== 200) throw new Error(read.error);
 
+      // The report is computed from the file that was just read, so it describes the same bytes the caller gets.
+      const report = driftFor({ docPath: read.relPath, markdown: read.text, repoPath: found.repoPath });
+      const persisted = await writeDrift({ project: found, docPath: read.relPath, report });
+
       return {
         text: asText({
           project: found.id,
@@ -150,6 +156,13 @@ export const WORK_TOOLS = [
           mtime: read.mtime,
           truncated: read.truncated,
           text: read.text,
+          drift: {
+            checked: report.checked,
+            capped: report.capped,
+            persisted: persisted.ok,
+            persistedReason: persisted.ok ? undefined : persisted.reason,
+            claims: report.claims,
+          },
         }),
       };
     },
