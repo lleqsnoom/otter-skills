@@ -1,7 +1,7 @@
 ---
 name: x-implement
 description: Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work, x-arch for placement and naming, and x-unbloat to every change, red-green-refactor per task, verify with x-review + x-fix, gate on plan completion
-version: 1.4.0
+version: 1.5.0
 author: Community
 tags: [tdd, implementation, test-driven, red-green-refactor, production-code, parallel, ui]
 user-invocable: true
@@ -59,6 +59,37 @@ Prefer a functional approach for readability. Side effects make code hard to rea
 - **Side effects are only acceptable where unavoidable** (I/O, DB, network) — and must be clearly named and isolated.
 - **One responsibility per function; keep orchestrators thin.** Each phase (fetch, validate, probe, decrypt) is a named helper that returns data; the orchestrator only composes them. If a function both does a job and reports on it — a `push` closure appending to a shared `results` array inside every branch — the reporting is entangled with each responsibility; collect the report in exactly one place.
 - **One responsibility per class and file too.** A class plays one role — persistence, validation, orchestration — not several. If a class's methods group by role rather than by shared state, split it; keep one file per concern (see Directory Organization).
+
+## Make the Bad State Impossible
+
+Do not handle a state that should never occur — change the design until it cannot occur. A null check, a
+`default:` branch, a fallback or a `throw new Error("should not happen")` is an admission that the state is
+reachable; a representation that excludes it is the proof that it is not. Every branch deleted this way is a
+path nobody can take, a test nobody has to write, and a failure mode no caller has to handle.
+
+Prefer, in order:
+
+1. **Narrow the type**, so the state cannot be written down: a `boolean` that stood for two states becomes
+   those two states; a nullable field becomes required data on the one type that really carries it; a status
+   string becomes a union; one type becomes two, so no value can hold the field that would be wrong.
+2. **Make the constructor the gate** — parse, do not validate. Take the untrusted value once, return the narrow
+   type, and let everything downstream hold only the parsed form. The check runs at the edge and the core
+   carries no branch.
+3. **Hide the transition**, so no caller can put the object into the wrong state: return a value from a named
+   operation rather than exposing a setter any caller may use in any order.
+4. **Constrain it where the data lives**: a non-null or unique constraint in the schema, the allowed values in
+   the column, an exhaustive `switch` the compiler refuses to leave unfinished.
+5. **Only then handle it.** A state that survives all four is one the design cannot exclude, and the branch is
+   then the honest answer — say in the code why it cannot be excluded.
+
+A value that crosses a **trust boundary** — a request, a file, an environment variable, a third-party payload —
+is always handled, and that is not a bad state: rejecting it is the boundary's job. Handle it once, at the
+edge, and convert to the narrow type there, so no caller inside the boundary needs a check at all.
+
+RED and GREEN: test the invariant — the constructor's rejection, the parsed value's shape, the exhaustive case
+list — rather than a branch that catches a state the type allows only because it is too wide. REFACTOR: walk
+every branch you wrote and ask of each whether its state can be made impossible; where it can, delete the
+branch and the check with it.
 
 ## Parallelize Independent Tasks
 
@@ -122,7 +153,7 @@ All tasks `- [x]` and green → close the run:
 
 ## Gate
 
-Before committing: evaluate the implementation against SOLID principles, design patterns, clean code, and the functional style above (pure functions, immutability, side effects at the edges). State what you assessed and what (if anything) you improved — or why no changes were needed.
+Before committing: evaluate the implementation against SOLID principles, design patterns, clean code, the functional style above (pure functions, immutability, side effects at the edges), and the impossible-state rule (every branch a narrower type would delete). State what you assessed and what (if anything) you improved — or why no changes were needed.
 
 ## Anti-Patterns
-See `references/tdd-rules.md` for full list of anti-patterns. Comment noise (restating code, obvious comments, paragraphs that should be a function) is an anti-pattern too — see the Comments section. Scattered side effects and in-place mutation are anti-patterns as well — see the Functional Style section.
+See `references/tdd-rules.md` for full list of anti-patterns. Comment noise (restating code, obvious comments, paragraphs that should be a function) is an anti-pattern too — see the Comments section. Scattered side effects and in-place mutation are anti-patterns as well — see the Functional Style section. A defensive branch for a state the types or the internal callers already rule out is an anti-pattern too — see Make the Bad State Impossible.

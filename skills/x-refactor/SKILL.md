@@ -1,7 +1,7 @@
 ---
 name: x-refactor
 description: Automated refactoring suggestions (extract method, rename, replace conditional) — analyzes code against SOLID principles and outputs actionable before/after comparisons
-version: 1.0.0
+version: 1.1.0
 author: Community
 tags: [refactor, solid, extract-method, rename-variable, replace-conditional, polymorphism]
 user-invocable: true
@@ -41,7 +41,9 @@ Functions >20 lines doing 2+ distinct operations. Signal: compound verb names li
 Single-letter names (`x`, `i`, `tmp`) or Hungarian notation (`strName`, `nCount`).
 
 ### 3. Replace Conditional with Polymorphism
-Long if/else chains on type checks — signal: 4+ branches checking same variable.
+Long if/else chains on type checks — signal: 4+ branches checking same variable. A branch that handles a state
+no caller can produce is not a case to add: suggest narrowing the type so the branch disappears (x-implement's
+*Make the Bad State Impossible*), and keep the branch where the value crosses a trust boundary.
 
 ### 4. Inline Method
 Trivial single-line methods called from exactly one location.

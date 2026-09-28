@@ -1,7 +1,7 @@
 ---
 name: x-unbloat
 description: Cut code to what the task needs — a YAGNI ladder that removes needless abstractions, wrappers, unused options and dead code, keeps behavior and protective code, and measures the result. Use when asked to unbloat, simplify, or remove over-engineering; x-implement, x-review and x-refactor run it as a pass.
-version: 1.7.0
+version: 1.8.0
 author: Community
 tags: [yagni, kiss, simplify, over-engineering, dead-code, refactoring, code-cleaning]
 user-invocable: true
@@ -52,7 +52,7 @@ Stop at the first rung that holds:
 | Own version of a stdlib or platform feature | Use the built-in | The supported runtime lacks it |
 | New dependency for a few lines | Write the lines | It is crypto, a file format parser, or time zones |
 | Dead code, commented-out code | Delete it | Code outside this repo uses it |
-| Check for a state the types or internal callers rule out | Remove the check | The input crosses a trust boundary |
+| Check for a state the types or internal callers rule out | Remove the check, or narrow the type until the state cannot be built | The input crosses a trust boundary |
 | Variable whose name adds nothing (`const r = f(); return r`) | Use the value | The name labels a step |
 | Hook for a "future" case (registry with one entry) | Remove it | The second case is in this task |
 
@@ -61,6 +61,11 @@ Extracting is fine when the same logic is in two or more places.
 A **unit** is anything you can remove whole: a function, class, module, file or dependency. A **trust
 boundary** is any input the code does not build itself: public API arguments, requests, files, environment,
 I/O.
+
+The check row is a design change, not only a deletion. Where the state is reachable, narrow the representation
+so it cannot be built rather than keeping a branch for it: *Make the Bad State Impossible* in `x-implement`'s
+`SKILL.md` (`~/.agents/skills/x-implement/SKILL.md` for a global install, `.agents/skills/x-implement/SKILL.md`
+for a local one) sets out the order of the moves. The check stays where the input crosses a trust boundary.
 
 ## Never Cut
 
