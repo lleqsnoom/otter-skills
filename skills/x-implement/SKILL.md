@@ -111,7 +111,7 @@ When a task's scope includes UI (HTML/CSS, templates, components, or styles in a
 
 1. Read the x-ui skill's `SKILL.md` before writing any UI code — `~/.agents/skills/x-ui/SKILL.md` for a global install, `.agents/skills/x-ui/SKILL.md` for a local one.
 2. Follow x-ui's method: state the screen's primary task, then build to its strict rules (element count limits, component selection, row actions, status display, pagination rules).
-3. Run x-ui's Pre-Flight Checklist before VERIFY. A screen that fails any checklist item is not done.
+3. Exercise the screen with x-browser before VERIFY, and run x-ui's Pre-Flight Checklist after it. x-ui judges the design; the browser is what shows the screen actually renders and works, which is the *Verified* row of the standing bar. A screen that fails any checklist item is not done.
 
 ## Workflow
 
@@ -122,15 +122,16 @@ For each task file in `<run folder>/E<nn>-tasks/`:
 3. **REFACTOR** — Evaluate against SOLID/clean code, the comment rules, the x-unbloat pass (steps 3, 5 and 7), the x-arch pass (placement, naming, responsibility, direction, inheritance), and the functional style above. Strip comments that restate code; extract explained blocks into named functions; push side effects to the edges and prefer pure, immutable functions. State what you assessed and what (if anything) improved — or why no changes were needed.
    - **One-sentence test:** every function you wrote must be describable in one sentence; if not, split it.
    - **Reporting test:** if deleting a phase's `push`/output call leaves the phase unusable, the phase was never a unit. Delegate each phase to a named helper that returns data and let the orchestrator collect the report in one place.
-4. **VERIFY — x-review + x-fix + test.** Run on every finished task before committing:
+4. **VERIFY — doubt, then x-review + x-fix + test.** Run on every finished task before committing:
+   - **Doubt** — on a non-trivial decision (branching logic, a module boundary, an invariant the compiler cannot check, an irreversible change), run the adversarial pass in `references/doubt.md` *before* the review. It is cheaper than review because it aims to disprove the decision while changing it is still cheap.
    - **Test** — run the task's tests and the full regression suite. All must pass.
    - **x-review** — run the review skill on the changed files. It writes a plan (`E<nn>-review-plan.md`) into the run folder, which `x-fix` reads.
    - **x-fix** — resolve every issue in the fix plan. Re-run tests after each fix.
    - Repeat x-review + x-fix until the plan has no unresolved issues and all tests are green.
 5. **SYNC DOCS** — Update the spec (`<run folder>/E00-plan.md`) if it exists; otherwise update living docs (README, comments) directly.
-6. **COMMIT** — Run `node <path-to-commit.mjs> "<message>"` from the x-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If x-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
+6. **COMMIT** — **Run the floor guard first**: `node ~/.agents/skills/x-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/x-floor/scripts/floor-guard.mjs` for a local install). Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <path-to-commit.mjs> "<message>"` from the x-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If x-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
 7. **UPDATE STATUS — the task, then the plan.** Two files, and neither write is optional:
-   - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
+   - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. That checklist carries the task's own criterion plus the five standing rows `x-decompose` wrote in (see Definition of Done above), and both kinds are ticked the same way. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
    - **The plan** — the layers artifact, `<run folder>/E<nn>-plan.md` (or a legacy `E<nn>-epic.md`) — cannot see the task files, so derive it:
      ```bash
      node <skill>/scripts/status.mjs <run folder>
@@ -151,9 +152,52 @@ All tasks `- [x]` and green → close the run:
    - Rewrite the summary from the humanized text.
    - If the plan carries an `issue:` and the repo has an `origin` remote, offer to post the summary with a `confirm` panel (yes/no); on yes run `gh issue comment <n> -F <summary>`. Never invent an issue number, and never post without the panel.
 
+## Definition of Done
+
+Two things decide whether work is finished, and they are not the same thing.
+
+- **The task's acceptance criteria** — the `## Definition of Done` checklist inside that task's own file. They
+  answer *did we build the right thing?*, and they differ from task to task.
+- **The standing bar below** — the same for every task and every layer, and it answers *is it ready?*
+
+A task is done only when its own checklist is ticked **and** the standing bar is clear. Ticking a task's boxes
+while the bar is not cleared leaves work that looks finished and is not; x-review checks the bar as well, on the
+whole change.
+
+| Bar | Clear when |
+|-----|------------|
+| **Correct** | Every acceptance criterion is met; new behavior has a test that fails without the change and passes with it; the full suite is green; edge cases and error paths are handled, not just the happy path. |
+| **Verified** | The change was seen to work — a command run, a request answered, a screen exercised in a browser (`x-browser`) — not merely compiled or typechecked. |
+| **Scoped** | The diff touches only what the task required. Anything noticed elsewhere is written down in the run notes, not fixed alongside. |
+| **Clean** | The REFACTOR pass ran; no dead code, debug output or commented-out blocks; comments restate nothing; `[Comments]`, `[Bloat]` and `[Architecture]` findings are resolved. |
+| **Documented** | The spec (`E00-plan.md`) or the living docs describe the change as it now is, in present tense, with no change history. |
+| **Reviewed** | `x-review` and `x-fix` came back clean on the changed files, and `x-floor`'s guard exits 0 on the diff. |
+
+Three rows get claimed far more often than they get checked, and each one is a stop sign:
+
+- *"It's done, I just haven't run it yet."* Unverified work is not done. A check you did not run is not a pass.
+- *"The tests pass"* — said while the runtime check, the docs, or the review step was skipped. Green tests are
+  one row of the bar, not the bar.
+- *"It's done apart from a bit of cleanup."* Deferred cleanup is the cleanup that never lands, and the next task
+  builds on it.
+
 ## Gate
 
 Before committing: evaluate the implementation against SOLID principles, design patterns, clean code, the functional style above (pure functions, immutability, side effects at the edges), and the impossible-state rule (every branch a narrower type would delete). State what you assessed and what (if anything) you improved — or why no changes were needed.
+
+## Common Rationalizations
+
+Each of these is an excuse to skip a step, and each is wrong. Spotting one is the signal to run the step, not to argue with it.
+
+| Excuse | Reality |
+|--------|---------|
+| "I'll write the test after — it's faster." | A test written after the code tests what you built, not what the task asked for. RED first is the only thing that proves the test can fail. |
+| "This change is too small to commit separately." | Small commits are free; one large commit hides which change broke the suite. |
+| "I'll clean up the comments and the abstractions at the end." | Deferred cleanup is the cleanup that never happens. REFACTOR is a step in this workflow, not an intention. |
+| "The task is nearly done — I'll skip x-review this once." | The one task you skip review on is the one that lands the defect every later layer builds on. |
+| "Re-running the suite will just confirm it." | Re-run after code changed. Repeating it on unchanged code is reassurance, not verification, and it is not a second data point. |
+| "This task has UI in it, but I can eyeball it." | x-ui's pre-flight checklist is the check. A screen that fails an item is not done, however it looks. |
+| "The user's pattern here is fine, I'll match the file next to it." | Matching a neighbouring mistake is still a mistake. `[Architecture]` and `[Bloat]` findings name the move; make it. |
 
 ## Anti-Patterns
 See `references/tdd-rules.md` for full list of anti-patterns. Comment noise (restating code, obvious comments, paragraphs that should be a function) is an anti-pattern too — see the Comments section. Scattered side effects and in-place mutation are anti-patterns as well — see the Functional Style section. A defensive branch for a state the types or the internal callers already rule out is an anti-pattern too — see Make the Bad State Impossible.

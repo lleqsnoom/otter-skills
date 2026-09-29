@@ -1,0 +1,168 @@
+[
+  {
+    "name": "an eslint-disable on an added line is a silenced checker",
+    "kind": "added",
+    "input": { "file": "src/a.ts", "line": 10, "text": "  // eslint-disable-next-line no-console" },
+    "expect": [{ "rule": "silenced-checker", "file": "src/a.ts", "line": 10, "detail": "eslint-disable" }]
+  },
+  {
+    "name": "a ts-ignore is a silenced checker",
+    "kind": "added",
+    "input": { "file": "src/b.ts", "line": 4, "text": "// @ts-ignore" },
+    "expect": [{ "rule": "silenced-checker", "file": "src/b.ts", "line": 4, "detail": "ts-ignore" }]
+  },
+  {
+    "name": "a noqa is a silenced checker",
+    "kind": "added",
+    "input": { "file": "ledger.py", "line": 7, "text": "import os  # noqa: F401" },
+    "expect": [{ "rule": "silenced-checker", "file": "ledger.py", "line": 7, "detail": "noqa" }]
+  },
+  {
+    "name": "a NotImplementedError is unfinished work",
+    "kind": "added",
+    "input": { "file": "ledger.py", "line": 12, "text": "    raise NotImplementedError()" },
+    "expect": [{ "rule": "unfinished-work", "file": "ledger.py", "line": 12, "detail": "not-implemented" }]
+  },
+  {
+    "name": "an empty catch is unfinished work",
+    "kind": "added",
+    "input": { "file": "src/c.ts", "line": 21, "text": "  } catch (err) {}" },
+    "expect": [{ "rule": "unfinished-work", "file": "src/c.ts", "line": 21, "detail": "empty-catch" }]
+  },
+  {
+    "name": "a bare TODO is unfinished work",
+    "kind": "added",
+    "input": { "file": "src/d.ts", "line": 3, "text": "// TODO: handle the timeout" },
+    "expect": [{ "rule": "unfinished-work", "file": "src/d.ts", "line": 3, "detail": "todo" }]
+  },
+  {
+    "name": "a TODO carrying a tracker reference is tracked work, not a finding",
+    "kind": "added",
+    "input": { "file": "src/d.ts", "line": 3, "text": "// TODO(#421): handle the timeout" },
+    "expect": []
+  },
+  {
+    "name": "an added it.skip makes a test easier",
+    "kind": "added",
+    "input": { "file": "test/split.test.cjs", "line": 30, "text": "it.skip('reconciles the lost cent', () => {})" },
+    "expect": [{ "rule": "test-made-easier", "file": "test/split.test.cjs", "line": 30, "detail": "test-skip" }]
+  },
+  {
+    "name": "an added pytest skip makes a test easier",
+    "kind": "added",
+    "input": { "file": "test/ledger_test.py", "line": 9, "text": "@pytest.mark.skip(reason='flaky')" },
+    "expect": [{ "rule": "test-made-easier", "file": "test/ledger_test.py", "line": 9, "detail": "python-skip" }]
+  },
+  {
+    "name": "an ordinary added line carries nothing",
+    "kind": "added",
+    "input": { "file": "src/a.ts", "line": 2, "text": "export const sum = (a, b) => a + b;" },
+    "expect": []
+  },
+  {
+    "name": "an assertion removed from a test that still exists is a finding",
+    "kind": "removed",
+    "input": { "file": "test/split.test.cjs", "line": 12, "text": "  expect(splitCents(100, 7)).toEqual([15, 15, 14, 14, 14, 14, 14]);" },
+    "expect": [{ "rule": "assertion-removed", "file": "test/split.test.cjs", "line": 12, "detail": "assertion" }]
+  },
+  {
+    "name": "a deleted test file reports its deletion, not each line",
+    "kind": "removed",
+    "input": { "file": "test/split.test.cjs", "line": 12, "text": "  expect(splitCents(100, 7)).toEqual([15, 15, 14, 14, 14, 14, 14]);" },
+    "deletedFiles": ["test/split.test.cjs"],
+    "expect": []
+  },
+  {
+    "name": "an assertion removed from a source file is not a finding",
+    "kind": "removed",
+    "input": { "file": "src/a.ts", "line": 12, "text": "  if (assert(ready)) return;" },
+    "expect": []
+  },
+  {
+    "name": "lowering a minimum threshold is loosening",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [{ "id": "coverage", "direction": "min", "value": 80 }] },
+      "current": { "rules": [{ "id": "coverage", "direction": "min", "value": 70 }] }
+    },
+    "expect": [{ "rule": "threshold-loosened", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage: 80 → 70" }]
+  },
+  {
+    "name": "raising a maximum threshold is loosening",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [{ "id": "file-lines", "direction": "max", "value": 800 }] },
+      "current": { "rules": [{ "id": "file-lines", "direction": "max", "value": 1200 }] }
+    },
+    "expect": [{ "rule": "threshold-loosened", "file": ".x-skills/config/floor.json", "line": null, "detail": "file-lines: 800 → 1200" }]
+  },
+  {
+    "name": "tightening is silent",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [{ "id": "coverage", "direction": "min", "value": 80 }] },
+      "current": { "rules": [{ "id": "coverage", "direction": "min", "value": 90 }] }
+    },
+    "expect": []
+  },
+  {
+    "name": "a threshold moved without a readable direction is reported either way",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [{ "id": "bundle", "value": 120 }] },
+      "current": { "rules": [{ "id": "bundle", "value": 140 }] }
+    },
+    "expect": [{ "rule": "threshold-changed", "file": ".x-skills/config/floor.json", "line": null, "detail": "bundle: 120 → 140" }]
+  },
+  {
+    "name": "a threshold that disappears is reported",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [{ "id": "coverage", "direction": "min", "value": 80 }] },
+      "current": { "rules": [{ "id": "coverage", "direction": "min" }] }
+    },
+    "expect": [{ "rule": "threshold-removed", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage" }]
+  },
+  {
+    "name": "a rule that disappears is reported",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [{ "id": "coverage", "direction": "min", "value": 80 }] },
+      "current": { "rules": [] }
+    },
+    "expect": [{ "rule": "rule-removed", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage" }]
+  },
+  {
+    "name": "an added exception is reported",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [], "exceptions": [] },
+      "current": { "rules": [], "exceptions": [{ "rule": "coverage", "owner": "t", "expires": "2026-12-31" }] }
+    },
+    "expect": [{ "rule": "new-exception", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage" }]
+  },
+  {
+    "name": "extending an exception expiry is reported",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [], "exceptions": [{ "rule": "coverage", "owner": "t", "expires": "2026-01-31" }] },
+      "current": { "rules": [], "exceptions": [{ "rule": "coverage", "owner": "t", "expires": "2026-12-31" }] }
+    },
+    "expect": [{ "rule": "exception-extended", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage: 2026-01-31 → 2026-12-31" }]
+  },
+  {
+    "name": "removing an exception is tightening, so it is silent",
+    "kind": "config",
+    "input": {
+      "base": { "rules": [], "exceptions": [{ "rule": "coverage", "owner": "t", "expires": "2026-01-31" }] },
+      "current": { "rules": [], "exceptions": [] }
+    },
+    "expect": []
+  },
+  {
+    "name": "with no floor at the base there is nothing that could have been loosened",
+    "kind": "config",
+    "input": { "base": null, "current": { "rules": [{ "id": "coverage", "direction": "min", "value": 1 }] } },
+    "expect": []
+  }
+]

@@ -1,6 +1,6 @@
 ---
 name: x-skill-lint
-description: Validate the repo's own skills — frontmatter parses and `name` matches the folder, every referenced `scripts/*` and `references/*` exists, no stray template tokens, script main guards survive a symlinked install, an optional `evals/expectations.json` or `evals/triggers.json` is well-formed, and the README skills table lists every skill. Use when adding or editing a skill, or before shipping the repo.
+description: Validate the repo's own skills — frontmatter parses and `name` matches the folder, every referenced `scripts/*` and `references/*` exists, no stray template tokens, script main guards survive a symlinked install, an optional `evals/expectations.json` or `evals/triggers.json` is well-formed, and the README skills table lists every skill. Also measures trigger rank-1 and description collisions with `scripts/trigger-rate.mjs`, so a description that would not fire is found before a user finds it. Use when adding or editing a skill, before shipping the repo, or when a skill is not triggering.
 version: 1.1.0
 author: Community
 tags: [lint, validation, skills, frontmatter, repo-hygiene, discovery]
@@ -40,6 +40,8 @@ violation is found, **2** on a usage error. Each violation names the `skill` and
 | `description` | Frontmatter has no `description`. |
 | `stray-token` | The body contains a stray authoring token — a leftover closing tag from a template. |
 | `missing-ref` | A same-skill `scripts/…` or `references/…` path does not exist on disk. |
+| `cross-skill-ref` | A citation of another skill's `scripts/…`, `references/…` or `SKILL.md` — in any of the three install forms — names a file that skill does not ship. |
+| `unknown-skill-ref` | A citation names an `x-…` that is not a skill in this repo, so a rename left the reference behind. |
 | `readme` | The skill is missing from the README skills table. |
 | `cross-skill-import` | A skill's script imports another skill's script — skills must stay standalone. |
 | `copy-drift` | A file shared across skills differs byte-for-byte between copies. |
@@ -48,12 +50,45 @@ violation is found, **2** on a usage error. Each violation names the `skill` and
 | `expectations-shape` | An optional `evals/expectations.json` names another skill, holds no or more than seven `expected_behavior` lines, or lacks a `source` list. |
 | `triggers-shape` | An optional `evals/triggers.json` names another skill, has a query without text or a non-boolean `should_trigger`, or holds fewer than four should-trigger or four should-not-trigger queries. |
 
-References that name *another* skill (a line mentioning a different `x-…`) are skipped, so
-cross-skill hops are not reported as local breakage.
+A line naming *another* skill is skipped by the same-skill rule, so a cross-skill hop is never reported as local
+breakage — `cross-skill-ref` and `unknown-skill-ref` are the other half, checking that citation against the skill
+it names instead.
 
 Shared files that must stay byte-identical wherever they appear: `scripts/check-questions.mjs`,
 `references/questions.md`, `references/research-first.md`. Edit one copy, then copy it over the
 rest before running the lint.
+
+## Tune the descriptions — trigger rate
+
+The lint proves a `evals/triggers.json` is usable. It cannot say whether the description above it actually
+routes: a skill whose description is missing the words users say will not fire, and two descriptions that say the
+same thing cannot be told apart. Both are measurable without spending a token:
+
+```bash
+node <skill>/scripts/trigger-rate.mjs                 # report; exits 0
+node <skill>/scripts/trigger-rate.mjs --json          # the raw measurement
+node <skill>/scripts/trigger-rate.mjs --min-rank1 95  # gate on it; exits 1 below the floor
+```
+
+It scores every should-trigger query against every skill's description (stemmed tf-idf cosine over the
+description plus the skill's own name), reports the **rank-1 rate** — the share whose own skill came first, not
+merely top-k — and names each miss with the skill that beat it and the runner-up. A rank-1 miss usually means
+**fix the description, not the query**: the query is how a user actually talks, and if the description does not
+carry that vocabulary, the description is what is wrong. It also compares descriptions pairwise and warns from
+`0.5` similarity, erroring at `0.75`, because two near-identical descriptions are what makes routing ambiguous.
+
+It is a **lexical approximation of routing, not routing**: a query can rank the wrong skill because the right
+one's description states the capability in different words, and a semantically correct answer is invisible to it.
+Read a miss as a question — is this description missing the user's vocabulary, or is the query's wording the
+outlier? — rather than as a verdict. Reporting is the default, and no floor is enforced unless `--min-rank1` is
+passed: the number is the point, and each repo sets its own floor once it knows the baseline. Never lower the
+floor to make a regression pass; raise it as routing improves.
+
+Measured on this corpus (32 skills, 9 with trigger sets): **74.6% rank-1 over 67 should-trigger queries, 4/72
+should-not-trigger queries firing the wrong skill**. The misses cluster where two skills genuinely overlap in
+vocabulary — `x-arch` against `x-arch-lint`, `x-roast` against `x-essay` — which is the ambiguity the measurement
+exists to expose rather than a defect it can fix. CI runs it at `--min-rank1 70`: below the baseline, so an
+unrelated description edit does not turn the build red, and raised only as the number improves.
 
 ## Completion
 

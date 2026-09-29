@@ -213,6 +213,17 @@ When routing to another skill, pass `<run folder>/E<nn>-analysis.md` as the inpu
 6. **Right-sized routing** — small fix → fix directly; moderate → tasks + implement; large → plan first. Don't over-engineer simple problems.
 7. **Report with evidence** — the closing message says what was read (the load-bearing sources by `file:line` or URL), what was named but not read and why, how confidence was judged, and what was left out. Never call an analysis complete or verified without the source or command behind the word.
 
+## Common Rationalizations
+
+| Excuse | Reality |
+|--------|---------|
+| "I'm fairly sure what's wrong — no need to confirm intent." | The thesis rests on the intent. A correct answer to a misread question is still the wrong analysis. |
+| "The symptom is obvious, so I'll skip the mechanical check." | Record it `not-run` with the reason instead. A check you did not run is a thesis you did not confirm, and the confidence number has to say so. |
+| "Confidence is low, but I'll propose a fix anyway." | The confidence gate stops the run. Gather the evidence, then propose. |
+| "The user handed me a brief, so the confirm panel is a formality." | Read it and record the restatement as confirmed. Asking a written brief back tells the user you did not read it. |
+| "One plausible cause is enough." | A thesis with no competing hypothesis beside it is a guess wearing a heading. Name what you ruled out, and how. |
+| "I'll present the options and let the user sort it out." | Present the options *and* a recommendation. Handing back an open choice is the turn stopping early. |
+
 ## Anti-Patterns to Avoid
 
 - Jumping straight to a solution without confirming what the problem actually is

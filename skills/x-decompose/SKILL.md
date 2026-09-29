@@ -143,6 +143,11 @@ The triage report is a live file and the script owns two blocks of it: `## Verdi
 <All config, formulas, data shapes, business rules, APIs. Inline everything — never point to another file.>
 ## Definition of Done
 - [ ] <automated check>: `<command>`
+- [ ] seen to work, not just compiled: <the command, the request, or the screen that shows it>
+- [ ] the diff touches only this task's files
+- [ ] REFACTOR ran: no dead code, debug output, or comment that restates code left behind
+- [ ] the docs describe the change as it now is (`E00-plan.md`, or the living docs)
+- [ ] `x-review` and `x-fix` came back clean on the changed files, and `x-floor`'s guard exits 0
 ## Test Plan
 ### Happy Path
 - Given <condition> → expect <result>
@@ -151,6 +156,12 @@ The triage report is a live file and the script owns two blocks of it: `## Verdi
 ## Preconditions
 <Concrete codebase state required before starting. Describe the state, not task dependencies within the layer.>
 ```
+
+**The first row is the task's own acceptance criterion; the five below it are the standing bar**, the same for
+every task in every layer: see *Definition of Done* in `x-implement`'s `SKILL.md` for what each one means. A
+task's own rows vary and answer *did we build this?*; the standing rows do not, and answer *is it ready?*. Write
+them into every task file rather than assuming the implementer read the bar — an unticked box is how the run says
+a task is unfinished, and a bar that lives only in a skill's prose can never be ticked.
 
 ### Task Design Rules
 

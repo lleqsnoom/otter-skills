@@ -1,6 +1,6 @@
 ---
 name: x-review
-description: Review code against engineering principles — small functions, SOLID, KISS, DRY — with automated AST-based complexity analysis across 30+ languages including Python, C, C++, Java, JavaScript, TypeScript, Go, Rust, Ruby, PHP, Swift, Kotlin, and more. Runs the comments (x-comments), bloat (x-unbloat) and architecture (x-arch + x-arch-lint) passes as part of every review.
+description: Review code against engineering principles — small functions, SOLID, KISS, DRY — with automated AST-based complexity analysis across 30+ languages including Python, C, C++, Java, JavaScript, TypeScript, Go, Rust, Ruby, PHP, Swift, Kotlin, and more. Runs the comments (x-comments), bloat (x-unbloat), architecture (x-arch + x-arch-lint) and quality-floor (x-floor) passes as part of every review. Also checks every change against the standing Definition of Done.
 version: 2.2.0
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
@@ -14,10 +14,10 @@ auto-trigger:
 
 # X-Review — Code Review Against Engineering Principles
 
-A review is five passes over the same scope, and all five write their findings into one plan file. The last
-three are child skills run **inside** this review — they are not follow-ups to recommend afterwards.
+A review is six passes over the same scope, and all six write their findings into one plan file. The last four
+are child skills run **inside** this review — they are not follow-ups to recommend afterwards.
 
-## The Five Passes
+## The Six Passes
 
 | # | Pass | Runs | Writes |
 |---|------|------|--------|
@@ -26,10 +26,11 @@ three are child skills run **inside** this review — they are not follow-ups to
 | 3 | **Comments** | **x-comments**, run as a pass (report only) | `[Comments]` |
 | 4 | **Bloat** | **x-unbloat**, run as a pass — its ladder steps 3 and 5 (report only) | `[Bloat]` |
 | 5 | **Architecture** | **x-arch**, run as a pass, plus **x-arch-lint**'s `arch-check.mjs` | `[Architecture]` |
+| 6 | **Floor** | **x-floor**'s `floor-guard.mjs` on the diff | `[Floor]` |
 
-A plan missing `[Comments]`, `[Bloat]` or `[Architecture]` is **incomplete, not clean**: passes 3–5 run on every
-review, including a re-run, and each says plainly when it found nothing. Every pass reports; applying the fixes
-is `x-fix`'s job.
+A plan missing `[Comments]`, `[Bloat]`, `[Architecture]` or `[Floor]` is **incomplete, not clean**: passes 3–6 run
+on every review, including a re-run, and each says plainly when it found nothing. Every pass reports; applying
+the fixes is `x-fix`'s job.
 
 ## Scripts
 
@@ -46,7 +47,7 @@ node <path-to>/scripts/save-plan.mjs --slug <topic>   # create plan file with al
 
 ## What To Do
 
-When invoked, determine the user's scope (single file, directory, or full project) and run all five passes below
+When invoked, determine the user's scope (single file, directory, or full project) and run all six passes below
 into the one plan file. Do not ask the user what to do, and do not stop after the metrics.
 
 1. **Metrics pass — create the plan with all analyses**: `node <path-to>/scripts/save-plan.mjs --slug <topic>` — this runs complexity analysis (AST-based via tree-sitter), duplication check, AND refactor pattern detection in one step. It writes `E<nn>-review-plan.md` into the run folder and prints the full path.
@@ -54,7 +55,8 @@ into the one plan file. Do not ask the user what to do, and do not stop after th
 3. **Comments pass (part of the review, using x-comments)** — apply the rules in the x-comments skill's `SKILL.md` (`~/.agents/skills/x-comments/SKILL.md` for a global install, `.agents/skills/x-comments/SKILL.md` for a local one) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Report only — `x-fix` makes the edits.
 4. **Bloat pass (part of the review, using x-unbloat)** — apply the ladder in the x-unbloat skill's `SKILL.md` (`~/.agents/skills/x-unbloat/SKILL.md` for a global install, `.agents/skills/x-unbloat/SKILL.md` for a local one) to every reviewed file; x-unbloat's "Two Ways It Runs" names this host's mode as ladder steps 3 and 5. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. A branch for a state the types or the internal callers rule out is reported here too, with the narrower representation named as the fix (x-unbloat's *Bloat, Unless…* row; the rule is *Make the Bad State Impossible* in x-implement's `SKILL.md`) — MAJOR when a caller must handle a failure the type could have excluded, MINOR when the check is only redundant, and never flagged where the input crosses a trust boundary. Never flag what x-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are x-fix's job.
 5. **Architecture pass (part of the review, using x-arch and x-arch-lint)** — apply the rules in the x-arch skill's `SKILL.md` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) to every reviewed file; x-arch's "Two Ways It Runs" names this host's mode as all five groups, report only. Then run `node ~/.agents/skills/x-arch-lint/scripts/arch-check.mjs --root .` (`.agents/skills/x-arch-lint/scripts/arch-check.mjs` for a local install). Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are x-fix's job.
-6. **Unmeasured analyses** — an analysis script that failed is not a zero; carry `save-plan.mjs`'s "Analysis incomplete" note into the plan rather than reporting a clean result.
+6. **Floor pass (part of the review, using x-floor)** — run `node ~/.agents/skills/x-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/x-floor/scripts/floor-guard.mjs` for a local install). It compares the quality floor declared at the merge base with the one on disk and reports the moves that lower the bar — a weakened threshold, a dropped rule, a new or extended exception, a silenced checker, unfinished work, a test made easier, a deleted test, or an assertion removed from a test that still exists. Report each under a `[Floor]` heading with its `rule`, `file` and `line`, and copy the guard's `rated` and `unrated` lists in verbatim: a repo with no `.x-skills/config/floor.json` is reported as unrated rather than as clean. Exit 2 is **not** a clean result — say the guard could not run and why. Report only: the fixes are x-fix's job.
+7. **Unmeasured analyses** — an analysis script that failed is not a zero; carry `save-plan.mjs`'s "Analysis incomplete" note into the plan rather than reporting a clean result.
 
 The complexity script auto-installs tree-sitter if missing (global install). Each script prints JSON, and the keys mislead on first read — `functions` is nested inside a file, and `duplicatedBlocks` is a **count**, not the list:
 
@@ -89,11 +91,26 @@ its pass; this skill never restates their rules.
   all five groups). x-arch judges where a unit lives, what it is called, what its one responsibility is and which
   way its dependencies point; x-arch-lint checks the same tree against `.x-skills/config/arch.json` and reports
   `file:line` violations. Findings go under `[Architecture]`; `x-fix` applies them.
+- **x-floor** — Run as pass 6 of every review. `floor-guard.mjs` reports the moves that lower the declared quality
+  floor, and the `rated`/`unrated` lists that say which half of the bar was actually checked. Findings go under
+  `[Floor]`; `x-fix` applies them.
 - **x-fix** — Reads this plan and edits source files to resolve every finding from every pass, including the
   comment, bloat and architecture rows.
 - **x-refactor** — Analysis-only refactoring suggestions (extract method, rename variables, replace conditionals)
   on flagged files. It runs x-unbloat's ladder before suggesting anything, and applies nothing.
 - **x-debug** — For runtime errors or behavioral issues that require hypothesis-driven investigation rather than static code analysis.
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|--------|---------|
+| "The diff is small — I'll read it and say LGTM." | A verdict without the passes is a rubber stamp. The plan is the evidence; a missing `[Comments]`, `[Bloat]` or `[Architecture]` heading makes it incomplete, not clean. |
+| "Those passes found nothing here, so I'll leave the heading out." | A pass that found nothing writes `none`. A missing heading is indistinguishable from a pass that never ran. |
+| "This file is already huge, I'll just review the diff." | Then say so and ask for a split. Reviewing around a structural problem is how it gets buried; the size is itself a finding. |
+| "Ten nits and one structural problem — I'll list them in order." | Lead with leverage: correctness and structure first. If there is one structural problem and ten nits, the structural problem *is* the review. |
+| "I noticed dead code, but I won't ask about deleting it." | List it and ask. Silently deleting what you do not fully understand is the other failure, and leaving it unmentioned hides it from the next reader. |
+| "The counts are repo-wide, so they describe this change." | They do not. Say what the scope was, and whether the engine was the AST one or the regex fallback. |
+| "The analysis script failed, so the count is zero." | An unmeasured count is not a zero. Carry the "Analysis incomplete" note into the plan and never report a failed analysis as a clean result. |
 
 ## Severity
 
@@ -105,6 +122,14 @@ its pass; this skill never restates their rules.
 
 **CRITICAL SRP note:** a function that interleaves phases (fetch, validate, probe, decrypt) with inline reporting (`push` to a shared results array inside each branch) is an orchestrator-with-interleaved-reporting violation — always CRITICAL. Verify with the two extract tests in `references/principles.md` (one-sentence test, reporting test).
 
+## The Standing Bar
+
+The six passes judge the code. The standing bar judges whether the change is *finished*, and it is the same bar
+for every change: see *Definition of Done* in `x-implement`'s `SKILL.md`. Read it before writing the verdict, and
+say in the plan which rows you could check and which you could not. A review that reports only its own passes has
+said nothing about the rows no pass covers — whether the change was seen to work at runtime, and whether the docs
+describe it as it now is.
+
 ## Output Format
 
 Produce a review and save it into the run folder. Use `save-plan.mjs` to create the directory and generate a numbered plan file:
@@ -113,7 +138,7 @@ Produce a review and save it into the run folder. Use `save-plan.mjs` to create 
 node <path-to>/scripts/save-plan.mjs --slug <topic>
 ```
 
-The script prints the full path. Open that file with `edit` or `write`, then insert your review content using this format — all five passes get their own section, and the three pass headings below are written even when a pass found nothing:
+The script prints the full path. Open that file with `edit` or `write`, then insert your review content using this format — all six passes get their own section, and the four pass headings below are written even when a pass found nothing:
 
 ```markdown
 # Code Review — Fix Plan
@@ -168,6 +193,20 @@ tree is not full coverage.
 
 ---
 
+## [Floor] — pass 6 of the review
+
+Write `none` when the guard found nothing. A guard that could not run (exit 2) is not `none` — say so.
+
+- [ ] **Severity:** MAJOR
+  - **File:** `src/a.ts:42`
+  - **Rule:** the guard's rule name, e.g. `silenced-checker`
+  - **Issue:** The move that lowers the bar (applied by `x-fix`, unless it is routed through a tracked exception)
+
+**x-floor:** `rated: [...]`, `unrated: [...]` — copy both lists verbatim; a green run over an undeclared floor is
+a much weaker statement than a green run over a declared one.
+
+---
+
 ## Summary
 
 **Total issues:** N (**critical:** N, **major:** N, **minor:** N)
@@ -178,19 +217,19 @@ Apply fixes manually based on review findings. Track progress by updating checkb
 
 A plan without a `[Comments]` section is **incomplete, not clean**: the comments pass is step 3 of every
 review, including a re-run, and its findings belong under that heading (say so plainly when it found
-nothing). `[Bloat]` and `[Architecture]` are the same: steps 4 and 5 run on every review, so a plan missing
-either heading is incomplete rather than clean. On a re-run, carry each earlier finding forward as resolved or
-still open, and list pre-existing findings apart from the ones this branch introduced, so the counts describe
-the change under review.
+nothing). `[Bloat]`, `[Architecture]` and `[Floor]` are the same: steps 4, 5 and 6 run on every review, so a plan
+missing any of those headings is incomplete rather than clean. On a re-run, carry each earlier finding forward as
+resolved or still open, and list pre-existing findings apart from the ones this branch introduced, so the counts
+describe the change under review.
 
 ## After the Review — Where Findings Get Fixed
 
-Do not recommend the passes as follow-up work: passes 3–5 already ran inside this review and their findings are
+Do not recommend the passes as follow-up work: passes 3–6 already ran inside this review and their findings are
 in the plan. This table routes the fixes, not the passes.
 
 | Review finding | What to run next | Why |
 |----------------|------------------|-----|
-| Any issue that needs fixing (complexity, SOLID, duplication, `[Comments]`, `[Bloat]`, `[Architecture]`) | `x-fix` | Reads your plan and edits source files to resolve every finding, including the comment, bloat and architecture rows |
+| Any issue that needs fixing (complexity, SOLID, duplication, `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]`) | `x-fix` | Reads your plan and edits source files to resolve every finding, including the comment, bloat, architecture and floor rows |
 | Structural refactoring suggestions without applying changes | `x-refactor` | Analysis-only — produces before/after comparisons but doesn't edit code |
 | Behavioral bugs or runtime errors that need investigation | `x-debug` | Hypothesis-driven debugging — reproduce, isolate root cause, then fix with x-fix |
 

@@ -42,6 +42,21 @@ export function refsForSkill(text, skillName) {
   return [...out];
 }
 
+// A citation of *another* skill's file. `refsForSkill` skips those lines on purpose, which left every
+// cross-skill path unchecked: renaming a skill or moving its script broke the citation silently, and the
+// defect only surfaced the next time an agent tried to run the command.
+const CROSS_SKILL_REF = /(x-[a-z0-9-]+)\/((?:scripts|references)\/[A-Za-z0-9_@./-]+\.[A-Za-z0-9]+|SKILL\.md)/g;
+
+export function crossSkillRefs(text) {
+  const out = [];
+  for (const line of text.split(/\r?\n/)) {
+    CROSS_SKILL_REF.lastIndex = 0;
+    let m;
+    while ((m = CROSS_SKILL_REF.exec(line))) out.push({ target: m[1], rel: m[2] });
+  }
+  return out;
+}
+
 // Files that must stay byte-identical across the skills that share them.
 const SHARED_SCRIPTS = ["scripts/check-questions.mjs", "references/questions.md", "references/research-first.md"];
 
@@ -288,6 +303,17 @@ export function lintRepo(root = REPO_ROOT) {
       if (SHARED_SCRIPTS.includes(ref)) continue;
       if (!fs.existsSync(path.join(dir, ref))) {
         violations.push({ skill: name, rule: "missing-ref", detail: `referenced ${ref} does not exist` });
+      }
+    }
+    // The same check for the other half: a path that points at a different skill. A skill's own paths are
+    // governed above, so a self-citation is skipped rather than counted twice.
+    for (const ref of crossSkillRefs(text)) {
+      if (ref.target === name) continue;
+      const target = path.join(skillsDir, ref.target);
+      if (!fs.existsSync(target)) {
+        violations.push({ skill: name, rule: "unknown-skill-ref", detail: `names ${ref.target}, which is not a skill in this repo` });
+      } else if (!fs.existsSync(path.join(target, ref.rel))) {
+        violations.push({ skill: name, rule: "cross-skill-ref", detail: `${ref.target}/${ref.rel} does not exist` });
       }
     }
     if (!inReadme.has(name)) violations.push({ skill: name, rule: "readme", detail: "not listed in README skills table" });
