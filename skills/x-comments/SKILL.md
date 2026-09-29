@@ -1,7 +1,7 @@
 ---
 name: x-comments
-description: Comment management — add only precise, meaningful comments and remove noisy or obvious ones; refactor overly commented code into self-explanatory functions instead of describing it
-version: 1.0.0
+description: Comment management — add only precise, meaningful comments and remove noisy or obvious ones; refactor overly commented code into self-explanatory functions instead of describing it. Runs as a pass inside x-review and x-implement.
+version: 1.1.0
 author: Community
 tags: [comments, code-cleaning, self-documenting-code, readability, refactoring]
 user-invocable: true
@@ -10,6 +10,18 @@ user-invocable: true
 # X-Comments — Meaningful Comments Only
 
 Manage code comments: write only the ones that earn their place, remove the noise, and refactor blocks that need long explanations into smaller self-explanatory functions.
+
+## Two Ways It Runs
+
+**As a pass inside another skill.** No record, and do not stop on uncommitted work: that work is the task. The
+host's scope replaces step 1's.
+
+- **x-review** (reports only): the comment rules are applied to every file under review, and each finding is
+  listed under `[Comments]` in the review's plan rather than fixed here. `x-fix` makes the edits.
+- **x-implement** (edits): the rules bind every line written, and its REFACTOR step strips comments that restate
+  code and extracts over-explained blocks into named functions.
+
+**On its own**, when the user asks to clean up comments: run every step below and make the edits.
 
 ## Comment Rules
 
