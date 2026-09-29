@@ -36,3 +36,12 @@ user-invocable: true
 - **`[Bloat]` issues follow x-unbloat** (`~/.agents/skills/x-unbloat/SKILL.md` for a global install, `.agents/skills/x-unbloat/SKILL.md` for a local one): check every call site before inlining or deleting, and keep what its *Keep it if* column or *Never Cut* list protects
 - **`[Architecture]` issues follow x-arch** (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one): one change per finding — a move, a split, a rename or a repointed dependency, never two at once — check every call site before moving or deleting, and keep what its *Never Cut* list protects. When the repo declares `.x-skills/config/arch.json`, finish with `x-arch-lint`'s `arch-check.mjs --root .` to confirm the fix did not cross another boundary
 - **If ambiguous**, make smallest reasonable fix and note uncertainty
+
+## Definition of Done
+
+A fix is done when the issue is resolved **and** the standing bar in `x-implement`'s `SKILL.md` is still clear for
+the files you touched. Resolving an issue while lowering the bar around it is not a fix: a new `@ts-ignore`, a
+deleted assertion, a skipped test, an emptied `catch` or a stubbed function is the failure the bar exists to
+catch, and `x-floor`'s guard reports each of them on the diff. After the last fix, run the guard and the tests —
+`E<nn>-verify.js` exits 0 where the run folder has one — and leave every issue you did not resolve unchecked
+rather than marking it done.

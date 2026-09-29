@@ -190,6 +190,10 @@ node <skill>/scripts/scenario.mjs start --slug <topic> [--new-run | --run <nn>]
 - Artifacts are numbered `E<nn>-<kind>.md` or `E<nn>-<kind>/` in execution order, so a plain name sort lists the run in the order it was built.
 - Spec report (handoff): `<run folder>/E00-plan.md` — the path `x-decompose` reads.
 - The topic reuses its existing run. Use `--new-run` to start a second run of it, and `--run <nn>` to join a specific one; with two runs and neither flag the command fails rather than picking.
+- **Never write over work in progress.** A run folder whose plan still has unchecked layers belongs to
+  whoever is implementing it, and the only copy of that state is on disk. Replanning the same work is a
+  `--new-run`, never a rewrite of the old folder; when you cannot tell whether the plan is still live, ask
+  with a `confirm` panel before touching it.
 
 **The report is a live file, and one block of it belongs to the graph.** Every `record` and `--to`
 rewrites the run's `## Scenario` block from the graph, and only that block: the window opens at the
@@ -204,6 +208,18 @@ If user decides not to proceed after clarification, stop. Record reason in worki
 ## Handoff Flow
 
 Artifact must exist on disk with required declarations (contract, invariant, test) and a Layer Roadmap whose every block carries its five fields, before handing off to `x-decompose`. Prove it with `scenario.mjs guard --gate layers_complete` (exit 0).
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|--------|---------|
+| "The task is obvious — we can skip the spec." | Ten minutes of spec avoids the rework that starts the moment two people read one sentence differently. |
+| "I'll work out the invariant while I build it." | An invariant that arrives after the contract is a redesign, not a detail. `spec_complete` refuses to hand off without one. |
+| "Three approaches is overkill; I already know the one." | Two options decide; three force the trade-off into the open, which is the whole point of the step. |
+| "The declarations are a formality — I'll write it as prose." | The gate reads `contract:`, `invariant:` and `test:` at the start of a line, so prose is a spec that cannot hand off. |
+| "I'll ask everything at once to save turns." | Every question renders as a panel and carries your guess. A paragraph of batched questions is the shape `check-questions.mjs` exists to refuse. |
+| "The layer has no definition of done yet — the checklist is boilerplate." | `layers_complete` refuses a layer without one, because a layer nobody can prove is a layer nobody can finish. |
+| "The user named a source I could not open, but the spec is otherwise done." | Say it at the top of the next message and ask. A spec that looks complete while a named input went unread is the one the user sends back. |
 
 ## Limits
 

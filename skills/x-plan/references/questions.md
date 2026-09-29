@@ -34,6 +34,9 @@ rule is on you.
 - **One idea per question.** No "X and Y" and no second question mark.
 - **Under 20 words.** Plain words a non-expert reads once.
 - **Say what it changes.** The reader must know what decision the answer unlocks.
+- **Attach your guess.** Write your best answer and a confidence number beside the question. A wrong
+  guess is faster to correct than a blank answer is to produce, and it puts the assumption you were
+  about to act on in front of the user instead of inside your head.
 - **Pick the panel.** `single` to choose one of several, `multi` to choose several at once, `open`
   when only free text fits, `confirm` for a yes/no.
 - **Record it.** Every question and answer goes into `memory.md`; recheck the open list after each
@@ -56,6 +59,7 @@ arrives, do not ask again: find the unfinished step and finish it, or say plainl
 ```markdown
 ## Q1: Which database stores sessions?
 **Why:** this decides the schema and the migration plan.
+**Guess:** Postgres — 60%, the repo already ships a `pg` pool.
 **Panel:** single
 **Options:** Postgres | SQLite | Redis
 ```
