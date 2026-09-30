@@ -117,6 +117,8 @@ When a task's scope includes UI (HTML/CSS, templates, components, or styles in a
 
 For each task file in `<run folder>/E<nn>-tasks/`:
 
+0. **START** — record that the task began: `node <skill>/scripts/status.mjs <run folder> --start <task file>`. It stamps
+   `started` in the task's property block once; a second call keeps the first stamp.
 1. **RED** — Write the minimal failing test for the task's acceptance criterion. It must fail for the *right reason*.
 2. **GREEN** — Write the minimum implementation to pass that test. Nothing more. Walk the x-unbloat ladder before writing.
 3. **REFACTOR** — Evaluate against SOLID/clean code, the comment rules, the x-unbloat pass (steps 3, 5 and 7), the x-arch pass (placement, naming, responsibility, direction, inheritance), and the functional style above. Strip comments that restate code; extract explained blocks into named functions; push side effects to the edges and prefer pure, immutable functions. State what you assessed and what (if anything) improved — or why no changes were needed.
@@ -128,6 +130,9 @@ For each task file in `<run folder>/E<nn>-tasks/`:
    - **x-review** — run the review skill on the changed files. It writes a plan (`E<nn>-review-plan.md`) into the run folder, which `x-fix` reads.
    - **x-fix** — resolve every issue in the fix plan. Re-run tests after each fix.
    - Repeat x-review + x-fix until the plan has no unresolved issues and all tests are green.
+   - **Size check** — compare the files and modules the diff touched with the task's `size` (XS 1 file · S 2–3 · M 4–10
+     in one module · L beyond, or a contract change; tests not counted). When they disagree, say so in the run's
+     `memory.md` with both numbers: that record is how the scale gets tuned, so never edit `size` to match the diff.
 5. **SYNC DOCS** — Update the spec (`<run folder>/E00-plan.md`) if it exists; otherwise update living docs (README, comments) directly.
 6. **COMMIT** — **Run the floor guard first**: `node ~/.agents/skills/x-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/x-floor/scripts/floor-guard.mjs` for a local install). Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <path-to-commit.mjs> "<message>"` from the x-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If x-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
 7. **UPDATE STATUS — the task, then the plan.** Two files, and neither write is optional:
@@ -136,7 +141,7 @@ For each task file in `<run folder>/E<nn>-tasks/`:
      ```bash
      node <skill>/scripts/status.mjs <run folder>
      ```
-     It ticks the `**Definition of Done:**` of every layer whose tasks are all done, and refreshes the plan's `**Status:**` line with the task and layer tally. It never unticks, and never asserts what a task list cannot prove. `--dry-run` prints what it would write.
+     It ticks the `**Definition of Done:**` of every layer whose tasks are all done, and refreshes the plan's `**Status:**` line with the task and layer tally. It never unticks, and never asserts what a task list cannot prove. It also mirrors each task's boxes into its property block — `done`, `finished`, `reopened` — so Obsidian can tell open work from finished work. Those keys and `started` are written only by this script: never set them by hand. `--dry-run` prints what it would write.
    Do not start the next task without this.
 
 All tasks `- [x]` and green → close the run:

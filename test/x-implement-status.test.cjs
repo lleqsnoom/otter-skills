@@ -323,3 +323,76 @@ describe("x-implement status: a run-level status line", () => {
     );
   });
 });
+
+/** A plan-based run whose one task carries a property block, as x-decompose writes it now. */
+function propertyFixture(boxes = ["[ ] the rule fires"]) {
+  const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "xskills-status-props-")), ".x-skills", "runs", "2026-01-01-0900-R01-demo");
+  fs.mkdirSync(path.join(run, "E02-tasks"), { recursive: true });
+  fs.writeFileSync(path.join(run, "E00-plan.md"), PLAN);
+  const task = path.join(run, "E02-tasks", "L0-T1-rule.md");
+  const body = `# Task: rule\n**Layer:** 0 — the checker\n\n## Definition of Done\n${boxes.map((box) => `- ${box}`).join("\n")}\n`;
+  fs.writeFileSync(task, `---\ntype: task\nsize: S\ncomplexity: clear\n---\n${body}`);
+  return { run, task, body };
+}
+
+const property = (file, key) => (fs.readFileSync(file, "utf8").match(new RegExp(`^${key}: (.*)$`, "m")) || [])[1];
+const setBoxes = (file, mark) => fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/- \[[ x]\] the rule fires/, `- [${mark}] the rule fires`));
+
+describe("x-implement status: a task's done, finished and reopened", () => {
+  it("mirrors an open task as done: false, and leaves the body byte for byte", () => {
+    const { run, task, body } = propertyFixture();
+    assert.equal(status(run).status, 0);
+    assert.equal(property(task, "done"), "false");
+    assert.ok(fs.readFileSync(task, "utf8").endsWith(body), "only the property block changes");
+  });
+
+  it("marks a fully ticked task done and stamps when it finished", () => {
+    const { run, task } = propertyFixture(["[x] the rule fires"]);
+    assert.equal(status(run).status, 0);
+    assert.equal(property(task, "done"), "true");
+    assert.match(property(task, "finished"), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+  });
+
+  it("counts a reopen when a finished task has a box unticked, and drops its finish", () => {
+    const { run, task } = propertyFixture(["[x] the rule fires"]);
+    status(run);
+    setBoxes(task, " ");
+    status(run);
+    assert.equal(property(task, "done"), "false");
+    assert.equal(property(task, "reopened"), "1");
+    assert.equal(property(task, "finished"), undefined);
+  });
+
+  it("overwrites a done set by hand, without counting it as a reopen", () => {
+    const { run, task } = propertyFixture();
+    fs.writeFileSync(task, fs.readFileSync(task, "utf8").replace("complexity: clear\n", "complexity: clear\ndone: true\n"));
+    status(run);
+    assert.equal(property(task, "done"), "false");
+    assert.equal(property(task, "reopened"), undefined);
+  });
+
+  it("stamps started once, and keeps the first stamp", () => {
+    const { run, task } = propertyFixture();
+    assert.equal(status(run, "--start", "L0-T1-rule.md").status, 0);
+    const first = property(task, "started");
+    assert.match(first, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+    fs.writeFileSync(task, fs.readFileSync(task, "utf8").replace(`started: ${first}`, "started: 2000-01-01T00:00:00.000Z"));
+    status(run, "--start", "L0-T1-rule.md");
+    assert.equal(property(task, "started"), "2000-01-01T00:00:00.000Z");
+  });
+
+  it("refuses to start a task the run does not hold", () => {
+    const { run } = propertyFixture();
+    const result = status(run, "--start", "L9-T9-missing.md");
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /L9-T9-missing\.md/);
+  });
+
+  it("writes nothing to a task on a dry run, and says what it would", () => {
+    const { run, task } = propertyFixture(["[x] the rule fires"]);
+    const before = fs.readFileSync(task, "utf8");
+    const result = status(run, "--dry-run");
+    assert.equal(fs.readFileSync(task, "utf8"), before);
+    assert.match(result.stdout, /would change: L0-T1-rule\.md: done true/);
+  });
+});

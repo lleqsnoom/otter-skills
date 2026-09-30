@@ -15,8 +15,13 @@
  * docs updated). The script never asserts what it cannot check, and it never unticks: a box that is open because a
  * check is deferred stays open, and the status line is what says the run is nearly there anyway.
  *
+ * It also writes the one thing a task's own property block cannot know by itself: whether its boxes are all ticked.
+ * `done` mirrors them both ways, `finished` and `reopened` follow from its turns, and `--start <task file>` stamps
+ * `started` once — so Obsidian, which cannot read checkboxes, can still tell open work from finished work. Nothing
+ * outside the block is ever rewritten, and a task with no block is left exactly as it is.
+ *
  * Usage:
- *   node status.mjs --run <run folder> [--epic-done] [--dry-run]
+ *   node status.mjs <run folder> [--start <task file>] [--epic-done] [--dry-run]
  *
  * Exit 0 when the epic is up to date (or was updated), 1 when the run has no epic or no tasks to read, 2 on a usage
  * error. ESM rather than the CommonJS its sibling scripts use, so it runs from inside a checkout of the repo that
@@ -252,6 +257,59 @@ function applyStatus(epic, report, options = {}) {
   return { text: lines.join("\n"), changes };
 }
 
+/** Where a task's leading `---` block closes, or -1 when the task has none (a task written before tasks carried one). */
+function blockEnd(lines) {
+  if (lines[0]?.trim() !== "---") return -1;
+  return lines.findIndex((line, index) => index > 0 && line.trim() === "---");
+}
+
+/** One key's value in a block, or `undefined`. */
+function readKey(lines, end, key) {
+  const line = lines.slice(1, end).find((candidate) => candidate.startsWith(`${key}:`));
+  return line === undefined ? undefined : line.slice(key.length + 1).trim();
+}
+
+/** The block with `key` set to `value`, or removed when `value` is `undefined`; the body is never touched. */
+function withKey(lines, key, value) {
+  const end = blockEnd(lines);
+  const at = lines.slice(0, end).findIndex((line, index) => index > 0 && line.startsWith(`${key}:`));
+  if (value === undefined) return at === -1 ? lines : lines.filter((_, index) => index !== at);
+  const line = `${key}: ${value}`;
+  if (at !== -1) return lines.map((candidate, index) => (index === at ? line : candidate));
+  return [...lines.slice(0, end), line, ...lines.slice(end)];
+}
+
+/**
+ * A task's `done`, `finished` and `reopened`, mirrored from its boxes. `done` follows the boxes both ways; `finished`
+ * is stamped when it turns true and dropped when it turns false; a turn back to false counts as a reopen only when
+ * this script had finished the task — a `done` someone typed by hand is corrected, not counted.
+ */
+function mirrorTask(text, complete, now) {
+  const lines = text.split("\n");
+  const end = blockEnd(lines);
+  if (end === -1) return { text, change: null };
+  const was = readKey(lines, end, "done");
+  const finished = readKey(lines, end, "finished");
+  const done = String(complete);
+  if (was === done && (complete ? finished !== undefined : finished === undefined)) return { text, change: null };
+  const reopened = !complete && finished !== undefined ? Number(readKey(lines, end, "reopened") ?? 0) + 1 : undefined;
+  const steps = [
+    ["done", done],
+    ["finished", complete ? (finished ?? now) : undefined],
+    ...(reopened === undefined ? [] : [["reopened", String(reopened)]]),
+  ];
+  const next = steps.reduce((current, [key, value]) => withKey(current, key, value), lines);
+  return { text: next.join("\n"), change: `done ${done}${reopened ? ` (reopened ${reopened})` : ""}` };
+}
+
+/** A task's `started`, stamped the first time the task begins and never again. */
+function startTask(text, now) {
+  const lines = text.split("\n");
+  const end = blockEnd(lines);
+  if (end === -1 || readKey(lines, end, "started") !== undefined) return { text, change: null };
+  return { text: withKey(lines, "started", now).join("\n"), change: `started ${now}` };
+}
+
 /**
  * The run a set of arguments names: the folder must hold its layers — an epic, or the plan a run was decomposed
  * from — and a task folder. The epic wins while a run holds one, because that is the expanded form of the same
@@ -264,20 +322,24 @@ function locate(runDir) {
 }
 
 /**
- * The run folder, then the two switches there are. It takes no value flag at all: the run is the argument, and a
- * `--switch <value>` loop is the one thing the app's own importer has to hand-roll, so this script does not.
+ * The run folder, the two switches, and `--start <task file>` — the one flag that takes a value, because the task it
+ * names is the whole of what it asks for.
  */
 function parseArgs(argv) {
   const switches = new Set(["--epic-done", "--dry-run"]);
-  const unknown = argv.find((arg) => arg.startsWith("--") && !switches.has(arg));
+  const startAt = argv.indexOf("--start");
+  const start = startAt === -1 ? null : (argv[startAt + 1] ?? "");
+  const rest = startAt === -1 ? argv : argv.filter((_, index) => index !== startAt && index !== startAt + 1);
+  const unknown = rest.find((arg) => arg.startsWith("--") && !switches.has(arg));
   if (unknown) {
     process.stderr.write(`Unknown argument: ${unknown}\n`);
     process.exit(2);
   }
   return {
-    run: argv.find((arg) => !arg.startsWith("--")) ?? null,
-    epicDone: argv.includes("--epic-done"),
-    dryRun: argv.includes("--dry-run"),
+    run: rest.find((arg) => !arg.startsWith("--")) ?? null,
+    epicDone: rest.includes("--epic-done"),
+    dryRun: rest.includes("--dry-run"),
+    start,
   };
 }
 
@@ -324,18 +386,39 @@ function runFiles(run) {
   return { tasks, layersPath };
 }
 
+/** Each task's own properties brought in line with its boxes; returns the changes, written unless it is a dry run. */
+function mirrorTasks(tasksDir, tasks, { now, start, dryRun }) {
+  const edits = tasks.map((task) => {
+    const file = path.join(tasksDir, task.name);
+    const text = fs.readFileSync(file, "utf8");
+    const started = task.name === start ? startTask(text, now) : { text, change: null };
+    const mirrored = mirrorTask(started.text, task.complete, now);
+    return { file, name: task.name, text: mirrored.text, changes: [started.change, mirrored.change].filter(Boolean) };
+  });
+  if (!dryRun) for (const edit of edits.filter((candidate) => candidate.changes.length)) fs.writeFileSync(edit.file, edit.text, "utf8");
+  return edits.flatMap((edit) => edit.changes.map((change) => `${edit.name}: ${change}`));
+}
+
+/** `--start` names a task file of this run, or the call is refused before anything is written. */
+function refuseUnknownStart(tasks, start) {
+  if (start === null || tasks.some((task) => task.name === start)) return;
+  refuse(`No task ${start || "(none named)"} in this run — --start takes a task file name from its tasks folder.`, 2);
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.run) refuse("Usage: node status.mjs <run folder> [--epic-done] [--dry-run]", 2);
+  if (!args.run) refuse("Usage: node status.mjs <run folder> [--start <task file>] [--epic-done] [--dry-run]", 2);
 
   const { tasks, layersPath } = runFiles(args.run);
+  refuseUnknownStart(tasks, args.start);
   warnUnlayered(tasks);
   const report = summarise(tasks);
   const { text, changes } = applyStatus(fs.readFileSync(layersPath, "utf8"), report, { epicDone: args.epicDone });
   if (!args.dryRun && changes.length) fs.writeFileSync(layersPath, text, "utf8");
-  announce({ layersPath, report, changes, dryRun: args.dryRun });
+  const taskChanges = mirrorTasks(locate(args.run).tasksDir, tasks, { now: new Date().toISOString(), start: args.start, dryRun: args.dryRun });
+  announce({ layersPath, report, changes: [...changes, ...taskChanges], dryRun: args.dryRun });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) main();
 
-export { applyStatus, artifactOf, boxesIn, locate, parseTask, readTasks, statusLine, summarise };
+export { applyStatus, artifactOf, boxesIn, locate, mirrorTask, parseTask, readTasks, startTask, statusLine, summarise };
