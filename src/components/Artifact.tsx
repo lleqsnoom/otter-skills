@@ -8,6 +8,7 @@ import type { BoardDeletions } from '../lib/types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Chip, Empty } from './Card';
+import { Properties } from './Properties';
 
 /**
  * One artifact, read — and written back.
@@ -265,6 +266,7 @@ function ArtifactView(props: ArtifactProps & { deletions: BoardDeletions; onDele
                     />
                   }
                 >
+                  <Properties project={props.project} properties={loaded().properties} />
                   {/* The HTML is rendered and sanitised on the server (see `src/server/snapshot.mjs`). */}
                   <article class="markdown" ref={body} innerHTML={loaded().html ?? ''} />
                 </Show>

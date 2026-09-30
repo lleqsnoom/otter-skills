@@ -542,6 +542,42 @@ test('the snapshot exposes the fixture repository, and file content is rendered 
   assert.equal(unknown.status, 404);
 });
 
+test('a file read carries its property block as properties, and renders only the body', async () => {
+  const { root, snapshot } = await load();
+  fs.cpSync(path.join(__dirname, 'fixtures', 'vault'), root, { recursive: true });
+  writeFile(path.join(root, 'unsafe.md'), '---\nrelated: "<script>alert(1)</script>"\n---\n# t\n');
+  snapshot.invalidateSnapshot();
+  const project = snapshot.getSnapshot({ force: true }).projects[0];
+
+  const task = snapshot.readFileContent(project.id, `${VAULT_RUN}/E02-tasks/L0-T2-b.md`).body;
+  assert.deepEqual(task.properties.slice(0, 4), [
+    { key: 'type', values: [{ text: 'task', path: null }] },
+    { key: 'run', values: [{ text: 'index', path: `${VAULT_RUN}/index.md` }] },
+    { key: 'plan', values: [{ text: 'the plan', path: `${VAULT_RUN}/E00-plan.md` }] },
+    {
+      key: 'depends_on',
+      values: [
+        { text: 'L0-T1-a', path: `${VAULT_RUN}/E02-tasks/L0-T1-a.md` },
+        { text: 'L0-T9-never-written', path: null },
+      ],
+    },
+  ], 'a wikilink shows its alias or its note name, and links only when the note exists');
+  assert.deepEqual(
+    task.properties.find((entry) => entry.key === 'tags').values.map((value) => value.text),
+    ['x/task', 'area/fixture'],
+  );
+  assert.doesNotMatch(task.html, /type: task/, 'the block is not rendered as body text');
+  assert.match(task.html, /<h1[^>]*>Task: b<\/h1>/);
+  assert.match(task.raw, /^---\ntype: task\n/, 'the editor still gets the whole file');
+
+  const legacy = snapshot.readFileContent(project.id, 'tasks/legacy-task.md').body;
+  assert.deepEqual(legacy.properties, []);
+  assert.match(legacy.html, /<h1[^>]*>Task: legacy<\/h1>/);
+
+  const unsafe = snapshot.readFileContent(project.id, 'unsafe.md').body;
+  assert.deepEqual(unsafe.properties, [{ key: 'related', values: [{ text: '<script>alert(1)</script>', path: null }] }], 'a value is data; the view renders it as text');
+});
+
 test('raw HTML in an artifact is stripped of what could run', async () => {
   const { root, snapshot } = await load();
   writeFile(path.join(root, 'docs-script.md'), '# t\n\n<script>alert(1)</script>\n\n<a href="javascript:alert(2)">x</a>\n');

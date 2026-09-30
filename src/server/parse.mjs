@@ -168,18 +168,23 @@ function cleanLinkValue(value) {
 
 const FIELD_LINE = /^\s*(?:\*\*)?([A-Za-z][A-Za-z /_-]*?)(?:\*\*)?:\s*(?:\*\*)?\s*(.*)$/;
 const LIST_ITEM = /^\s*-\s+(.+)$/;
-const WIKILINK = /^\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]$/;
+const WIKILINK = /^\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]$/;
 
 /**
- * A value as a path: a wikilink names a note from the vault root with no extension and maybe an alias
- * (`[[runs/R/E00-plan|the plan]]`), so it becomes `runs/R/E00-plan.md`; anything else is cleaned as it always was.
+ * A wikilink as a path from the vault root and the text it is shown as. Obsidian writes `[[runs/R/E00-plan]]` with no
+ * extension, maybe a heading (`#…`) and an alias (`|the plan`); the path gets `.md` and the text is the alias, else the
+ * note's own name. Anything that is not a wikilink is `null`.
  */
+export function parseWikilink(value) {
+  const match = String(value).trim().match(WIKILINK);
+  if (!match) return null;
+  const note = match[1].trim();
+  return { path: /\.[a-z0-9]+$/i.test(note) ? note : `${note}.md`, text: match[2]?.trim() || note.split('/').pop() };
+}
+
 function linkTarget(value) {
   const cleaned = cleanLinkValue(value);
-  const wikilink = cleaned.match(WIKILINK);
-  if (!wikilink) return cleaned;
-  const target = wikilink[1].trim();
-  return /\.[a-z0-9]+$/i.test(target) ? target : `${target}.md`;
+  return parseWikilink(cleaned)?.path ?? cleaned;
 }
 
 /** The line that closes a leading `---` property block, or -1 when the document has none. */
@@ -197,16 +202,45 @@ const PROPERTY_VALUES = {
 
 /** The card's properties from the leading `---` block, each kept only when it is one of its allowed values. */
 export function propertyFields(markdown) {
+  return Object.fromEntries(
+    splitProperties(markdown)
+      .properties.filter(({ key, values }) => values.length === 1 && PROPERTY_VALUES[key]?.has(values[0]))
+      .map(({ key, values }) => [key, values[0]]),
+  );
+}
+
+/**
+ * The leading `---` block as `{ key, values }` in the order it was written, and the document after it. A value is
+ * returned as written, quotes aside: the block is the file's own data, and what to make of it is the reader's call.
+ */
+export function splitProperties(markdown) {
   const lines = markdown.split('\n');
   const end = propertyBlockEnd(lines);
-  return Object.fromEntries(
-    lines
-      .slice(1, Math.max(end, 1))
-      .map((line) => line.match(/^([a-z_]+):\s*(.*)$/))
-      .filter(Boolean)
-      .map(([, key, value]) => [key, value.trim().replace(/^["']|["']$/g, '')])
-      .filter(([key, value]) => PROPERTY_VALUES[key]?.has(value)),
-  );
+  if (end === -1) return { properties: [], body: markdown };
+  return { properties: propertyEntries(lines.slice(1, end)), body: lines.slice(end + 1).join('\n') };
+}
+
+function propertyEntries(lines) {
+  const entries = [];
+  for (const line of lines) {
+    const item = line.match(LIST_ITEM);
+    const field = !item && line.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+    if (item && entries.length) entries.at(-1).values.push(unquote(item[1]));
+    if (field) entries.push({ key: field[1], values: inlineValues(field[2].trim()) });
+  }
+  return entries;
+}
+
+/** `[]` and `[a, b]` are YAML's inline lists; `[[x]]` is a wikilink written without its quotes, so it is one value. */
+function inlineValues(value) {
+  if (!value) return [];
+  const list = !value.startsWith('[[') && value.match(/^\[(.*)\]$/);
+  if (!list) return [unquote(value)];
+  return list[1].split(',').map((part) => unquote(part.trim())).filter(Boolean);
+}
+
+function unquote(value) {
+  return value.trim().replace(/^(["'])(.*)\1$/, '$2');
 }
 
 /**
