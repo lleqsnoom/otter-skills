@@ -5,7 +5,7 @@ a task, or does it need a run of its own?**
 
 It exists because the expensive mistake in decomposition is not the small task, it is the "task" that is
 really a subsystem. Written as one file it hands the implementer an interface nobody agreed on, blows the
-effort cap, and closes a layer with nothing runnable. The example that named this rule: "make a platform
+size cap, and closes a layer with nothing runnable. The example that named this rule: "make a platform
 game". Split by components it reads as `player`, `physics`, `levels`, `enemies`, `score` — five task files,
 each hiding a contract. Split by layers it reads as a walking skeleton, then real physics, then enemies,
 then polish — and only two of those steps are genuinely task-sized.
@@ -31,13 +31,14 @@ Read the signals in order and stop at the first that fires.
 | 1 | **Duplicate or out of scope** | Another candidate, a delivered layer, or the layer's *scope out* already covers it | `drop` |
 | 2 | **Own contract** | The work fixes an interface, data shape, protocol, or file format that other work must obey | `plan` |
 | 3 | **Own layers** | You can name its own L0..L3 (skeleton, real logic, resilience, polish) without inventing them | `plan` |
-| 4 | **Effort far over the cap** | Rough size is 2x the cap or more, and no two-way cut of it exists | `plan` |
+| 4 | **Size far over the cap** | XL: several contracts or an unsettled design, and no two-way cut of it exists | `plan` |
 | 5 | **Unknown shape** | You cannot say what to build, or what causes the failure, without investigating first | `analyze` |
-| 6 | **One change, one check** | One identifiable change, one automated check, inside the cap, ≤2 files touched, no new interface | `task` |
+| 6 | **One change, one check** | One identifiable change, one automated check, size ≤ M (an L with its reason), no new interface | `task` |
 
-**The cap is 4 hours unless the plan says otherwise.** It is a working convention rather than a measurement: a
-sitting is the largest change whose definition of done the person making it can still check, and past it the
-unstated interface is usually what is hiding. A plan that carries its own `constraint: task size ≤ <n>` wins,
+**The cap is size M unless the plan says otherwise** — 4–10 files in one module, tests not counted (the scale is in
+the skill's *Size and complexity*). It is a working convention rather than a measurement: one module is the largest
+change whose definition of done the person reviewing it can still check, and past it the unstated interface is
+usually what is hiding. A plan that carries its own `constraint: task size ≤ <n>` wins,
 and the whole point of the pass is that this number is *something to argue with* at the gate, not a sacred line.
 
 Two edges that catch most mistakes:
