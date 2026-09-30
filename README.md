@@ -266,7 +266,9 @@ retired — `x-plan` carries the layer roadmap now and `x-decompose` reads it �
 disk in the runs it made, so the board still has to say whose tasks those are. The rules below are what it does with
 them, and they are also what the two ways below describe for a run numbered twice.
 
-The link is in the tree, and there are exactly two ways the two meet (`src/lib/epics.mjs`):
+A task written with a property block names its plan (`plan: "[[runs/<run>/E00-plan]]"`, see *Properties and links*
+below), and that link decides. A task that names nothing — every task written before the block — is placed by the
+tree, and there are exactly two ways the two meet (`src/lib/epics.mjs`):
 
 - **The same run.** A run numbers its epic `E<nn>-epic.md` and its tasks `E<nn>-tasks/`, at different rungs, so the
   run folder is the identity both carry and the rungs are what say whose tasks they are: the tasks belong to the epic
@@ -305,6 +307,60 @@ agrees with it, which is the rule every badge here follows.
 Hiding **Tasks** on the board does not empty the epics: the link is read from the whole project first and the
 categories a reader asked to see are filtered out of the result, so a board drawing only **Epics** still shows what
 is inside each one.
+
+## Properties and links
+
+Every artifact a skill writes starts with a YAML property block, so the same files read as a connected graph in
+Obsidian and as linked cards on the board. A task looks like this:
+
+```yaml
+---
+type: task
+run: "[[runs/2026-09-30-1426-R01-client-magic-link-session/index]]"
+plan: "[[runs/2026-09-30-1426-R01-client-magic-link-session/E00-plan]]"
+depends_on:
+  - "[[runs/2026-09-30-1426-R01-client-magic-link-session/E02-tasks/L0-T1-client-session-store]]"
+size: M
+complexity: complicated
+complexity_why: two ways to hand the session to the browser; cookie or header is a design call
+created: 2026-09-30T14:26
+done: false
+---
+```
+
+Links are quoted wikilinks from the `.x-skills` root without `.md` — unquoted, YAML reads `[[x]]` as a nested list —
+and only forward edges are written: a task names its plan, a review names what it reviewed, and Obsidian's backlinks
+give every reverse (what a plan was split into, what reviewed a task). No two files ever hold the same edge.
+
+| Key | From → to | Written by |
+|-----|-----------|------------|
+| `type` | plan · task · triage · review · research · analysis · fix · debug | every skill |
+| `run` | any artifact → its run's `index` note | every skill that writes into a run |
+| `plan`, `input`, `tasks`, `analysis`, `source`, `from`, `spec`, `epic` | the keys the board has always read as links | x-decompose (`plan`), x-plan (`input`) |
+| `depends_on` | task → the tasks that produce a state its Preconditions describe | x-decompose |
+| `reviews` | review or roast → what it reviewed | x-review (`--reviews`), x-roast (`--artifact`) |
+| `fixes` | debug session → the brief or review it answers; fix plan → its session | x-debug |
+| `related` | anything → anything | anyone |
+| `size`, `complexity`, `complexity_why` | the task's scope and how much of it is unknown | x-decompose |
+| `done`, `started`, `finished`, `reopened` | mirrored from the task's Definition of Done boxes | x-implement's `status.mjs` only — never by hand |
+
+**Size is what the change touches**, not how long it takes: XS 1 file · S 2–3 files in one module · M 4–10 files in
+one module · L more than that, more than one module, or a contract change (needs a reason) · XL several contracts,
+which is a plan rather than a task. Tests do not count, and a module is a workspace package, else a top-level folder
+under `src/`. **Complexity is how much is unknown**, by one question — could you write the steps before starting?
+🟢 **clear** (yes, there is a pattern to copy) · 🟡 **complicated** (yes, after a design call) · 🔴 **complex** (no,
+only trying it tells). The two are independent: an XS complex task is riskier than an M clear one.
+
+On the board a task card wears its size in place of an effort and its complexity as a dot with its word; the file
+view shows the block as a table with its links clickable (`src/components/Properties.tsx`) rather than as prose; and
+a task's `plan` link decides its epic. The board reads the block itself (`splitProperties`, `propertyFields` and
+`linkFields` in `src/server/parse.mjs`); legacy bold-label fields and path links are read exactly as before.
+
+**In Obsidian**, open a repository's `.x-skills` folder as a vault. Two bases list the work — `open-tasks.base`
+(tasks not done, grouped by size) and `by-run.base` (grouped by run) — in the form Obsidian saves them, which is what
+`test/fixtures/vault/` holds; Obsidian rewrites any other form on open. Each run is a cluster around its `index`
+note; when the hubs crowd the graph, the filter `-path:index` hides them. `test/fixtures/vault/` itself opens as a
+vault and is the smallest example of all of it.
 
 ## The board
 
