@@ -1,0 +1,158 @@
+#!/usr/bin/env node
+
+import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import { parseTask } from '../skills/x-implement/scripts/status.mjs';
+import { boldFields, splitProperties } from '../src/server/parse.mjs';
+
+/**
+ * Give a repository's existing runs the property block new artifacts are written with, so work done before the
+ * block existed joins the graph in Obsidian and on the board.
+ *
+ * It adds only what the files themselves say — the type from the name, the run from the folder, a task's plan from
+ * the rung below it, an edge a bold-label field already names, a task's size from its `**Files:**` line and `done`
+ * from its boxes — and never overwrites a key that is set, so a second run changes nothing. `depends_on` and
+ * `complexity` are left for a person: Preconditions describe a state rather than a task, and complexity is a
+ * judgement. `finished` is not stamped either: the backfill does not know when old work finished. Only `runs/` is
+ * read, so the colon-named folders older skills wrote are never touched.
+ *
+ * Usage:
+ *   node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--dry-run]
+ */
+
+const TOP_LEVEL_TYPES = [
+  [/^E\d+-(?:plan|epic)\.md$/, 'plan'],
+  [/^E\d+-triage\.md$/, 'triage'],
+  [/^E\d+-(?:critique|review[\w-]*)\.md$/, 'review'],
+  [/^E\d+-analysis\.md$/, 'analysis'],
+  [/^E\d+-debug\.md$/, 'debug'],
+  [/^E\d+-fix-plan\.md$/, 'fix'],
+];
+const NOT_ARTIFACTS = new Set(['memory.md', 'questions.md', 'research_log.md', 'index.md']);
+const TEST_PATH = /(?:^|\/)(?:tests?|__tests__)\/|\.(?:test|spec)\.[a-z]+$/i;
+
+const FOLDER_TYPES = [
+  [/^E\d+-tasks$/, 'task'],
+  [/^E\d+-research$/, 'research'],
+];
+
+/**
+ * What an artifact under `runs/<run>/` is: a file at the top of the run by its name, a file one folder down by the
+ * stage folder it is in; `null` for anything else.
+ */
+export function artifactType(relPath) {
+  const [top, , ...inner] = relPath.split('/');
+  const name = inner.at(-1);
+  if (top !== 'runs' || !name || NOT_ARTIFACTS.has(name) || inner.length > 2) return null;
+  const [table, subject] = inner.length === 2 ? [FOLDER_TYPES, inner[0]] : [TOP_LEVEL_TYPES, name];
+  return table.find(([pattern]) => pattern.test(subject))?.[1] ?? null;
+}
+
+/** A size from a task's `**Files:**` line: the source paths it names, tests not counted. */
+export function sizeFromFiles(files) {
+  const count = [files ?? []]
+    .flat()
+    .flatMap((value) => value.split(','))
+    .map((entry) => entry.replace(/\([^)]*\)|`/g, '').trim())
+    .filter((entry) => entry && !TEST_PATH.test(entry)).length;
+  if (!count) return null;
+  if (count === 1) return 'XS';
+  if (count <= 3) return 'S';
+  return count <= 10 ? 'M' : 'L';
+}
+
+/** A value a bold-label field names, as a note in this `.x-skills` tree — or `null` when it leads nowhere there. */
+function noteIn(root, value) {
+  const bare = String(value ?? '')
+    .replace(/[`'"]/g, '')
+    .trim()
+    .replace(/^\.x-skills\//, '');
+  return bare && existsSync(join(root, bare)) ? bare.replace(/\.md$/, '') : null;
+}
+
+/** The plan a tasks folder was cut from: the run's plan or epic at the highest rung below the folder's own. */
+function planOf(root, runRel, tasksDir) {
+  const rung = Number(tasksDir.match(/^E(\d+)/)[1]);
+  const below = readdirSync(join(root, runRel))
+    .filter((name) => /^E\d+-(?:plan|epic)\.md$/.test(name) && Number(name.match(/^E(\d+)/)[1]) < rung)
+    .sort();
+  return below.length ? `${runRel}/${below.at(-1).replace(/\.md$/, '')}` : null;
+}
+
+/** Every key the backfill can derive for one artifact, in the order a block lists them; unknown ones are `null`. */
+function derived(root, relPath, text, type) {
+  const [, run, ...inner] = relPath.split('/');
+  const runRel = `runs/${run}`;
+  const fields = boldFields(text);
+  const link = (note) => (note ? `"[[${note}]]"` : null);
+  return [
+    ['type', type],
+    ['run', link(`${runRel}/index`)],
+    ['plan', type === 'task' ? link(planOf(root, runRel, inner[0])) : null],
+    ['input', type === 'plan' ? link(noteIn(root, fields.input)) : null],
+    ['reviews', type === 'review' ? link(noteIn(root, fields.artifact)) : null],
+    ['size', type === 'task' ? sizeFromFiles(fields.files) : null],
+    ['done', type === 'task' ? String(parseTask(basename(relPath), text).complete) : null],
+  ].filter(([, value]) => value !== null);
+}
+
+/**
+ * One artifact's text with the keys it lacks added — into the block it has, or a new block on top — and the keys that
+ * were added. Text that already has every key comes back unchanged.
+ */
+export function backfillText(root, relPath, text) {
+  const type = artifactType(relPath);
+  if (!type) return { text, added: [] };
+  const { properties } = splitProperties(text);
+  const present = new Set(properties.map((property) => property.key));
+  const missing = derived(root, relPath, text, type).filter(([key]) => !present.has(key));
+  if (!missing.length) return { text, added: [] };
+  const lines = missing.map(([key, value]) => `${key}: ${value}`);
+  const withBlock = properties.length
+    ? text.replace(/^(---\n[\s\S]*?\n)(---\n)/, (_, head, close) => `${head}${lines.join('\n')}\n${close}`)
+    : `---\n${lines.join('\n')}\n---\n${text}`;
+  return { text: withBlock, added: missing.map(([key]) => key) };
+}
+
+function parseArgs(argv) {
+  const args = { root: null, dryRun: false };
+  for (let index = 0; index < argv.length; index += 1) {
+    const flag = argv[index];
+    if (flag === '--dry-run') args.dryRun = true;
+    else if (flag === '--root') args.root = argv[(index += 1)] ?? null;
+    else {
+      process.stderr.write(`Unknown argument: ${flag}\n`);
+      process.exit(2);
+    }
+  }
+  return args;
+}
+
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (!args.root) {
+    process.stderr.write('Usage: node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--dry-run]\n');
+    process.exit(2);
+  }
+  const root = basename(args.root) === '.x-skills' ? args.root : join(args.root, '.x-skills');
+  if (!existsSync(join(root, 'runs'))) {
+    process.stderr.write(`There is no .x-skills/runs at ${dirname(join(root, 'runs'))} — nothing to backfill.\n`);
+    process.exit(1);
+  }
+  const files = readdirSync(join(root, 'runs'), { recursive: true })
+    .filter((name) => String(name).endsWith('.md'))
+    .map((name) => `runs/${String(name).split('\\').join('/')}`)
+    .sort();
+  const changed = files
+    .map((relPath) => ({ relPath, ...backfillText(root, relPath, readFileSync(join(root, relPath), 'utf8')) }))
+    .filter((result) => result.added.length);
+  for (const result of changed) {
+    if (!args.dryRun) writeFileSync(join(root, result.relPath), result.text, 'utf8');
+    process.stdout.write(`${result.relPath}: + ${result.added.join(', ')}\n`);
+  }
+  process.stdout.write(`${changed.length} of ${files.length} files ${args.dryRun ? 'would change' : 'changed'} in ${root}\n`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) main();
