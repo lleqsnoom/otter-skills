@@ -1,15 +1,15 @@
 filters:
   and:
-    - 'type == "task"'
-    - 'done != true'
+    - type == "task"
+    - done != true
 views:
   - type: table
     name: Open tasks
     groupBy:
-      property: note.size
+      property: size
       direction: ASC
     order:
       - file.name
-      - note.complexity
-      - note.plan
-      - note.depends_on
+      - complexity
+      - plan
+      - depends_on

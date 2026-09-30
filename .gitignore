@@ -11,3 +11,6 @@ demo/
 
 # The per-project index: a derived database, rebuilt on the next fuzzy call
 .x-skills/knowledge.lance/
+
+# Obsidian opens test/fixtures/vault as a vault and keeps its workspace there
+test/fixtures/vault/.obsidian/
