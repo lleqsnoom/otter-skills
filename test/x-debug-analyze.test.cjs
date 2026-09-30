@@ -34,14 +34,14 @@ describe("x-debug artifacts start with their property block", () => {
   it("names the session a debug that answers the brief it was given, and the fix plan a fix of that session", () => {
     const { session, plan } = analyze("--fixes", `.x-skills/${RUN}/E00-triage.md`);
     assert.ok(
-      session.startsWith(`---\ntype: debug\nrun: "[[${RUN}/index]]"\nfixes: "[[${RUN}/E00-triage]]"\n---\n# Debug Session\n`),
+      session.startsWith(`---\ntype: debug\ntitle: "Debug · login-bug"\nrun: "[[${RUN}/index]]"\nfixes: "[[${RUN}/E00-triage]]"\n---\n# Debug Session\n`),
       session.slice(0, 300),
     );
-    assert.ok(plan.startsWith(`---\ntype: fix\nrun: "[[${RUN}/index]]"\nfixes: "[[${RUN}/E01-debug]]"\n---\n# Fix Plan\n`), plan.slice(0, 300));
+    assert.ok(plan.startsWith(`---\ntype: fix\ntitle: "Fix plan · login-bug"\nrun: "[[${RUN}/index]]"\nfixes: "[[${RUN}/E01-debug]]"\n---\n# Fix Plan\n`), plan.slice(0, 300));
   });
 
   it("leaves out fixes on the session when nothing was named, never writing an empty one", () => {
     const { session } = analyze();
-    assert.ok(session.startsWith(`---\ntype: debug\nrun: "[[${RUN}/index]]"\n---\n# Debug Session\n`), session.slice(0, 300));
+    assert.ok(session.startsWith(`---\ntype: debug\ntitle: "Debug · login-bug"\nrun: "[[${RUN}/index]]"\n---\n# Debug Session\n`), session.slice(0, 300));
   });
 });

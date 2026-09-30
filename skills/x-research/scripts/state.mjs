@@ -533,24 +533,38 @@ function vaultNote(target) {
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 
-/** An artifact's property block: its type, the run hub of `runDir`, and the artifacts it names by key. */
-function propertyBlock(type, runDir, links = {}) {
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** An artifact's property block: its type, its title, the run hub of `runDir`, and the artifacts it names by key. */
+function propertyBlock(type, title, runDir, links = {}) {
   const run = vaultNote(path.join(runDir, "index"));
   const named = Object.entries(links)
     .map(([key, target]) => [key, target ? vaultNote(target) : null])
     .filter(([, note]) => note);
-  return ["---", `type: ${type}`, ...(run ? [`run: "[[${run}]]"`] : []), ...named.map(([key, note]) => `${key}: "[[${note}]]"`), "---", ""].join("\n");
+  return [
+    "---",
+    `type: ${type}`,
+    `title: ${JSON.stringify(title)}`,
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...named.map(([key, note]) => `${key}: "[[${note}]]"`),
+    "---",
+    "",
+  ].join("\n");
 }
 
 /** The research report's block: it sits in `<run>/E<nn>-research/`, so its run hub is one folder up. */
-function researchBlock(runDir) {
-  return runDir ? propertyBlock("research", path.dirname(runDir)) : "";
+function researchBlock(runDir, kind) {
+  const run = runDir ? path.dirname(runDir) : null;
+  return run ? propertyBlock("research", `${kind} · ${runSlug(run)}`, run) : "";
 }
 
 export function renderResearchMd(state, runDir = null) {
   const dir = state.direction === "minimize" ? "<=" : ">=";
   const lines = [
-    `${researchBlock(runDir)}# Research — ${state.slug}`,
+    `${researchBlock(runDir, "Research")}# Research — ${state.slug}`,
     "",
     `**Goal:** ${state.goal || "(not set)"}`,
     `**Metric:** ${state.metric} (${state.direction} → target ${dir} ${state.target})`,
@@ -607,7 +621,7 @@ export function renderFinalReportMd(state, runDir = null) {
   const v = verify(state);
   const dir = state.direction === "minimize" ? "<=" : ">=";
   const lines = [
-    `${researchBlock(runDir)}# Final report — ${state.slug}`,
+    `${researchBlock(runDir, "Research report")}# Final report — ${state.slug}`,
     "",
     `**Outcome:** ${state.phase === "done" ? "target met" : "escalated (cap reached without meeting target)"}`,
     `**Stop reason:** ${state.stopReason || "(none)"}`,

@@ -171,13 +171,33 @@ function vaultNote(target) {
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 
-/** The report's property block: a review, the run hub it belongs to, and what it reviewed when that is in the vault. */
-function propertyBlock(runDir, reviewed) {
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** A note's file name as words: `L0-T2-some-task` reads `L0-T2 · some task`, `E00-plan` reads `plan`. */
+function noteLabel(note) {
+  const name = path.basename(note).replace(/\.md$/, "");
+  const task = name.match(/^(L\d+-T\d+)-(.+)$/);
+  if (task) return `${task[1]} · ${task[2].replace(/-/g, " ")}`;
+  return name.replace(/^E\d+-/, "").replace(/[-_]/g, " ");
+}
+
+/** How many critiques the run already holds: the next one is that number plus one. */
+function critiquesIn(runDir) {
+  return fs.existsSync(runDir) ? fs.readdirSync(runDir).filter((name) => /^E\d+-critique\.md$/.test(name)).length : 0;
+}
+
+/** The report's property block: a review, its title and number in the run, the run hub, and what it roasts. */
+function propertyBlock(runDir, reviewed, number) {
   const run = vaultNote(path.join(runDir, "index"));
   const target = reviewed ? vaultNote(reviewed) : null;
+  const title = target ? `Roast of ${noteLabel(target)} (#${number})` : `Roast · ${runSlug(runDir)} (#${number})`;
   return [
     "---",
     "type: review",
+    `title: ${JSON.stringify(title)}`,
     ...(run ? [`run: "[[${run}]]"`] : []),
     ...(target ? [`reviews: "[[${target}]]"`] : []),
     "---",
@@ -186,7 +206,7 @@ function propertyBlock(runDir, reviewed) {
 }
 
 export function renderHeader({ slug, type = "generic", date = new Date(), artifact = slug, reviewer = null, reviewerModel = null, author = null, previous = null, runDir = null }) {
-  const block = runDir ? propertyBlock(runDir, fs.existsSync(artifact) ? artifact : null) : "";
+  const block = runDir ? propertyBlock(runDir, fs.existsSync(artifact) ? artifact : null, critiquesIn(runDir) + 1) : "";
   return block + [
     `# Roast — ${slug}`,
     "",

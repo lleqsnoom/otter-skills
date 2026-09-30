@@ -132,7 +132,7 @@ describe("save-plan starts the plan with its property block", () => {
     const plan = fs.readFileSync(result.stdout.trim(), "utf8");
     assert.ok(
       plan.startsWith(
-        '---\ntype: review\nrun: "[[runs/2026-01-01-0900-R01-demo/index]]"\nreviews: "[[runs/2026-01-01-0900-R01-demo/E02-tasks/L0-T1-a]]"\n---\n# Code Review — Fix Plan\n',
+        '---\ntype: review\ntitle: "Review of L0-T1 · a"\nrun: "[[runs/2026-01-01-0900-R01-demo/index]]"\nreviews: "[[runs/2026-01-01-0900-R01-demo/E02-tasks/L0-T1-a]]"\n---\n# Code Review — Fix Plan\n',
       ),
       plan.slice(0, 300),
     );
@@ -142,6 +142,6 @@ describe("save-plan starts the plan with its property block", () => {
     const out = path.join(root, "plan");
     const result = spawnSync(process.execPath, [entry, "--output", out], { cwd: root, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
-    assert.ok(fs.readFileSync(result.stdout.trim(), "utf8").startsWith("---\ntype: review\n---\n# Code Review — Fix Plan\n"));
+    assert.ok(fs.readFileSync(result.stdout.trim(), "utf8").startsWith('---\ntype: review\ntitle: "Review · plan"\n---\n# Code Review — Fix Plan\n'));
   });
 });

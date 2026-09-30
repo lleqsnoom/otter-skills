@@ -397,7 +397,7 @@ describe("save-report starts the report with its property block", () => {
     const report = fs.readFileSync(JSON.parse(result.stdout).path, "utf8");
     assert.ok(
       report.startsWith(
-        '---\ntype: review\nrun: "[[runs/2026-01-01-0900-R01-demo/index]]"\nreviews: "[[runs/2026-01-01-0900-R01-demo/E00-research/findings]]"\n---\n# Roast — demo\n',
+        '---\ntype: review\ntitle: "Roast of findings (#1)"\nrun: "[[runs/2026-01-01-0900-R01-demo/index]]"\nreviews: "[[runs/2026-01-01-0900-R01-demo/E00-research/findings]]"\n---\n# Roast — demo\n',
       ),
       report.slice(0, 300),
     );

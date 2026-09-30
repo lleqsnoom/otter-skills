@@ -286,13 +286,26 @@ function vaultNote(target) {
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 
-/** An artifact's property block: its type, the run hub of `runDir`, and the artifacts it names by key. */
-function propertyBlock(type, runDir, links = {}) {
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** An artifact's property block: its type, its title, the run hub of `runDir`, and the artifacts it names by key. */
+function propertyBlock(type, title, runDir, links = {}) {
   const run = vaultNote(path.join(runDir, "index"));
   const named = Object.entries(links)
     .map(([key, target]) => [key, target ? vaultNote(target) : null])
     .filter(([, note]) => note);
-  return ["---", `type: ${type}`, ...(run ? [`run: "[[${run}]]"`] : []), ...named.map(([key, note]) => `${key}: "[[${note}]]"`), "---", ""].join("\n");
+  return [
+    "---",
+    `type: ${type}`,
+    `title: ${JSON.stringify(title)}`,
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...named.map(([key, note]) => `${key}: "[[${note}]]"`),
+    "---",
+    "",
+  ].join("\n");
 }
 
 /**
@@ -303,7 +316,7 @@ function persist(dir, state, { fromIndex, writeReport }) {
   fs.mkdirSync(dir, { recursive: true });
   if (writeReport) {
     const text = reportTextFor(dir, state);
-    const body = upsertScenario(text || `${propertyBlock("analysis", dir)}# Analysis — ${state.slug}\n`, renderGraphMermaid(state));
+    const body = upsertScenario(text || `${propertyBlock("analysis", `Analysis · ${runSlug(dir)}`, dir)}# Analysis — ${state.slug}\n`, renderGraphMermaid(state));
     fs.writeFileSync(path.join(dir, state.report), body);
   }
   writeMemory(dir, state, fromIndex);

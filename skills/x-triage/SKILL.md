@@ -65,6 +65,7 @@ When all fields are populated, write `<run folder>/E<nn>-triage.md`:
 ```markdown
 ---
 type: triage
+title: "Triage · <the run's topic>"
 run: "[[runs/<run folder>/index]]"
 ---
 # Triage Brief — <session-id>

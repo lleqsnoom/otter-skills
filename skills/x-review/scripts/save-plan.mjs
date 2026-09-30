@@ -272,13 +272,28 @@ function vaultNote(target) {
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 
-/** The report's property block: a review, the run hub it belongs to, and what it reviewed when that is in the vault. */
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** A note's file name as words: `L0-T2-some-task` reads `L0-T2 · some task`, `E00-plan` reads `plan`. */
+function noteLabel(note) {
+  const name = path.basename(note).replace(/\.md$/, "");
+  const task = name.match(/^(L\d+-T\d+)-(.+)$/);
+  if (task) return `${task[1]} · ${task[2].replace(/-/g, " ")}`;
+  return name.replace(/^E\d+-/, "").replace(/[-_]/g, " ");
+}
+
+/** The plan's property block: a review, its title, the run hub it belongs to, and what it reviewed when that is in the vault. */
 function propertyBlock(runDir, reviewed) {
   const run = vaultNote(path.join(runDir, "index"));
   const target = reviewed ? vaultNote(reviewed) : null;
+  const title = target ? `Review of ${noteLabel(target)}` : `Review · ${runSlug(runDir)}`;
   return [
     "---",
     "type: review",
+    `title: ${JSON.stringify(title)}`,
     ...(run ? [`run: "[[${run}]]"`] : []),
     ...(target ? [`reviews: "[[${target}]]"`] : []),
     "---",

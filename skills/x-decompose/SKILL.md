@@ -139,6 +139,7 @@ The triage report is a live file and the script owns two blocks of it: `## Verdi
 ```markdown
 ---
 type: task
+title: "L<N>-T<M> · <the task name, as in its heading>"
 run: "[[runs/<run folder>/index]]"
 plan: "[[runs/<run folder>/E<nn>-plan]]"
 depends_on:
@@ -171,7 +172,8 @@ created: <YYYY-MM-DDThh:mm>
 <Concrete codebase state required before starting. Describe the state, not task dependencies within the layer.>
 ```
 
-**The block on top is for people and Obsidian, not for the implementer.** Links are quoted wikilinks from the
+**The block on top is for people and Obsidian, not for the implementer.** `title` is what Obsidian shows on the
+graph node in place of the file name (through the Front Matter Title plugin), so it reads as the task, not its file. Links are quoted wikilinks from the
 `.x-skills` root without `.md` (unquoted, YAML reads `[[x]]` as a nested list). `depends_on` lists only the tasks that
 produce a state one of this task's Preconditions describes — never a whole layer — and is `[]` when there are none.
 `done`, `started`, `finished` and `reopened` are not in the template: x-implement's `status.mjs` writes them from the

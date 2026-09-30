@@ -187,11 +187,24 @@ function vaultNote(target) {
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 
-/** An artifact's property block: its type, the run hub it belongs to, and what it answers when that is in the vault. */
-function propertyBlock(type, runDir, fixes) {
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** An artifact's property block: its type, its title, the run hub it belongs to, and what it answers when that is in the vault. */
+function propertyBlock(type, title, runDir, fixes) {
   const run = vaultNote(path.join(runDir, "index"));
   const target = fixes ? vaultNote(fixes) : null;
-  return ["---", `type: ${type}`, ...(run ? [`run: "[[${run}]]"`] : []), ...(target ? [`fixes: "[[${target}]]"`] : []), "---", ""].join("\n");
+  return [
+    "---",
+    `type: ${type}`,
+    `title: ${JSON.stringify(title)}`,
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...(target ? [`fixes: "[[${target}]]"`] : []),
+    "---",
+    "",
+  ].join("\n");
 }
 
 function generateSession(errorText, matches, targetFile, sessionId, runDir, fixes = null) {
@@ -200,7 +213,7 @@ function generateSession(errorText, matches, targetFile, sessionId, runDir, fixe
   const fileName = `${prefix}-debug`;
   const filePath = path.join(runDir, fileName + ".md");
 
-  let md = propertyBlock("debug", runDir, fixes) + "# Debug Session\n\n**Error:** `" + errorText + "`\n";
+  let md = propertyBlock("debug", `Debug · ${runSlug(runDir)}`, runDir, fixes) + "# Debug Session\n\n**Error:** `" + errorText + "`\n";
   if (targetFile) md += "**File:** " + path.relative(process.cwd(), targetFile) + "\n";
   md += "\n## Hypotheses\n";
   for (const m of matches) md += "- **" + m.category + "**: " + m.description + "\n";
@@ -215,7 +228,7 @@ function exportFixPlan(errorText, matches, targetFile, sessionId, confirmed, run
   fs.mkdirSync(runDir, { recursive: true });
   const filePath = path.join(runDir, nextE(runDir) + "-fix-plan.md");
 
-  let plan = propertyBlock("fix", runDir, sessionPath) + "# Fix Plan\n\n**Error:** `" + errorText + "`\n\n";
+  let plan = propertyBlock("fix", `Fix plan · ${runSlug(runDir)}`, runDir, sessionPath) + "# Fix Plan\n\n**Error:** `" + errorText + "`\n\n";
   if (!confirmed) {
     plan += "## Test Hypotheses First\n";
     for (const m of matches) {
