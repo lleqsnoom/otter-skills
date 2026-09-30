@@ -131,7 +131,8 @@ export function stageStep(name) {
  * named in the artifact it fed (`**Input:**`). Reading them is what turns "the plan came from this analysis" into
  * something a reader can follow, so the keys are listed rather than guessed at — including the keys only a legacy
  * artifact wrote (`spec:` was the handshake the retired `x-epic` used; `epic:` is what a legacy document was named
- * back by).
+ * back by). The last five are only ever written as properties: an edge between tasks, a review or a fix and what it
+ * answers, and the run's hub note.
  */
 const LINK_FIELDS = new Map([
   ['input', 'Input'],
@@ -142,6 +143,11 @@ const LINK_FIELDS = new Map([
   ['analysis', 'Analysis'],
   ['source', 'Source'],
   ['from', 'From'],
+  ['depends_on', 'Depends on'],
+  ['reviews', 'Reviews'],
+  ['fixes', 'Fixes'],
+  ['related', 'Related'],
+  ['run', 'Run'],
 ]);
 
 /**
@@ -160,21 +166,63 @@ function cleanLinkValue(value) {
     .trim();
 }
 
+const FIELD_LINE = /^\s*(?:\*\*)?([A-Za-z][A-Za-z /_-]*?)(?:\*\*)?:\s*(?:\*\*)?\s*(.*)$/;
+const LIST_ITEM = /^\s*-\s+(.+)$/;
+const WIKILINK = /^\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]$/;
+
 /**
- * The artifacts one document names, in the order they were written: `{ label, value }` with the value as the
- * document spelled it. Whether the path leads anywhere is the caller's question — it is the one holding the root.
+ * A value as a path: a wikilink names a note from the vault root with no extension and maybe an alias
+ * (`[[runs/R/E00-plan|the plan]]`), so it becomes `runs/R/E00-plan.md`; anything else is cleaned as it always was.
+ */
+function linkTarget(value) {
+  const cleaned = cleanLinkValue(value);
+  const wikilink = cleaned.match(WIKILINK);
+  if (!wikilink) return cleaned;
+  const target = wikilink[1].trim();
+  return /\.[a-z0-9]+$/i.test(target) ? target : `${target}.md`;
+}
+
+/** The line that closes a leading `---` property block, or -1 when the document has none. */
+function propertyBlockEnd(lines) {
+  if (lines[0]?.trim() !== '---') return -1;
+  return lines.findIndex((line, index) => index > 0 && line.trim() === '---');
+}
+
+/**
+ * The `key: value` pairs of a header. Inside the leading `---` property block a bare `key:` opens a YAML list, one
+ * pair per `- item` under it; outside it a bullet is prose, so a legacy document's lists never turn into links.
+ */
+function headerEntries(lines) {
+  const closing = propertyBlockEnd(lines);
+  const entries = [];
+  let listKey = null;
+  lines.forEach((line, index) => {
+    const item = listKey && line.match(LIST_ITEM);
+    if (item) {
+      entries.push([listKey, item[1]]);
+      return;
+    }
+    const field = line.match(FIELD_LINE);
+    const value = field?.[2].trim();
+    listKey = field && !value && index < closing ? field[1] : null;
+    if (value) entries.push([field[1], value]);
+  });
+  return entries;
+}
+
+/**
+ * The artifacts one document names, in the order they were written: `{ label, value }` with the value as a path from
+ * the vault root or as the document spelled it. Whether the path leads anywhere is the caller's question — it is the
+ * one holding the root.
  */
 export function linkFields(markdown) {
   const found = [];
   const seen = new Set();
   // The header is where a stage names its input; a `Plan:` further down is prose about a plan.
-  const lines = markdown.split('\n').slice(0, 60);
-  for (const line of lines) {
-    const match = line.match(/^\s*(?:\*\*)?([A-Za-z][A-Za-z /_-]*?)(?:\*\*)?:\s*(?:\*\*)?\s*(.+)$/);
-    if (!match) continue;
-    const label = LINK_FIELDS.get(match[1].trim().toLowerCase().replace(/\s+/g, '-'));
+  for (const [key, raw] of headerEntries(markdown.split('\n').slice(0, 60))) {
+    const label = LINK_FIELDS.get(key.trim().toLowerCase().replace(/\s+/g, '-'));
     if (!label) continue;
-    const value = cleanLinkValue(match[2]);
+    const value = linkTarget(raw);
     if (!value || !LINK_VALUE.test(value) || seen.has(value)) continue;
     seen.add(value);
     found.push({ label, value });

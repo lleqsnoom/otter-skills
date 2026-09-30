@@ -410,6 +410,62 @@ test('an artifact names the one it read, and a path that leads nowhere is not a 
   assert.deepEqual(epic.links, [], 'a skeleton placeholder is not a link either');
 });
 
+/**
+ * `test/fixtures/vault` is a `.x-skills` tree that also opens as an Obsidian vault: artifacts that name each other
+ * with wikilink properties, beside a legacy task that names its plan with a bold-label path. Scanned from a copy,
+ * because the folder the board reads is named `.x-skills` and the one in git cannot be.
+ */
+async function scanVault() {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-vault-'));
+  const root = path.join(repo, '.x-skills');
+  fs.cpSync(path.join(__dirname, 'fixtures', 'vault'), root, { recursive: true });
+  const scan = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'scan.mjs')).href);
+  scan.clearParseCache();
+  return scan.scanRoot(root);
+}
+
+/** Every file record the scan holds, wherever a category filed it. */
+function filesOf(project) {
+  const walk = (node) => [...(node.items ?? []), ...(node.files ?? []), ...(node.groups ?? []).flatMap(walk)];
+  return project.categories.flatMap(walk);
+}
+
+const VAULT_RUN = 'runs/2026-09-30-0000-R01-fixture';
+
+function vaultFile(project, relPath) {
+  return filesOf(project).find((file) => file.relPath === relPath);
+}
+
+test('an artifact names the ones it read with wikilink properties, scalar or list', async () => {
+  const project = await scanVault();
+  const task = vaultFile(project, `${VAULT_RUN}/E02-tasks/L0-T2-b.md`);
+
+  assert.deepEqual(task.links, [
+    { label: 'Run', path: `${VAULT_RUN}/index.md`, name: 'index.md' },
+    { label: 'Plan', path: `${VAULT_RUN}/E00-plan.md`, name: 'E00-plan.md' },
+    { label: 'Depends on', path: `${VAULT_RUN}/E02-tasks/L0-T1-a.md`, name: 'L0-T1-a.md' },
+  ], 'an alias is ignored, a list gives one link per item, a task never written is not a link, and tags are not links');
+
+  const review = vaultFile(project, `${VAULT_RUN}/E03-review.md`);
+  assert.deepEqual(
+    review.links.map((link) => [link.label, link.path]),
+    [['Run', `${VAULT_RUN}/index.md`], ['Reviews', `${VAULT_RUN}/E02-tasks/L0-T2-b.md`]],
+  );
+
+  const legacy = vaultFile(project, 'tasks/legacy-task.md');
+  assert.deepEqual(
+    legacy.links.map((link) => [link.label, link.path]),
+    [['Plan', `${VAULT_RUN}/E00-plan.md`]],
+    'a bold-label path still links as it always has',
+  );
+});
+
+test('a wikilink is read from the raw line, quoted or not, and a list outside the property block is prose', async () => {
+  const { linkFields } = await serverModule('parse');
+  assert.deepEqual(linkFields('---\nplan: [[runs/R/E00-plan]]\n---\n'), [{ label: 'Plan', value: 'runs/R/E00-plan.md' }]);
+  assert.deepEqual(linkFields('# Plan\n\n**Tasks:**\n- runs/R/E02-tasks/\n'), [], 'a legacy bullet under a bold label is not a link');
+});
+
 test('one artifact read in two places is one hit in search', async () => {
   const { onePerPath } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
 
