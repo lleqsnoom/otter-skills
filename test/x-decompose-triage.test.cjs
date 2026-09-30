@@ -97,9 +97,11 @@ function tasksDir() {
   return dir;
 }
 
-function taskFile(name, dir = null) {
+/** A task file as the template writes one: its property block, then the body. `properties` overrides the block. */
+function taskFile(name, dir = null, properties = "size: S\ncomplexity: clear\ncomplexity_why: copies a sibling\n") {
   const target = dir || tasksDir();
-  fs.writeFileSync(path.join(target, name), "# Task\n\n## Definition of Done\n- [ ] something\n");
+  const block = properties === null ? "" : `---\ntype: task\n${properties}---\n`;
+  fs.writeFileSync(path.join(target, name), `${block}# Task\n\n## Definition of Done\n- [ ] something\n`);
   return target;
 }
 
@@ -536,5 +538,58 @@ describe("x-decompose triage across two decompositions in one run", () => {
     const result = verify("--source", "E09-plan.md");
     assert.equal(result.code, 2);
     assert.match(result.json.error, /no ledger for source E09-plan\.md/);
+  });
+});
+
+describe("x-decompose triage verify checks each task's size and complexity", () => {
+  function oneTask(properties) {
+    start();
+    add("L0-T1", "one level, one sprite");
+    decide(["--task", "L0-T1", "--verdict", "task", "--why", "one change, one check"]);
+    taskFile("L0-T1-one-level.md", null, properties);
+    return verify();
+  }
+
+  it("passes a task sized and rated within the scales", () => {
+    const result = oneTask("size: M\ncomplexity: complicated\ncomplexity_why: two ways to store it\n");
+    assert.equal(result.code, 0, result.stdout);
+    assert.deepEqual(result.json.violations, []);
+  });
+
+  it("passes an L that gives its reason", () => {
+    assert.equal(oneTask("size: L\ncomplexity: clear\ncomplexity_why: touches two packages for one rename\n").code, 0);
+  });
+
+  it("flags a task with no size or no complexity", () => {
+    assert.deepEqual(rules(oneTask("complexity: clear\n")), ["no-size"]);
+  });
+
+  it("flags a task with no property block at all", () => {
+    assert.deepEqual(rules(oneTask(null)), ["no-size", "no-complexity"]);
+  });
+
+  it("flags a value outside its scale", () => {
+    assert.deepEqual(rules(oneTask("size: huge\ncomplexity: hard\n")), ["bad-size", "bad-complexity"]);
+  });
+
+  it("flags an L with no reason", () => {
+    assert.deepEqual(rules(oneTask("size: L\ncomplexity: clear\n")), ["unjustified-l"]);
+  });
+
+  it("flags an XL, which is a plan and not a task", () => {
+    assert.deepEqual(rules(oneTask("size: XL\ncomplexity: complex\ncomplexity_why: new protocol\n")), ["oversize"]);
+  });
+
+  it("leaves a ledger started before tasks carried properties as it was", () => {
+    start();
+    const ledgerPath = path.join(run, fs.readdirSync(run).find((name) => /^triage-\d+\.json$/.test(name)));
+    const ledger = JSON.parse(fs.readFileSync(ledgerPath, "utf8"));
+    delete ledger.taskProperties;
+    fs.writeFileSync(ledgerPath, JSON.stringify(ledger));
+    add("L0-T1", "one level, one sprite");
+    decide(["--task", "L0-T1", "--verdict", "task", "--why", "one change, one check"]);
+    taskFile("L0-T1-one-level.md", null, null);
+    const result = verify();
+    assert.equal(result.code, 0, result.stdout);
   });
 });

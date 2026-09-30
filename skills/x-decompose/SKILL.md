@@ -102,6 +102,10 @@ node <path-to-triage.mjs> verify --dir <run folder> [--source <artifact>]   # ex
    | `task-file-missing` / `task-file-duplicate` / `orphan-task-file` / `verdict-not-task` | the files in this ledger's own `E<nn>-tasks/` and its `task` verdicts do not match one for one |
    | `bad-name` | a task file is not named `L<N>-T<M>-<slug>.md` |
    | `no-tasks-dir` / `no-report` | the tasks folder or the triage report is missing |
+   | `no-size` / `bad-size` / `no-complexity` / `bad-complexity` | a task's property block has no `size` or `complexity`, or a value outside its scale (see *Size and complexity*) |
+   | `unjustified-l` / `oversize` | a `size: L` with no `complexity_why`, or a `size: XL` — an XL is a plan, not a task |
+
+   The size rows apply to ledgers that record `taskProperties: true`, which every `start` now writes; a ledger started before tasks carried a property block verifies as it always did.
 
    `verify` prints `{ dir, ledger, source, candidates, taskFiles, tasksDir, violations }` and exits 1 on any violation, 2 on a usage error.
 
