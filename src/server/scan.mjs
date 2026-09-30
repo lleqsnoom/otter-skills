@@ -11,6 +11,7 @@ import {
   humanBytes,
   layerOf,
   linkFields,
+  propertyFields,
   progressOf,
   stageStep,
   statusFromProgress,
@@ -27,7 +28,7 @@ const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown']);
  * nothing reads it, and the snapshot is every file in every root — measured, keeping it took the payload from
  * 200 kB to 950 kB for one repository.
  */
-const KEPT_FIELDS = new Set(['date', 'timestamp', 'branch', 'scope', 'layer', 'effort', 'status', 'error', 'target-file', 'sentry-issue']);
+const KEPT_FIELDS = new Set(['date', 'timestamp', 'branch', 'scope', 'layer', 'effort', 'status', 'error', 'target-file', 'sentry-issue', 'size', 'complexity', 'done']);
 const MAX_FIELD_LENGTH = 120;
 
 function keepFields(fields) {
@@ -112,7 +113,7 @@ function fileRef(root, path, stat) {
   return cachedParse('file', path, () => {
     const isMarkdown = MARKDOWN_EXTENSIONS.has(extension);
     const text = TEXT_EXTENSIONS.has(extension) ? readText(path, stat) : null;
-    const fields = text && isMarkdown ? keepFields(boldFields(text)) : {};
+    const fields = text && isMarkdown ? keepFields({ ...boldFields(text), ...propertyFields(text) }) : {};
     const progress = text && isMarkdown ? progressOf(text) : null;
     return {
       name,

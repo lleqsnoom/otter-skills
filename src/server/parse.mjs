@@ -188,6 +188,27 @@ function propertyBlockEnd(lines) {
   return lines.findIndex((line, index) => index > 0 && line.trim() === '---');
 }
 
+/** The values a card may show for each property it reads; anything else a file says is not carried. */
+const PROPERTY_VALUES = {
+  size: new Set(['XS', 'S', 'M', 'L', 'XL']),
+  complexity: new Set(['clear', 'complicated', 'complex']),
+  done: new Set(['true', 'false']),
+};
+
+/** The card's properties from the leading `---` block, each kept only when it is one of its allowed values. */
+export function propertyFields(markdown) {
+  const lines = markdown.split('\n');
+  const end = propertyBlockEnd(lines);
+  return Object.fromEntries(
+    lines
+      .slice(1, Math.max(end, 1))
+      .map((line) => line.match(/^([a-z_]+):\s*(.*)$/))
+      .filter(Boolean)
+      .map(([, key, value]) => [key, value.trim().replace(/^["']|["']$/g, '')])
+      .filter(([key, value]) => PROPERTY_VALUES[key]?.has(value)),
+  );
+}
+
 /**
  * The `key: value` pairs of a header. Inside the leading `---` property block a bare `key:` opens a YAML list, one
  * pair per `- item` under it; outside it a bullet is prose, so a legacy document's lists never turn into links.

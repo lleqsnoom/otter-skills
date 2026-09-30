@@ -460,6 +460,27 @@ test('an artifact names the ones it read with wikilink properties, scalar or lis
   );
 });
 
+test('a task carries its size, complexity and done from its properties, beside its byte size', async () => {
+  const project = await scanVault();
+  const task = vaultFile(project, `${VAULT_RUN}/E02-tasks/L0-T2-b.md`);
+  assert.equal(task.fields.size, 'M');
+  assert.equal(task.fields.complexity, 'complicated');
+  assert.equal(task.fields.done, 'false');
+  assert.equal(typeof task.size, 'number', 'the record’s own size is still the file’s byte count');
+
+  const legacy = vaultFile(project, 'tasks/legacy-task.md');
+  assert.equal(legacy.fields.effort, '3h');
+  assert.equal('size' in legacy.fields, false);
+  assert.equal('complexity' in legacy.fields, false);
+});
+
+test('a property outside its enum, or a block that is not on line 1 or never closes, is not read', async () => {
+  const { propertyFields } = await serverModule('parse');
+  assert.deepEqual(propertyFields('---\nsize: huge\ncomplexity: "clear"\ndone: maybe\n---\n'), { complexity: 'clear' });
+  assert.deepEqual(propertyFields('# Epic\n\n---\nsize: M\n---\n'), {}, 'a horizontal rule is not a property block');
+  assert.deepEqual(propertyFields('---\nsize: M\n'), {}, 'an unclosed block is not one');
+});
+
 test('a wikilink is read from the raw line, quoted or not, and a list outside the property block is prose', async () => {
   const { linkFields } = await serverModule('parse');
   assert.deepEqual(linkFields('---\nplan: [[runs/R/E00-plan]]\n---\n'), [{ label: 'Plan', value: 'runs/R/E00-plan.md' }]);
