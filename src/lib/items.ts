@@ -44,6 +44,9 @@ export interface WorkItem extends EpicLink {
   skill: string | null;
   layer: number | null;
   effort: string | null;
+  /** A task's size from its property block; a card that has one shows it instead of an effort. */
+  size: Size | null;
+  complexity: Complexity | null;
   /** The tasks inside this epic, in the order the project lists them. Empty for everything that is not one. */
   tasks: WorkItem[];
 }
@@ -141,6 +144,19 @@ function progressStatus(progress: Progress | null): Status {
 function fieldOf(file: FileRef, key: string): string | null {
   return file.fields[key] || null;
 }
+
+const SIZES = ['XS', 'S', 'M', 'L', 'XL'] as const;
+const COMPLEXITIES = ['clear', 'complicated', 'complex'] as const;
+export type Size = (typeof SIZES)[number];
+export type Complexity = (typeof COMPLEXITIES)[number];
+
+/** A field read as one of a closed set of values, or `null`: the card never shows a value outside the scale. */
+function oneOf<T extends string>(values: readonly T[], value: string | null): T | null {
+  return values.find((candidate) => candidate === value) ?? null;
+}
+
+export const sizeOf = (file: FileRef) => oneOf(SIZES, fieldOf(file, 'size'));
+export const complexityOf = (file: FileRef) => oneOf(COMPLEXITIES, fieldOf(file, 'complexity'));
 
 /**
  * A chip is a fact, not a paragraph. Some documents put a sentence in `**Effort:**` ("Large (if corrected) —
@@ -325,6 +341,8 @@ function groupItem(project: Project, category: Category, group: Group, link: Epi
     skill: group.state?.skill ?? null,
     layer: group.files.map((file) => file.layer).find((layer) => layer !== null) ?? null,
     effort: null,
+    size: null,
+    complexity: null,
     tasks: [],
   };
 }
@@ -338,6 +356,8 @@ function groupItem(project: Project, category: Category, group: Group, link: Epi
  * did not say so would be one of nine files with the same name on one board.
  */
 function fileItem(project: Project, category: Category, file: FileRef, group: Group | null, link: EpicLink): WorkItem {
+  const size = sizeOf(file);
+  const measure = size ?? effortBadge(file);
   return {
     ...link,
     key: file.relPath,
@@ -358,13 +378,15 @@ function fileItem(project: Project, category: Category, file: FileRef, group: Gr
       ...(file.relPath === project.markPath ? ['mark'] : []),
       ...(file.step === null ? [] : [`E${String(file.step).padStart(2, '0')}`]),
       ...(file.layer !== null ? [`L${file.layer}`] : []),
-      ...(effortBadge(file) ? [effortBadge(file) as string] : []),
+      ...(measure ? [measure] : []),
     ],
     excerpt: file.excerpt,
     fileCount: 1,
     skill: null,
     layer: file.layer,
-    effort: effortBadge(file),
+    effort: size ? null : effortBadge(file),
+    size,
+    complexity: complexityOf(file),
     tasks: [],
   };
 }

@@ -501,6 +501,24 @@ test('the vault’s two bases each group one view by one property, in the form O
   assert.equal((byRun.match(/^\s+- type: /gm) || []).length, 1);
 });
 
+test('a task card wears its size in place of an effort, and its complexity beside it; a legacy card keeps its hours', async () => {
+  const project = await scanVault();
+  const { searchItemsForProject } = await import(pathToFileURL(path.join(APP_SRC, 'lib', 'items.ts')).href);
+  const items = searchItemsForProject(project);
+  const card = (relPath) => items.find((item) => item.relPath === relPath);
+
+  const task = card(`${VAULT_RUN}/E02-tasks/L0-T2-b.md`);
+  assert.equal(task.size, 'M');
+  assert.equal(task.complexity, 'complicated');
+  assert.ok(task.badges.includes('M'));
+  assert.equal(task.effort, null);
+
+  const legacy = card('tasks/legacy-task.md');
+  assert.equal(legacy.size, null);
+  assert.equal(legacy.complexity, null);
+  assert.ok(legacy.badges.includes('3h'), 'a task written before sizes still shows its hours');
+});
+
 test('a wikilink is read from the raw line, quoted or not, and a list outside the property block is prose', async () => {
   const { linkFields } = await serverModule('parse');
   assert.deepEqual(linkFields('---\nplan: [[runs/R/E00-plan]]\n---\n'), [{ label: 'Plan', value: 'runs/R/E00-plan.md' }]);
