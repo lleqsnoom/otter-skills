@@ -334,7 +334,8 @@ give every reverse (what a plan was split into, what reviewed a task). No two fi
 
 | Key | From → to | Written by |
 |-----|-----------|------------|
-| `type` | plan · task · triage · review · research · analysis · fix · debug | every skill |
+| `type` | plan · task · triage · review · research · analysis · fix · debug · run | every skill |
+| `title` | what the artifact is called in Obsidian: its kind, then its subject (`Plan · <slug>`, `L0-T2 · <task>`, `Review of L2-T1 · <task>`, `Roast of findings (#3)`) | every skill; the backfill for older work |
 | `run` | any artifact → its run's `index` note | every skill that writes into a run |
 | `plan`, `input`, `tasks`, `analysis`, `source`, `from`, `spec`, `epic` | the keys the board has always read as links | x-decompose (`plan`), x-plan (`input`) |
 | `depends_on` | task → the tasks that produce a state its Preconditions describe | x-decompose |
@@ -359,7 +360,11 @@ a task's `plan` link decides its epic. The board reads the block itself (`splitP
 **In Obsidian**, open a repository's `.x-skills` folder as a vault. Two bases list the work — `open-tasks.base`
 (tasks not done, grouped by size) and `by-run.base` (grouped by run) — in the form Obsidian saves them, which is what
 `test/fixtures/vault/` holds; Obsidian rewrites any other form on open. Each run is a cluster around its `index`
-note; when the hubs crowd the graph, the filter `-path:index` hides them. `test/fixtures/vault/` itself opens as a
+note; when the hubs crowd the graph, the filter `-path:index` hides them. Obsidian labels a graph node with its file
+name, and `E13-review-plan` says nothing, so each artifact carries a `title` and the community plugin
+[Front Matter Title](https://github.com/snezhig/obsidian-front-matter-title) shows it instead — in the graph, the tabs
+and the file explorer — without renaming anything: the `E<nn>` names are what the board and the run order read.
+Install it in the vault and enable its *Graph*, *Tab* and *Explorer* features; its default key is `title`. `test/fixtures/vault/` itself opens as a
 vault and is the smallest example of all of it.
 
 **Work written before the block** gets it from a one-shot command, one repository at a time:
@@ -369,7 +374,7 @@ node scripts/backfill-properties.mjs --root <repository or its .x-skills folder>
 node scripts/backfill-properties.mjs --root <repository or its .x-skills folder>
 ```
 
-It reads only `runs/`, adds the keys it can derive — `type`, `run`, a task's `plan`, `size` from its `**Files:**` line
+It reads only `runs/`, adds the keys it can derive — `type`, `title`, `run`, a task's `plan`, `size` from its `**Files:**` line
 and `done` from its boxes, an `input` or `reviews` a bold-label field already names — and never overwrites one that
 is set, so a second run changes nothing. It creates each run's `index` hub and the two bases (`scripts/vault/`) when
 they are missing. `depends_on` and `complexity` are left for a person, and no `finished` is stamped, because the

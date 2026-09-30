@@ -34,7 +34,7 @@ function repository() {
   );
   writeFile(
     path.join(root, RUN, 'E02-tasks', 'L0-T2-b.md'),
-    '---\nsize: M\n---\n# Task: b\n**Layer:** 0 — x\n**Files:** src/c.ts (new)\n\n## Definition of Done\n- [ ] b works\n',
+    '---\ntitle: "b, named by hand"\nsize: M\n---\n# Task: b\n**Layer:** 0 — x\n**Files:** src/c.ts (new)\n\n## Definition of Done\n- [ ] b works\n',
   );
   writeFile(path.join(root, RUN, 'E03-critique.md'), `# Roast — login\n\n**Artifact:** .x-skills/${RUN}/E00-plan.md\n`);
   writeFile(path.join(root, RUN, 'memory.md'), '# Memory — login\n');
@@ -55,13 +55,13 @@ test('the backfill adds each artifact the block it can derive', () => {
   assert.equal(result.status, 0, result.stderr);
 
   assert.ok(
-    read(root, `${RUN}/E02-tasks/L0-T1-a.md`).startsWith(`---\ntype: task\n${hub}\nplan: "[[${RUN}/E00-plan]]"\nsize: S\ndone: true\n---\n# Task: a\n`),
+    read(root, `${RUN}/E02-tasks/L0-T1-a.md`).startsWith(`---\ntype: task\ntitle: "L0-T1 · a"\n${hub}\nplan: "[[${RUN}/E00-plan]]"\nsize: S\ndone: true\n---\n# Task: a\n`),
     'a task gets its plan, a size from its Files line with tests not counted, and done from its boxes',
   );
-  assert.ok(read(root, `${RUN}/E00-plan.md`).startsWith(`---\ntype: plan\n${hub}\ninput: "[[${ANALYSIS_RUN}/E00-analysis]]"\n---\n# Plan — login\n`));
-  assert.ok(read(root, `${RUN}/E03-critique.md`).startsWith(`---\ntype: review\n${hub}\nreviews: "[[${RUN}/E00-plan]]"\n---\n`));
-  assert.ok(read(root, `${RUN}/E01-triage.md`).startsWith(`---\ntype: triage\n${hub}\n---\n`));
-  assert.ok(read(root, `${ANALYSIS_RUN}/E00-analysis.md`).startsWith(`---\ntype: analysis\nrun: "[[${ANALYSIS_RUN}/index]]"\n---\n`));
+  assert.ok(read(root, `${RUN}/E00-plan.md`).startsWith(`---\ntype: plan\ntitle: "Plan · login"\n${hub}\ninput: "[[${ANALYSIS_RUN}/E00-analysis]]"\n---\n# Plan — login\n`));
+  assert.ok(read(root, `${RUN}/E03-critique.md`).startsWith(`---\ntype: review\ntitle: "Roast of plan (#1)"\n${hub}\nreviews: "[[${RUN}/E00-plan]]"\n---\n`));
+  assert.ok(read(root, `${RUN}/E01-triage.md`).startsWith(`---\ntype: triage\ntitle: "Triage · login"\n${hub}\n---\n`));
+  assert.ok(read(root, `${ANALYSIS_RUN}/E00-analysis.md`).startsWith(`---\ntype: analysis\ntitle: "Analysis · login-cause"\nrun: "[[${ANALYSIS_RUN}/index]]"\n---\n`));
 });
 
 test('the backfill keeps what is set, leaves what is not an artifact, and changes nothing the second time', () => {
@@ -69,6 +69,7 @@ test('the backfill keeps what is set, leaves what is not an artifact, and change
   backfill('--root', repo);
   const kept = read(root, `${RUN}/E02-tasks/L0-T2-b.md`);
   assert.match(kept, /^size: M$/m, 'a size someone set survives');
+  assert.match(kept, /^title: "b, named by hand"$/m, 'and so does a title');
   assert.doesNotMatch(kept, /^size: XS$/m);
   assert.match(kept, /^done: false$/m, 'and the keys it lacked are added to its own block');
   assert.equal((kept.match(/^---$/gm) || []).length, 2, 'into the block it had, not a second one');
@@ -87,7 +88,7 @@ test('a dry run says what it would add and writes nothing', () => {
   const result = backfill('--root', repo, '--dry-run');
   assert.equal(result.status, 0, result.stderr);
   assert.equal(read(root, `${RUN}/E02-tasks/L0-T1-a.md`), before);
-  assert.match(result.stdout, new RegExp(`${RUN}/E02-tasks/L0-T1-a\\.md: \\+ type, run, plan, size, done`));
+  assert.match(result.stdout, new RegExp(`${RUN}/E02-tasks/L0-T1-a\\.md: \\+ type, title, run, plan, size, done`));
 });
 
 test('a root with no .x-skills is refused, by name', () => {
@@ -104,8 +105,8 @@ test('the backfill gives every run a hub and the vault its two bases, once', () 
   const result = backfill('--root', repo);
   assert.equal(result.status, 0, result.stderr);
 
-  assert.equal(read(root, `${RUN}/index.md`), '---\ntype: run\n---\n# login\n', 'a hub names itself after the run and links nothing');
-  assert.equal(read(root, `${ANALYSIS_RUN}/index.md`), '---\ntype: run\n---\n# login-cause\n');
+  assert.equal(read(root, `${RUN}/index.md`), '---\ntype: run\ntitle: "login"\n---\n# login\n', 'a hub names itself after the run and links nothing');
+  assert.equal(read(root, `${ANALYSIS_RUN}/index.md`), '---\ntype: run\ntitle: "login-cause"\n---\n# login-cause\n');
   assert.equal(read(root, 'by-run.base'), fs.readFileSync(path.join(VAULT_FILES, 'by-run.base'), 'utf8'));
   assert.equal(read(root, 'open-tasks.base'), 'mine\n', 'a base the vault already has is kept');
   assert.match(result.stdout, new RegExp(`${RUN}/index\\.md: created`));
@@ -130,4 +131,13 @@ test('the fixture vault holds the same bases the backfill writes', () => {
       `${name} is one file in two places: the vault Obsidian opens, and the one the backfill copies`,
     );
   }
+});
+
+test('a roast is numbered among the run’s critiques, and a hub written before titles gets one', () => {
+  const { repo, root } = repository();
+  writeFile(path.join(root, RUN, 'E05-critique.md'), `# Roast — login\n\n**Artifact:** .x-skills/${RUN}/E00-plan.md\n`);
+  writeFile(path.join(root, RUN, 'index.md'), '---\ntype: run\n---\n# login\n');
+  backfill('--root', repo);
+  assert.match(read(root, `${RUN}/E05-critique.md`), /^title: "Roast of plan \(#2\)"$/m);
+  assert.equal(read(root, `${RUN}/index.md`), '---\ntype: run\ntitle: "login"\n---\n# login\n');
 });

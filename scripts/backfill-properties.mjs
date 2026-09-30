@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { pathToFileURL } from 'node:url';
 
 import { parseTask } from '../skills/x-implement/scripts/status.mjs';
-import { boldFields, splitProperties } from '../src/server/parse.mjs';
+import { boldFields, parseWikilink, splitProperties } from '../src/server/parse.mjs';
 
 /**
  * Give a repository's existing runs the property block new artifacts are written with, so work done before the
@@ -28,6 +28,7 @@ import { boldFields, splitProperties } from '../src/server/parse.mjs';
  */
 
 const TOP_LEVEL_TYPES = [
+  [/^index\.md$/, 'run'],
   [/^E\d+-(?:plan|epic)\.md$/, 'plan'],
   [/^E\d+-triage\.md$/, 'triage'],
   [/^E\d+-(?:critique|review[\w-]*)\.md$/, 'review'],
@@ -35,7 +36,7 @@ const TOP_LEVEL_TYPES = [
   [/^E\d+-debug\.md$/, 'debug'],
   [/^E\d+-fix-plan\.md$/, 'fix'],
 ];
-const NOT_ARTIFACTS = new Set(['memory.md', 'questions.md', 'research_log.md', 'index.md']);
+const NOT_ARTIFACTS = new Set(['memory.md', 'questions.md', 'research_log.md']);
 const TEST_PATH = /(?:^|\/)(?:tests?|__tests__)\/|\.(?:test|spec)\.[a-z]+$/i;
 
 const FOLDER_TYPES = [
@@ -53,6 +54,50 @@ export function artifactType(relPath) {
   if (top !== 'runs' || !name || NOT_ARTIFACTS.has(name) || inner.length > 2) return null;
   const [table, subject] = inner.length === 2 ? [FOLDER_TYPES, inner[0]] : [TOP_LEVEL_TYPES, name];
   return table.find(([pattern]) => pattern.test(subject))?.[1] ?? null;
+}
+
+const runSlug = (run) => run.replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, '');
+
+/** A note's file name as words: `L0-T2-some-task` reads `L0-T2 · some task`, `E00-plan` reads `plan`. */
+export function noteLabel(note) {
+  const name = basename(note).replace(/\.md$/, '');
+  const task = name.match(/^(L\d+-T\d+)-(.+)$/);
+  if (task) return `${task[1]} · ${task[2].replace(/-/g, ' ')}`;
+  return name.replace(/^E\d+-/, '').replace(/[-_]/g, ' ');
+}
+
+const FIXED_TITLES = { plan: 'Plan', analysis: 'Analysis', triage: 'Triage', debug: 'Debug', fix: 'Fix plan' };
+const RESEARCH_TITLES = { 'research.md': 'Research', 'final_report.md': 'Research report' };
+
+/** This critique's place among the run's critiques, counting from 1 in the order they were numbered. */
+function critiqueNumber(root, relPath) {
+  const folder = dirname(relPath);
+  const critiques = readdirSync(join(root, folder)).filter((name) => /^E\d+-critique\.md$/.test(name)).sort();
+  return critiques.indexOf(basename(relPath)) + 1;
+}
+
+/** A review's title: what it reviewed, else the run it belongs to; a roast also carries its number in the run. */
+function reviewTitle(root, relPath, slug, target) {
+  if (!/-critique\.md$/.test(relPath)) return target ? `Review of ${noteLabel(target)}` : `Review · ${slug}`;
+  const number = critiqueNumber(root, relPath);
+  return target ? `Roast of ${noteLabel(target)} (#${number})` : `Roast · ${slug} (#${number})`;
+}
+
+/**
+ * The title an artifact is shown by in Obsidian's graph: its kind, then its subject. The file name (`E13-review-plan`)
+ * says neither, and it cannot change — the rung is what the board and the run order read.
+ */
+export function titleFor(root, relPath, text, type, target) {
+  const slug = runSlug(relPath.split('/')[1]);
+  const name = basename(relPath);
+  if (type === 'run') return slug;
+  if (type === 'task') {
+    const heading = text.match(/^#\s+(?:Task:\s*)?(.+)$/m)?.[1].trim();
+    return heading ? `${noteLabel(name).split(' · ')[0]} · ${heading}` : noteLabel(name);
+  }
+  if (type === 'review') return reviewTitle(root, relPath, slug, target);
+  if (type === 'research') return `${RESEARCH_TITLES[name] ?? noteLabel(name)} · ${slug}`;
+  return `${FIXED_TITLES[type]} · ${slug}`;
 }
 
 /** A size from a task's `**Files:**` line: the source paths it names, tests not counted. */
@@ -87,17 +132,20 @@ function planOf(root, runRel, tasksDir) {
 }
 
 /** Every key the backfill can derive for one artifact, in the order a block lists them; unknown ones are `null`. */
-function derived(root, relPath, text, type) {
+function derived(root, relPath, text, type, properties) {
   const [, run, ...inner] = relPath.split('/');
   const runRel = `runs/${run}`;
   const fields = boldFields(text);
   const link = (note) => (note ? `"[[${note}]]"` : null);
+  const setReview = properties.find((property) => property.key === 'reviews')?.values[0];
+  const reviewed = type === 'review' ? (parseWikilink(setReview ?? '')?.path ?? noteIn(root, fields.artifact)) : null;
   return [
     ['type', type],
-    ['run', link(`${runRel}/index`)],
+    ['title', JSON.stringify(titleFor(root, relPath, text, type, reviewed))],
+    ['run', type === 'run' ? null : link(`${runRel}/index`)],
     ['plan', type === 'task' ? link(planOf(root, runRel, inner[0])) : null],
     ['input', type === 'plan' ? link(noteIn(root, fields.input)) : null],
-    ['reviews', type === 'review' ? link(noteIn(root, fields.artifact)) : null],
+    ['reviews', link(reviewed?.replace(/\.md$/, ''))],
     ['size', type === 'task' ? sizeFromFiles(fields.files) : null],
     ['done', type === 'task' ? String(parseTask(basename(relPath), text).complete) : null],
   ].filter(([, value]) => value !== null);
@@ -112,7 +160,7 @@ export function backfillText(root, relPath, text) {
   if (!type) return { text, added: [] };
   const { properties } = splitProperties(text);
   const present = new Set(properties.map((property) => property.key));
-  const missing = derived(root, relPath, text, type).filter(([key]) => !present.has(key));
+  const missing = derived(root, relPath, text, type, properties).filter(([key]) => !present.has(key));
   if (!missing.length) return { text, added: [] };
   const lines = missing.map(([key, value]) => `${key}: ${value}`);
   const withBlock = properties.length
@@ -129,7 +177,7 @@ export function missingFiles(root) {
   const runs = readdirSync(join(root, 'runs')).filter((name) => statSync(join(root, 'runs', name)).isDirectory());
   const hubs = runs.map((name) => ({
     relPath: `runs/${name}/index.md`,
-    text: `---\ntype: run\n---\n# ${name.replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, '')}\n`,
+    text: `---\ntype: run\ntitle: ${JSON.stringify(runSlug(name))}\n---\n# ${runSlug(name)}\n`,
   }));
   const bases = BASES.map((name) => ({ relPath: name, text: readFileSync(join(VAULT_FILES, name), 'utf8') }));
   return [...hubs, ...bases].filter((file) => !existsSync(join(root, file.relPath)));
