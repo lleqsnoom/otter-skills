@@ -519,6 +519,45 @@ test('a task card wears its size in place of an effort, and its complexity besid
   assert.ok(legacy.badges.includes('3h'), 'a task written before sizes still shows its hours');
 });
 
+test('a task’s own plan link decides its epic before the run or the slug is guessed from', async () => {
+  const { epicIndex, epicOfTasks } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'epics.mjs')).href);
+  const plan = (run) => ({ name: 'E00-plan.md', title: `${run} plan`, relPath: `runs/${run}/E00-plan.md`, runPath: `runs/${run}`, step: 0 });
+  const index = epicIndex([{ id: 'plan', work: 'epic', items: [plan('A'), plan('B')], groups: [] }]);
+  const tasks = (links) => ({ runPath: 'runs/A', step: 2, name: 'E02-tasks', files: [{ links }] });
+
+  assert.equal(epicOfTasks(index, tasks([{ label: 'Plan', path: 'runs/B/E00-plan.md' }])).relPath, 'runs/B/E00-plan.md', 'the link wins over the run');
+  assert.equal(epicOfTasks(index, tasks([])).relPath, 'runs/A/E00-plan.md', 'with no link, the run decides as before');
+  assert.equal(
+    epicOfTasks(index, tasks([{ label: 'Plan', path: 'runs/B/notes.md' }])).relPath,
+    'runs/A/E00-plan.md',
+    'a link to something that is not an epic falls back to the guess, never to no epic',
+  );
+  assert.equal(
+    epicOfTasks(index, { runPath: null, step: null, name: 'loose-task.md', links: [{ label: 'Plan', path: 'runs/B/E00-plan.md' }] }).relPath,
+    'runs/B/E00-plan.md',
+    'a single task file names its plan with its own links',
+  );
+});
+
+test('a task inside a collection follows its own plan link, not the first one its folder holds', async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-vault-'));
+  const root = path.join(repo, '.x-skills');
+  fs.cpSync(path.join(__dirname, 'fixtures', 'vault'), root, { recursive: true });
+  const other = 'runs/2026-09-29-0000-R01-other';
+  writeFile(path.join(root, other, 'E00-plan.md'), '---\ntype: plan\n---\n# Plan — other\n\n## Layers\n');
+  const moved = path.join(root, VAULT_RUN, 'E02-tasks', 'L0-T2-b.md');
+  fs.writeFileSync(moved, fs.readFileSync(moved, 'utf8').replace(/^plan: .*$/m, `plan: "[[${other}/E00-plan]]"`));
+
+  const scan = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'scan.mjs')).href);
+  scan.clearParseCache();
+  const { searchItemsForProject } = await import(pathToFileURL(path.join(APP_SRC, 'lib', 'items.ts')).href);
+  const items = searchItemsForProject(scan.scanRoot(root));
+  const epicOf = (name) => items.find((item) => item.relPath === `${VAULT_RUN}/E02-tasks/${name}`).epic?.relPath;
+
+  assert.equal(epicOf('L0-T2-b.md'), `${other}/E00-plan.md`);
+  assert.equal(epicOf('L0-T1-a.md'), `${VAULT_RUN}/E00-plan.md`);
+});
+
 test('a wikilink is read from the raw line, quoted or not, and a list outside the property block is prose', async () => {
   const { linkFields } = await serverModule('parse');
   assert.deepEqual(linkFields('---\nplan: [[runs/R/E00-plan]]\n---\n'), [{ label: 'Plan', value: 'runs/R/E00-plan.md' }]);

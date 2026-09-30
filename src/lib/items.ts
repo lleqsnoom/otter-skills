@@ -243,9 +243,12 @@ function byNewest(a: WorkItem, b: WorkItem): number {
  * The honest parent of a task is the epic that claims it, and the folder it was filed in when none does.
  */
 function taskItems(project: Project, category: Category, group: Group, epics: Map<string, EpicRef>): WorkItem[] {
-  const link = epicLink(epics, 'task', group);
-  const parent = link.epic?.title ?? group.name;
-  return group.files.map((file) => ({ ...fileItem(project, category, file, group, link), parentTitle: parent }));
+  return group.files.map((file) => {
+    // Each task is read under the plan its own `plan` link names; a task with none falls back to its folder's epic.
+    const link = epicLink(epics, 'task', { ...group, links: file.links });
+    const parent = link.epic?.title ?? group.name;
+    return { ...fileItem(project, category, file, group, link), parentTitle: parent };
+  });
 }
 
 /**
@@ -254,12 +257,12 @@ function taskItems(project: Project, category: Category, group: Group, epics: Ma
  *
  * Task work is the only work an epic claims. A run numbered both an epic and the tasks under it, and the run is not
  * a task: a card wearing its run's epic would say the analysis inside it belonged to the epic too. Which epic a task
- * belongs to is `epics.mjs`'s question — the run they share, or the slug they share.
+ * belongs to is `epics.mjs`'s question — the plan the task links, else the run they share or the slug they share.
  */
 function epicLink(
   epics: Map<string, EpicRef>,
   role: 'epic' | 'task' | null,
-  subject: { runPath?: string | null; step?: number | null; name: string },
+  subject: { runPath?: string | null; step?: number | null; name: string; links?: FileRef['links']; files?: FileRef[] },
 ): EpicLink {
   if (!role) return NO_EPIC;
   if (role === 'epic') {
