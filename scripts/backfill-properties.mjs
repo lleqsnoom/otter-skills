@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { pathToFileURL } from 'node:url';
 
 import { parseTask } from '../skills/x-implement/scripts/status.mjs';
@@ -17,6 +18,10 @@ import { boldFields, splitProperties } from '../src/server/parse.mjs';
  * `complexity` are left for a person: Preconditions describe a state rather than a task, and complexity is a
  * judgement. `finished` is not stamped either: the backfill does not know when old work finished. Only `runs/` is
  * read, so the colon-named folders older skills wrote are never touched.
+ *
+ * It also creates what a vault needs and does not have yet: each run's `index` note — the hub every artifact's `run`
+ * links, written once and never edited, since backlinks list the run's artifacts — and the two bases in
+ * `scripts/vault/`, in the form Obsidian saves them. Neither is ever overwritten.
  *
  * Usage:
  *   node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--dry-run]
@@ -116,6 +121,20 @@ export function backfillText(root, relPath, text) {
   return { text: withBlock, added: missing.map(([key]) => key) };
 }
 
+const VAULT_FILES = join(dirname(fileURLToPath(import.meta.url)), 'vault');
+const BASES = ['open-tasks.base', 'by-run.base'];
+
+/** The files a vault needs and this one lacks: a hub for every run, and the two bases at its root. */
+export function missingFiles(root) {
+  const runs = readdirSync(join(root, 'runs')).filter((name) => statSync(join(root, 'runs', name)).isDirectory());
+  const hubs = runs.map((name) => ({
+    relPath: `runs/${name}/index.md`,
+    text: `---\ntype: run\n---\n# ${name.replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, '')}\n`,
+  }));
+  const bases = BASES.map((name) => ({ relPath: name, text: readFileSync(join(VAULT_FILES, name), 'utf8') }));
+  return [...hubs, ...bases].filter((file) => !existsSync(join(root, file.relPath)));
+}
+
 function parseArgs(argv) {
   const args = { root: null, dryRun: false };
   for (let index = 0; index < argv.length; index += 1) {
@@ -128,6 +147,14 @@ function parseArgs(argv) {
     }
   }
   return args;
+}
+
+/** Each edit written unless it is a dry run, and said either way: the one place the backfill touches the disk. */
+function apply(root, edits, dryRun) {
+  for (const edit of edits) {
+    if (!dryRun) writeFileSync(join(root, edit.relPath), edit.text, 'utf8');
+    process.stdout.write(`${edit.relPath}: ${edit.note}\n`);
+  }
 }
 
 function main() {
@@ -147,12 +174,14 @@ function main() {
     .sort();
   const changed = files
     .map((relPath) => ({ relPath, ...backfillText(root, relPath, readFileSync(join(root, relPath), 'utf8')) }))
-    .filter((result) => result.added.length);
-  for (const result of changed) {
-    if (!args.dryRun) writeFileSync(join(root, result.relPath), result.text, 'utf8');
-    process.stdout.write(`${result.relPath}: + ${result.added.join(', ')}\n`);
-  }
-  process.stdout.write(`${changed.length} of ${files.length} files ${args.dryRun ? 'would change' : 'changed'} in ${root}\n`);
+    .filter((result) => result.added.length)
+    .map((result) => ({ ...result, note: `+ ${result.added.join(', ')}` }));
+  const created = missingFiles(root).map((file) => ({ ...file, note: 'created' }));
+  apply(root, [...changed, ...created], args.dryRun);
+  const summary = args.dryRun
+    ? `Would change ${changed.length} of ${files.length} files and create ${created.length}`
+    : `Changed ${changed.length} of ${files.length} files and created ${created.length}`;
+  process.stdout.write(`${summary} in ${root}\n`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) main();

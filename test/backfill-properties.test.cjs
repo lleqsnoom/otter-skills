@@ -95,3 +95,39 @@ test('a root with no .x-skills is refused, by name', () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /no \.x-skills/);
 });
+
+const VAULT_FILES = path.join(__dirname, '..', 'scripts', 'vault');
+
+test('the backfill gives every run a hub and the vault its two bases, once', () => {
+  const { repo, root } = repository();
+  writeFile(path.join(root, 'open-tasks.base'), 'mine\n');
+  const result = backfill('--root', repo);
+  assert.equal(result.status, 0, result.stderr);
+
+  assert.equal(read(root, `${RUN}/index.md`), '---\ntype: run\n---\n# login\n', 'a hub names itself after the run and links nothing');
+  assert.equal(read(root, `${ANALYSIS_RUN}/index.md`), '---\ntype: run\n---\n# login-cause\n');
+  assert.equal(read(root, 'by-run.base'), fs.readFileSync(path.join(VAULT_FILES, 'by-run.base'), 'utf8'));
+  assert.equal(read(root, 'open-tasks.base'), 'mine\n', 'a base the vault already has is kept');
+  assert.match(result.stdout, new RegExp(`${RUN}/index\\.md: created`));
+
+  const again = backfill('--root', repo);
+  assert.doesNotMatch(again.stdout, /: created$/m, 'the second run creates nothing');
+});
+
+test('a dry run lists the hubs and bases it would create, and creates none', () => {
+  const { repo, root } = repository();
+  const result = backfill('--root', repo, '--dry-run');
+  assert.match(result.stdout, /by-run\.base: created/);
+  assert.equal(fs.existsSync(path.join(root, RUN, 'index.md')), false);
+  assert.equal(fs.existsSync(path.join(root, 'by-run.base')), false);
+});
+
+test('the fixture vault holds the same bases the backfill writes', () => {
+  for (const name of ['open-tasks.base', 'by-run.base']) {
+    assert.equal(
+      fs.readFileSync(path.join(__dirname, 'fixtures', 'vault', name), 'utf8'),
+      fs.readFileSync(path.join(VAULT_FILES, name), 'utf8'),
+      `${name} is one file in two places: the vault Obsidian opens, and the one the backfill copies`,
+    );
+  }
+});

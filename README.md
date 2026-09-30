@@ -362,6 +362,19 @@ a task's `plan` link decides its epic. The board reads the block itself (`splitP
 note; when the hubs crowd the graph, the filter `-path:index` hides them. `test/fixtures/vault/` itself opens as a
 vault and is the smallest example of all of it.
 
+**Work written before the block** gets it from a one-shot command, one repository at a time:
+
+```bash
+node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> --dry-run   # what it would add
+node scripts/backfill-properties.mjs --root <repository or its .x-skills folder>
+```
+
+It reads only `runs/`, adds the keys it can derive — `type`, `run`, a task's `plan`, `size` from its `**Files:**` line
+and `done` from its boxes, an `input` or `reviews` a bold-label field already names — and never overwrites one that
+is set, so a second run changes nothing. It creates each run's `index` hub and the two bases (`scripts/vault/`) when
+they are missing. `depends_on` and `complexity` are left for a person, and no `finished` is stamped, because the
+backfill cannot know when old work finished.
+
 ## The board
 
 Five lanes, in this order: **To do**, **In progress**, **Unsorted**, **Done**, **Closed**. What an item's own data
