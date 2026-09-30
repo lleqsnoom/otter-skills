@@ -396,3 +396,18 @@ describe("x-implement status: a task's done, finished and reopened", () => {
     assert.match(result.stdout, /would change: L0-T1-rule\.md: done true/);
   });
 });
+
+describe("x-implement status: a plan that starts with its property block", () => {
+  it("writes the status line below the block and the heading, and keeps the block on the first line", () => {
+    const { run } = propertyFixture();
+    const plan = path.join(run, "E00-plan.md");
+    fs.writeFileSync(plan, `---\ntype: plan\ntitle: "Plan · demo"\n---\n${PLAN}`);
+    assert.equal(status(run).status, 0);
+    const once = fs.readFileSync(plan, "utf8");
+    assert.ok(once.startsWith('---\ntype: plan\ntitle: "Plan · demo"\n---\n# Plan — demo\n'), once.slice(0, 200));
+    assert.equal((once.match(/^\*\*Status:\*\*/gm) || []).length, 1);
+
+    status(run);
+    assert.equal(fs.readFileSync(plan, "utf8"), once, "a second run finds the same line and changes nothing");
+  });
+});

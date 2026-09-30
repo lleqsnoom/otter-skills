@@ -160,9 +160,11 @@ function statusClauses(report, epicDone) {
 
 /** The header block ends at the `---` every skill's skeleton writes, or at the first section heading. */
 function headerEnd(lines) {
-  const separator = lines.findIndex((line) => line.trim() === "---");
+  // A leading property block also opens with `---`; the header is what comes after it.
+  const start = blockEnd(lines) + 1;
+  const separator = lines.findIndex((line, index) => index >= start && line.trim() === "---");
   if (separator !== -1) return separator;
-  const heading = lines.findIndex((line) => /^##\s/.test(line));
+  const heading = lines.findIndex((line, index) => index >= start && /^##\s/.test(line));
   return heading === -1 ? lines.length : heading;
 }
 
