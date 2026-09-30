@@ -386,3 +386,20 @@ describe("x-roast check-report", () => {
     assert.match(JSON.parse(res.stdout).file, /a\.md$/);
   });
 });
+describe("save-report starts the report with its property block", () => {
+  it("names the report a review, its run hub, and the artifact it roasts", async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "xroast-props-"));
+    const artifact = path.join(".x-skills", "runs", "2026-01-01-0900-R01-demo", "E00-research", "findings.md");
+    fs.mkdirSync(path.join(cwd, path.dirname(artifact)), { recursive: true });
+    fs.writeFileSync(path.join(cwd, artifact), ARTIFACT);
+    const result = await run(SAVE, ["--slug", "demo", "--profile", "research", "--artifact", artifact, "--run", "01"], cwd);
+    assert.equal(result.code, 0, result.stderr);
+    const report = fs.readFileSync(JSON.parse(result.stdout).path, "utf8");
+    assert.ok(
+      report.startsWith(
+        '---\ntype: review\nrun: "[[runs/2026-01-01-0900-R01-demo/index]]"\nreviews: "[[runs/2026-01-01-0900-R01-demo/E00-research/findings]]"\n---\n# Roast — demo\n',
+      ),
+      report.slice(0, 300),
+    );
+  });
+});

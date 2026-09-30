@@ -164,8 +164,30 @@ function renderSince(previous) {
   ];
 }
 
-export function renderHeader({ slug, type = "generic", date = new Date(), artifact = slug, reviewer = null, reviewerModel = null, author = null, previous = null }) {
+/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+function vaultNote(target) {
+  const parts = path.resolve(target).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/** The report's property block: a review, the run hub it belongs to, and what it reviewed when that is in the vault. */
+function propertyBlock(runDir, reviewed) {
+  const run = vaultNote(path.join(runDir, "index"));
+  const target = reviewed ? vaultNote(reviewed) : null;
   return [
+    "---",
+    "type: review",
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...(target ? [`reviews: "[[${target}]]"`] : []),
+    "---",
+    "",
+  ].join("\n");
+}
+
+export function renderHeader({ slug, type = "generic", date = new Date(), artifact = slug, reviewer = null, reviewerModel = null, author = null, previous = null, runDir = null }) {
+  const block = runDir ? propertyBlock(runDir, fs.existsSync(artifact) ? artifact : null) : "";
+  return block + [
     `# Roast — ${slug}`,
     "",
     `**Date:** ${timestamp(date)}`,
@@ -215,7 +237,7 @@ export function createReport({ dir = DEFAULT_OUTPUT, slug, type = "generic", dat
   if (fs.existsSync(file)) {
     return { path: file, created: false };
   }
-  fs.writeFileSync(file, renderHeader({ slug, type, date, artifact, reviewer, reviewerModel, author, previous }));
+  fs.writeFileSync(file, renderHeader({ slug, type, date, artifact, reviewer, reviewerModel, author, previous, runDir }));
   return { path: file, created: true, previous: previous?.file ?? null };
 }
 

@@ -27,6 +27,7 @@ function parseArgs(argv) {
     else if (argv[i] === "--branch" && i + 1 < argv.length) args.branch = argv[++i];
     else if (argv[i] === "--new-run") args.newRun = true;
     else if (argv[i] === "--run" && i + 1 < argv.length) args.run = argv[++i];
+    else if (argv[i] === "--reviews" && i + 1 < argv.length) args.reviews = argv[++i];
   }
   return args;
 }
@@ -264,13 +265,34 @@ function generatePlanHeader(stats, branch, failed = []) {
   return lines.join("\n");
 }
 
+/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+function vaultNote(target) {
+  const parts = path.resolve(target).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/** The report's property block: a review, the run hub it belongs to, and what it reviewed when that is in the vault. */
+function propertyBlock(runDir, reviewed) {
+  const run = vaultNote(path.join(runDir, "index"));
+  const target = reviewed ? vaultNote(reviewed) : null;
+  return [
+    "---",
+    "type: review",
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...(target ? [`reviews: "[[${target}]]"`] : []),
+    "---",
+    "",
+  ].join("\n");
+}
+
 // ── Main ──────────────────────────────────────────────────────────────
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (!args.output && !args.slug) {
-    console.error("Usage: node save-plan.mjs [--output <dir> | --slug <topic>] [--branch <name>]");
+    console.error("Usage: node save-plan.mjs [--output <dir> | --slug <topic>] [--branch <name>] [--reviews <task or plan file>]");
     process.exit(1);
   }
 
@@ -300,7 +322,7 @@ function main() {
   const failed = [complexity, duplication, patterns].filter((run) => !run.ok);
   const header = generatePlanHeader(stats, branch, failed);
 
-  fs.writeFileSync(fullPath, header + "\n\n---\n\n## Issues (fill in during review)\n");
+  fs.writeFileSync(fullPath, propertyBlock(dir, args.reviews) + header + "\n\n---\n\n## Issues (fill in during review)\n");
   console.log(fullPath);
 }
 

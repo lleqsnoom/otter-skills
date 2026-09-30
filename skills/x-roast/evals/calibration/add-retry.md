@@ -1,6 +1,6 @@
 # Task 2.1 — Retry a failed upload with exponential backoff
 
-**Layer:** L2 — Resilience · **Estimate:** 3 h (Task 1.2, the uploader it wraps, took 4 h)
+**Layer:** L2 — Resilience · **Size:** S (`src/upload.js` and its test; Task 1.2, the uploader it wraps, was also S) · **Complexity:** clear — the retry wraps an uploader that already exists
 
 ## Change
 `src/upload.js`: wrap `putObject` in `withRetry(fn, { attempts: 4, baseMs: 200 })`. Retry only on

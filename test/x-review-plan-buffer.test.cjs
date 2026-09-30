@@ -120,3 +120,28 @@ describe("save-plan reads an analyzer document larger than a default capture", (
     }
   });
 });
+
+describe("save-plan starts the plan with its property block", () => {
+  it("names the plan a review, its run hub, and the task it reviews", () => {
+    const run = path.join(root, ".x-skills", "runs", "2026-01-01-0900-R01-demo");
+    const task = path.join(run, "E02-tasks", "L0-T1-a.md");
+    fs.mkdirSync(path.dirname(task), { recursive: true });
+    fs.writeFileSync(task, "# Task: a\n");
+    const result = spawnSync(process.execPath, [entry, "--output", run, "--reviews", task], { cwd: root, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    const plan = fs.readFileSync(result.stdout.trim(), "utf8");
+    assert.ok(
+      plan.startsWith(
+        '---\ntype: review\nrun: "[[runs/2026-01-01-0900-R01-demo/index]]"\nreviews: "[[runs/2026-01-01-0900-R01-demo/E02-tasks/L0-T1-a]]"\n---\n# Code Review — Fix Plan\n',
+      ),
+      plan.slice(0, 300),
+    );
+  });
+
+  it("writes only the type when the plan is outside a .x-skills tree and reviews nothing named", () => {
+    const out = path.join(root, "plan");
+    const result = spawnSync(process.execPath, [entry, "--output", out], { cwd: root, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(fs.readFileSync(result.stdout.trim(), "utf8").startsWith("---\ntype: review\n---\n# Code Review — Fix Plan\n"));
+  });
+});
