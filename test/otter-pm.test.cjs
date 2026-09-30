@@ -481,6 +481,25 @@ test('a property outside its enum, or a block that is not on line 1 or never clo
   assert.deepEqual(propertyFields('---\nsize: M\n'), {}, 'an unclosed block is not one');
 });
 
+/**
+ * Obsidian groups a base's view by one property only, so each view names exactly one. Read as text: the app has no
+ * YAML parser of its own, and these files are for Obsidian, not for the board.
+ */
+test('the vault’s two bases each group one view by one property', () => {
+  const base = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', 'vault', name), 'utf8');
+  const groupings = (text) => [...text.matchAll(/^\s+groupBy:\n\s+property: (\S+)$/gm)].map((match) => match[1]);
+
+  const open = base('open-tasks.base');
+  assert.deepEqual(groupings(open), ['note.size']);
+  assert.match(open, /'type == "task"'/);
+  assert.match(open, /'done != true'/, 'a done task is not an open one');
+  assert.equal((open.match(/^\s+- type: /gm) || []).length, 1);
+
+  const byRun = base('by-run.base');
+  assert.deepEqual(groupings(byRun), ['note.run']);
+  assert.equal((byRun.match(/^\s+- type: /gm) || []).length, 1);
+});
+
 test('a wikilink is read from the raw line, quoted or not, and a list outside the property block is prose', async () => {
   const { linkFields } = await serverModule('parse');
   assert.deepEqual(linkFields('---\nplan: [[runs/R/E00-plan]]\n---\n'), [{ label: 'Plan', value: 'runs/R/E00-plan.md' }]);

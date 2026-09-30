@@ -1,0 +1,15 @@
+filters:
+  and:
+    - file.inFolder("runs")
+    - 'type != "run"'
+views:
+  - type: table
+    name: By run
+    groupBy:
+      property: note.run
+      direction: ASC
+    order:
+      - file.name
+      - note.type
+      - note.size
+      - note.complexity
