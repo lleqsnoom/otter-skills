@@ -40,7 +40,7 @@ graph LR
 ```
 
 ```bash
-node <skill>/scripts/scenario.mjs start --slug <slug> [--goal <text>]
+node <skill>/scripts/scenario.mjs start --slug <slug> [--goal <text>] [--input <the analysis or research file it came from>]
 node <skill>/scripts/scenario.mjs record --dir <dir> --event research --data "<finding>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --event question --data "<the open question>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --event answer --data "<the answer>" --target Q1
@@ -188,7 +188,7 @@ node <skill>/scripts/scenario.mjs start --slug <topic> [--new-run | --run <nn>]
 
 - Run folder: `.x-skills/runs/YYYY-MM-DD-hhmm-R<nn>-<topic>/` — one folder per run, holding `state.json`, `memory.md`, and every artifact of the run.
 - Artifacts are numbered `E<nn>-<kind>.md` or `E<nn>-<kind>/` in execution order, so a plain name sort lists the run in the order it was built.
-- Spec report (handoff): `<run folder>/E00-plan.md` — the path `x-decompose` reads.
+- Spec report (handoff): `<run folder>/E00-plan.md` — the path `x-decompose` reads. It starts with a property block (`type: plan`, `run`, and `input` when `start` was given `--input`), so Obsidian links the plan to the analysis or research it came from.
 - The topic reuses its existing run. Use `--new-run` to start a second run of it, and `--run <nn>` to join a specific one; with two runs and neither flag the command fails rather than picking.
 - **Never write over work in progress.** A run folder whose plan still has unchecked layers belongs to
   whoever is implementing it, and the only copy of that state is on disk. Replanning the same work is a

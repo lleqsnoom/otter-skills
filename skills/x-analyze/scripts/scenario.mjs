@@ -279,6 +279,22 @@ function writeMemory(dir, state, fromIndex) {
   if (lines) fs.appendFileSync(file, `${lines}\n`);
 }
 
+/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+function vaultNote(target) {
+  const parts = path.resolve(target).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/** An artifact's property block: its type, the run hub of `runDir`, and the artifacts it names by key. */
+function propertyBlock(type, runDir, links = {}) {
+  const run = vaultNote(path.join(runDir, "index"));
+  const named = Object.entries(links)
+    .map(([key, target]) => [key, target ? vaultNote(target) : null])
+    .filter(([, note]) => note);
+  return ["---", `type: ${type}`, ...(run ? [`run: "[[${run}]]"`] : []), ...named.map(([key, note]) => `${key}: "[[${note}]]"`), "---", ""].join("\n");
+}
+
 /**
  * The report is written before the memory and the state, so a write that fails leaves the node where it
  * was. Committing the state first reported failure for a transition that had already happened.
@@ -287,7 +303,7 @@ function persist(dir, state, { fromIndex, writeReport }) {
   fs.mkdirSync(dir, { recursive: true });
   if (writeReport) {
     const text = reportTextFor(dir, state);
-    const body = upsertScenario(text || `# Analysis — ${state.slug}\n`, renderGraphMermaid(state));
+    const body = upsertScenario(text || `${propertyBlock("analysis", dir)}# Analysis — ${state.slug}\n`, renderGraphMermaid(state));
     fs.writeFileSync(path.join(dir, state.report), body);
   }
   writeMemory(dir, state, fromIndex);

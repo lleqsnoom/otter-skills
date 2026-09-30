@@ -72,7 +72,7 @@ export function layerReport(text) {
   return { layers: headings.length, gaps };
 }
 
-export function createState({ slug, goal = null, root = REPORT_ROOT, now = new Date(), fresh = false, run = null } = {}) {
+export function createState({ slug, goal = null, input = null, root = REPORT_ROOT, now = new Date(), fresh = false, run = null } = {}) {
   if (!slug || typeof slug !== "string") throw new Error("slug is required");
   const when = now.toISOString();
   const runDirAbs = resolveRunDir(slug, { now, root, fresh, run });
@@ -81,6 +81,7 @@ export function createState({ slug, goal = null, root = REPORT_ROOT, now = new D
     skill: SKILL,
     slug,
     goal,
+    input,
     createdAt: when,
     updatedAt: when,
     node: START_NODE,
@@ -228,6 +229,22 @@ function writeMemory(dir, state, fromIndex) {
   if (lines) fs.appendFileSync(file, `${lines}\n`);
 }
 
+/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+function vaultNote(target) {
+  const parts = path.resolve(target).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/** An artifact's property block: its type, the run hub of `runDir`, and the artifacts it names by key. */
+function propertyBlock(type, runDir, links = {}) {
+  const run = vaultNote(path.join(runDir, "index"));
+  const named = Object.entries(links)
+    .map(([key, target]) => [key, target ? vaultNote(target) : null])
+    .filter(([, note]) => note);
+  return ["---", `type: ${type}`, ...(run ? [`run: "[[${run}]]"`] : []), ...named.map(([key, note]) => `${key}: "[[${note}]]"`), "---", ""].join("\n");
+}
+
 /**
  * The plan is written before the memory and the state, so a write that fails leaves the node where it
  * was. Committing the state first reported failure for a transition that had already happened.
@@ -236,7 +253,8 @@ function persist(dir, state, { fromIndex, writeReport }) {
   fs.mkdirSync(dir, { recursive: true });
   if (writeReport) {
     const text = reportTextFor(dir, state);
-    const body = upsertScenario(text || `# Plan — ${state.slug}\n`, renderGraphMermaid(state));
+    const head = `${propertyBlock("plan", dir, { input: state.input })}# Plan — ${state.slug}\n`;
+    const body = upsertScenario(text || head, renderGraphMermaid(state));
     fs.writeFileSync(path.join(dir, state.report), body);
   }
   writeMemory(dir, state, fromIndex);
@@ -262,7 +280,7 @@ function usage() {
     "x-plan scenario — graph-driven planning state machine.",
     "",
     "Usage:",
-    "  node scenario.mjs start --slug <s> [--goal <text>] [--root <dir>]",
+    "  node scenario.mjs start --slug <s> [--goal <text>] [--input <analysis or research file>] [--root <dir>]",
     "  node scenario.mjs status --dir <dir>",
     "  node scenario.mjs record --dir <dir> --event <kind> [--data <text>] [--target <id>] [--status <s>] [--reason <r>]",
     "  node scenario.mjs record --dir <dir> --to <node>",
@@ -278,6 +296,7 @@ function commandStart(args) {
   const state = createState({
     slug: args.slug,
     goal: args.goal === true ? null : args.goal,
+    input: args.input === true ? null : (args.input ?? null),
     root,
     fresh: args["new-run"] === true,
     run: args.run === undefined || args.run === true ? null : Number(args.run),
