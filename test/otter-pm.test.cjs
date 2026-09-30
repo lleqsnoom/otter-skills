@@ -558,6 +558,13 @@ test('a task inside a collection follows its own plan link, not the first one it
   assert.equal(epicOf('L0-T1-a.md'), `${VAULT_RUN}/E00-plan.md`);
 });
 
+test('a title property names an artifact before its heading does', async () => {
+  const { titleFrom } = await serverModule('parse');
+  assert.equal(titleFrom('---\ntitle: "Review of L2-T1 · x"\n---\n# Code Review — Fix Plan\n', 'E15-review-plan'), 'Review of L2-T1 · x');
+  assert.equal(titleFrom('---\ntitle: ""\n---\n# Plan — kms\n', 'E00-plan'), 'kms', 'an empty title is no title: the heading is read as before');
+  assert.equal(titleFrom('# Epic — kms\n', 'E01-epic'), 'kms', 'a file with no block is named as before');
+});
+
 test('a wikilink is read from the raw line, quoted or not, and a list outside the property block is prose', async () => {
   const { linkFields } = await serverModule('parse');
   assert.deepEqual(linkFields('---\nplan: [[runs/R/E00-plan]]\n---\n'), [{ label: 'Plan', value: 'runs/R/E00-plan.md' }]);

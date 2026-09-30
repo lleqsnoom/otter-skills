@@ -11,6 +11,9 @@ const TITLE_PREFIXES = [
 ];
 
 export function titleFrom(markdown, fallback) {
+  // A title the artifact gives itself is the name Obsidian shows too, so the board and the graph agree.
+  const named = splitProperties(markdown).properties.find((property) => property.key === 'title')?.values[0];
+  if (named) return named;
   const heading = markdown.match(/^#\s+(.+)$/m);
   if (!heading) return fallback;
   let title = heading[1].trim();
