@@ -149,6 +149,12 @@ function linkedPlan(subject) {
   return links.find((link) => link.label === 'Plan')?.path ?? null;
 }
 
+/** The indexed epic a subject's own `plan` link names, or `null` when it names none or names something else. */
+function linkedEpic(index, subject) {
+  const named = linkedPlan(subject);
+  return named ? ([...index.values()].find((epic) => epic.relPath === named) ?? null) : null;
+}
+
 /**
  * The epic a task collection belongs to.
  *
@@ -169,8 +175,7 @@ function linkedPlan(subject) {
  * @returns {EpicRef | null}
  */
 export function epicOfTasks(index, subject) {
-  const named = linkedPlan(subject);
-  const linked = named ? [...index.values()].find((epic) => epic.relPath === named) : null;
+  const linked = linkedEpic(index, subject);
   if (linked) return linked;
   if (!subject.runPath) return index.get(epicKey(null, null, subject.name)) ?? null;
   const above = [...index.values()].filter(
