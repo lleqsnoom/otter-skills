@@ -63,6 +63,10 @@ Ask a `single` panel: "Does it happen every time, or only sometimes?", with thes
 When all fields are populated, write `<run folder>/E<nn>-triage.md`:
 
 ```markdown
+---
+type: triage
+run: "[[runs/<run folder>/index]]"
+---
 # Triage Brief — <session-id>
 
 **Platform:** web | mobile | tv | backend | gaming
