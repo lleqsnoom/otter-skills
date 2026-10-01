@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pathToFileURL } from 'node:url';
@@ -101,17 +101,43 @@ export function titleFor(root, relPath, text, type, target) {
   return `${FIXED_TITLES[type]} · ${slug}`;
 }
 
+const PATH_ENTRY = /^[\w@][\w.@/-]*$/;
+
+/**
+ * The source paths a task's `**Files:**` line names. Annotations come off before the line is split, because one can
+ * hold a list of its own (`(new: a.md, b.md)`); what is left must be a single path token, so prose ("otter-pm's
+ * .x-skills/…") and hidden folders name nothing; tests are left out.
+ */
+function sourcePaths(files) {
+  return [files ?? []]
+    .flat()
+    .map((value) => value.replace(/\([^)]*\)|`/g, ''))
+    .flatMap((value) => value.split(','))
+    .map((entry) => entry.trim())
+    .filter((entry) => PATH_ENTRY.test(entry) && !TEST_PATH.test(entry));
+}
+
 /** A size from a task's `**Files:**` line: the source paths it names, tests not counted. */
 export function sizeFromFiles(files) {
-  const count = [files ?? []]
-    .flat()
-    .flatMap((value) => value.split(','))
-    .map((entry) => entry.replace(/\([^)]*\)|`/g, '').trim())
-    .filter((entry) => entry && !TEST_PATH.test(entry)).length;
+  const count = sourcePaths(files).length;
   if (!count) return null;
   if (count === 1) return 'XS';
   if (count <= 3) return 'S';
   return count <= 10 ? 'M' : 'L';
+}
+
+const MODULE_RULES = [/^(?:apps|packages|skills)\/([^/]+)\//, /^src\/([^/]+)\//, /^(?!src\/)([^/]+)\//];
+
+/** The code area a path is in: a workspace package, else its folder under `src/`, else its top-level folder. */
+export function areaOf(filePath) {
+  const name = MODULE_RULES.map((rule) => filePath.match(rule)?.[1]).find(Boolean);
+  return name ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : null;
+}
+
+/** A task's area topics, one per module its `**Files:**` touch, in the order the line names them. */
+function areaTopics(files) {
+  const areas = [...new Set(sourcePaths(files).map(areaOf).filter(Boolean))];
+  return areas.length ? areas.map((area) => `\n  - "[[tags/area/${area}]]"`).join('') : null;
 }
 
 /** A value a bold-label field names, as a note in this `.x-skills` tree — or `null` when it leads nowhere there. */
@@ -145,6 +171,7 @@ function derived(root, relPath, text, type, properties) {
     ['title', JSON.stringify(titleFor(root, relPath, text, type, reviewed))],
     ['run', type === 'run' ? null : link(`${runRel}/index`)],
     ['plan', type === 'task' ? link(planOf(root, runRel, inner[0])) : null],
+    ['topics', type === 'task' ? areaTopics(fields.files) : null],
     ['input', type === 'plan' ? link(noteIn(root, fields.input)) : null],
     ['reviews', link(reviewed?.replace(/\.md$/, ''))],
     ['size', type === 'task' ? sizeFromFiles(fields.files) : null],
@@ -163,7 +190,7 @@ export function backfillText(root, relPath, text) {
   const present = new Set(properties.map((property) => property.key));
   const missing = derived(root, relPath, text, type, properties).filter(([key]) => !present.has(key));
   if (!missing.length) return { text, added: [] };
-  const lines = missing.map(([key, value]) => `${key}: ${value}`);
+  const lines = missing.map(([key, value]) => (value.startsWith('\n') ? `${key}:${value}` : `${key}: ${value}`));
   const withBlock = properties.length
     ? text.replace(/^(---\n[\s\S]*?\n)(---\n)/, (_, head, close) => `${head}${lines.join('\n')}\n${close}`)
     : `---\n${lines.join('\n')}\n---\n${text}`;
@@ -173,15 +200,29 @@ export function backfillText(root, relPath, text) {
 const VAULT_FILES = join(dirname(fileURLToPath(import.meta.url)), 'vault');
 const BASES = ['open-tasks.base', 'by-run.base'];
 
-/** The files a vault needs and this one lacks: a hub for every run, and the two bases at its root. */
-export function missingFiles(root) {
+const tagNote = (kind, name) => `---\ntype: tag\ntitle: "${name} (${kind})"\n---\n# ${name}\n\n![[tag.base]]\n`;
+
+/** The tag notes a set of artifacts links through `topics`, as `tags/<kind>/<name>.md` paths. */
+function linkedTags(texts) {
+  const paths = texts.flatMap((text) => splitProperties(text).properties.filter((property) => property.key === 'topics'))
+    .flatMap((property) => property.values.map((value) => parseWikilink(value)?.path))
+    .filter((target) => /^tags\/(?:domain|area)\/[^/]+\.md$/.test(target ?? ''));
+  return [...new Set(paths)];
+}
+
+/** The files a vault needs and this one lacks: a hub for every run, the bases at its root, and every linked tag note. */
+export function missingFiles(root, tags = []) {
   const runs = readdirSync(join(root, 'runs')).filter((name) => statSync(join(root, 'runs', name)).isDirectory());
   const hubs = runs.map((name) => ({
     relPath: `runs/${name}/index.md`,
     text: `---\ntype: run\ntitle: ${JSON.stringify(runSlug(name))}\n---\n# ${runSlug(name)}\n`,
   }));
-  const bases = BASES.map((name) => ({ relPath: name, text: readFileSync(join(VAULT_FILES, name), 'utf8') }));
-  return [...hubs, ...bases].filter((file) => !existsSync(join(root, file.relPath)));
+  const bases = [...BASES, ...(tags.length ? ['tag.base'] : [])].map((name) => ({ relPath: name, text: readFileSync(join(VAULT_FILES, name), 'utf8') }));
+  const notes = tags.map((relPath) => {
+    const [, kind, name] = relPath.replace(/\.md$/, '').split('/');
+    return { relPath, text: tagNote(kind, name) };
+  });
+  return [...hubs, ...bases, ...notes].filter((file) => !existsSync(join(root, file.relPath)));
 }
 
 function parseArgs(argv) {
@@ -201,7 +242,10 @@ function parseArgs(argv) {
 /** Each edit written unless it is a dry run, and said either way: the one place the backfill touches the disk. */
 function apply(root, edits, dryRun) {
   for (const edit of edits) {
-    if (!dryRun) writeFileSync(join(root, edit.relPath), edit.text, 'utf8');
+    if (!dryRun) {
+      mkdirSync(dirname(join(root, edit.relPath)), { recursive: true });
+      writeFileSync(join(root, edit.relPath), edit.text, 'utf8');
+    }
     process.stdout.write(`${edit.relPath}: ${edit.note}\n`);
   }
 }
@@ -221,11 +265,11 @@ function main() {
     .filter((name) => String(name).endsWith('.md'))
     .map((name) => `runs/${String(name).split('\\').join('/')}`)
     .sort();
-  const changed = files
-    .map((relPath) => ({ relPath, ...backfillText(root, relPath, readFileSync(join(root, relPath), 'utf8')) }))
+  const results = files.map((relPath) => ({ relPath, ...backfillText(root, relPath, readFileSync(join(root, relPath), 'utf8')) }));
+  const changed = results
     .filter((result) => result.added.length)
     .map((result) => ({ ...result, note: `+ ${result.added.join(', ')}` }));
-  const created = missingFiles(root).map((file) => ({ ...file, note: 'created' }));
+  const created = missingFiles(root, linkedTags(results.map((result) => result.text))).map((file) => ({ ...file, note: 'created' }));
   apply(root, [...changed, ...created], args.dryRun);
   const summary = args.dryRun
     ? `Would change ${changed.length} of ${files.length} files and create ${created.length}`

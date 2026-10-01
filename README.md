@@ -342,6 +342,7 @@ give every reverse (what a plan was split into, what reviewed a task). No two fi
 | `reviews` | review or roast → what it reviewed | x-review (`--reviews`), x-roast (`--artifact`) |
 | `fixes` | debug session → the brief or review it answers; fix plan → its session | x-debug |
 | `related` | anything → anything | anyone |
+| `topics` | any artifact → the tag notes it is about (`tags/domain/<x>`, `tags/area/<x>`) | x-plan (`--topics`), x-analyze; copied by x-decompose, x-review, x-roast and the summary; the backfill for code areas |
 | `size`, `complexity`, `complexity_why` | the task's scope and how much of it is unknown | x-decompose |
 | `done`, `started`, `finished`, `reopened` | mirrored from the task's Definition of Done boxes | x-implement's `status.mjs` only — never by hand |
 
@@ -367,6 +368,15 @@ and the file explorer — without renaming anything: the `E<nn>` names are what 
 Install it in the vault and enable its *Graph*, *Tab* and *Explorer* features; its default key is `title`. `test/fixtures/vault/` itself opens as a
 vault and is the smallest example of all of it.
 
+**Tags are notes, not `#hashtags`** — the method from Odysseas' *Obsidian: The King of Learning Tools*: a tag is an
+empty note you link to, so it is a hub in the graph and can grow into an index. Here a tag lives at
+`.x-skills/tags/domain/<name>.md` (what the work is about) or `.x-skills/tags/area/<name>.md` (the part of the code it
+touches: a workspace package `apps/<x>`, `packages/<x>`, `skills/<x>`, else the folder under `src/`), and holds only a
+heading and `![[tag.base]]`. That one shared base lists every artifact linking the note it is embedded in — Obsidian's
+`this` inside an embedded base is the embedding note — so each tag is its own index and nobody keeps it by hand.
+x-plan picks a run's tags at `start --topics domain/<x>,area/<y>`, reusing existing ones first and creating the notes
+that are missing; the run's other artifacts inherit them. The `tags` key itself stays Obsidian's own.
+
 **Work written before the block** gets it from a one-shot command, one repository at a time:
 
 ```bash
@@ -374,10 +384,10 @@ node scripts/backfill-properties.mjs --root <repository or its .x-skills folder>
 node scripts/backfill-properties.mjs --root <repository or its .x-skills folder>
 ```
 
-It reads only `runs/`, adds the keys it can derive — `type`, `title`, `run`, a task's `plan`, `size` from its `**Files:**` line
+It reads only `runs/`, adds the keys it can derive — `type`, `title`, `run`, a task's `plan` and its code-area `topics`, `size` from its `**Files:**` line
 and `done` from its boxes, an `input` or `reviews` a bold-label field already names — and never overwrites one that
-is set, so a second run changes nothing. It creates each run's `index` hub and the two bases (`scripts/vault/`) when
-they are missing. `depends_on` and `complexity` are left for a person, and no `finished` is stamped, because the
+is set, so a second run changes nothing. It creates each run's `index` hub, the bases (`scripts/vault/`) and every tag note it
+links, when they are missing. `depends_on` and `complexity` are left for a person, and no `finished` is stamped, because the
 backfill cannot know when old work finished.
 
 ## The board

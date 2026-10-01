@@ -143,3 +143,47 @@ test('a roast is numbered among the run’s critiques, and a hub written before 
   assert.match(read(root, `${RUN}/E05-critique.md`), /^title: "Roast of plan \(#2\)"$/m);
   assert.equal(read(root, `${RUN}/index.md`), '---\ntype: run\ntitle: "login"\n---\n# login\n');
 });
+
+test('a task gains the code areas its Files touch, and the vault the tag notes for them, once', () => {
+  const { repo, root } = repository();
+  writeFile(
+    path.join(root, RUN, 'E02-tasks', 'L1-T1-c.md'),
+    '# Task: c\n**Layer:** 1 — x\n**Files:** `src/server/a.mjs` (mod), skills/x-plan/b.mjs (new), apps/app-web/src/main.ts (new), test/a.test.cjs (new), package.json (mod)\n\n## Definition of Done\n- [ ] c\n',
+  );
+  writeFile(path.join(root, 'tags', 'area', 'server.md'), 'mine\n');
+  const result = backfill('--root', repo);
+  assert.equal(result.status, 0, result.stderr);
+
+  assert.match(
+    read(root, `${RUN}/E02-tasks/L1-T1-c.md`),
+    /^topics:\n {2}- "\[\[tags\/area\/server\]\]"\n {2}- "\[\[tags\/area\/x-plan\]\]"\n {2}- "\[\[tags\/area\/app-web\]\]"$/m,
+    'one area per module, in the order the Files line names them; tests and root files name none',
+  );
+  assert.equal(read(root, 'tags/area/x-plan.md'), '---\ntype: tag\ntitle: "x-plan (area)"\n---\n# x-plan\n\n![[tag.base]]\n');
+  assert.equal(read(root, 'tags/area/server.md'), 'mine\n', 'an existing tag note is kept');
+  assert.equal(read(root, 'tag.base'), fs.readFileSync(path.join(VAULT_FILES, 'tag.base'), 'utf8'));
+  assert.doesNotMatch(read(root, `${RUN}/E02-tasks/L0-T1-a.md`), /^topics:/m, 'a task whose files sit at the top of src/ names no area');
+
+  const again = backfill('--root', repo);
+  assert.doesNotMatch(again.stdout, /: created$/m);
+});
+
+test('the backfill creates the tag folders it needs in a vault that has none', () => {
+  const { repo, root } = repository();
+  writeFile(path.join(root, RUN, 'E02-tasks', 'L1-T1-c.md'), '# Task: c\n**Layer:** 1 — x\n**Files:** src/server/a.mjs (mod)\n');
+  const result = backfill('--root', repo);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(read(root, 'tags/area/server.md'), '---\ntype: tag\ntitle: "server (area)"\n---\n# server\n\n![[tag.base]]\n');
+});
+
+test('a Files line is read as paths: a list inside parentheses and a prose entry name no area', () => {
+  const { repo, root } = repository();
+  writeFile(
+    path.join(root, RUN, 'E02-tasks', 'L1-T1-c.md'),
+    "# Task: c\n**Layer:** 1 — x\n**Files:** test/fixtures/vault/ (new: runs/<run>/index.md, E02-tasks/L0-T1-a.md, plus tasks/legacy-task.md), src/server/parse.mjs (mod), otter-pm's .x-skills/.obsidian (not in git)\n",
+  );
+  backfill('--root', repo);
+  const task = read(root, `${RUN}/E02-tasks/L1-T1-c.md`);
+  assert.match(task, /^topics:\n {2}- "\[\[tags\/area\/server\]\]"\n(?! {2}-)/m);
+  assert.match(task, /^size: XS$/m, 'one source path, the vault fixture being a test');
+});
