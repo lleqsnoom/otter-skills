@@ -75,8 +75,10 @@ function freePort() {
  */
 function childArgv(launcherPid) {
   try {
-    const children = fs.readFileSync(`/proc/${launcherPid}/task/${launcherPid}/children`, 'utf8').trim().split(/\s+/);
-    return fs.readFileSync(`/proc/${children[0]}/cmdline`, 'utf8').split('\0');
+    // Before the server is spawned the list is empty, and `/proc//cmdline` would read the kernel's own command line.
+    const [server] = fs.readFileSync(`/proc/${launcherPid}/task/${launcherPid}/children`, 'utf8').split(/\s+/).filter(Boolean);
+    if (!server) return null;
+    return fs.readFileSync(`/proc/${server}/cmdline`, 'utf8').split('\0');
   } catch {
     return null;
   }
@@ -130,6 +132,17 @@ test('the wrapper serves with no arguments, the way the unit calls it', async (t
 
   assert.equal(url, `http://127.0.0.1:${port}/`);
   assert.equal((await fetch(new URL('/api/snapshot', url))).status, 200, 'and the app it serves answers');
+});
+
+test('a launcher that has not started its server yet has no child argv to read', async (t) => {
+  if (!fs.existsSync('/proc')) {
+    t.skip('reading another process’ arguments needs /proc');
+    return;
+  }
+  const childless = spawn('sleep', ['5']);
+  t.after(() => childless.kill('SIGTERM'));
+
+  assert.equal(childArgv(childless.pid), null);
 });
 
 test('the server is started with the checkout config named explicitly', async (t) => {
