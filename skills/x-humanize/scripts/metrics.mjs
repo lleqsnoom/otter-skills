@@ -9,7 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const FAMILIAR_PATH = path.join(HERE, "..", "..", "references", "familiar-words.json");
+const FAMILIAR_PATH = path.join(HERE, "..", "references", "familiar-words.json");
 
 // Thresholds used across the skill.
 export const LONG_SENTENCE = 25; // words — flagged "hard"
