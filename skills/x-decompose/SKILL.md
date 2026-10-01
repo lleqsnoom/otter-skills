@@ -34,7 +34,7 @@ Layer 3 (Polish)       → Task 3.1: add monitoring + documentation
 
 **Key rule:** After any task completes, the system must be in a working state. You should never have "Task 1 done but nothing runs yet."
 
-**Read the architecture before cutting.** `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) decides placement, naming, responsibility and dependency direction, and `.x-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the size cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
+**Read the architecture before cutting.** `x-arch`'s pass card (`~/.agents/skills/x-arch/references/pass.md` for a global install, `.agents/skills/x-arch/references/pass.md` for a local one) decides placement, naming, responsibility and dependency direction, and `.x-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the size cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
 
 ## Triage Rule
 

@@ -14,16 +14,7 @@ code, ask if it still does.
 
 ## Two Ways It Runs
 
-**As a pass inside another skill.** No record, and do not stop on uncommitted work: that work is the task.
-The host's scope replaces step 3's. Which steps run depends on whether the host edits code:
-
-- **x-review** (reports only): steps 3 and 5. List findings under `[Bloat]`, each with the rung it fails.
-  Needless abstraction is MAJOR. Dead code and unused options are MINOR.
-- **x-refactor** (suggests only): steps 3 and 5. Prefer deleting and inlining to extracting. A new layer must
-  name the second caller that needs it.
-- **x-implement** (edits): step 3 before GREEN, to decide what to write; steps 3, 5 and 7 in REFACTOR. Cut
-  only code the current task wrote, so the cuts belong in its commit. Report older bloat for a standalone run.
-- **x-fix** (edits): steps 5 and 7 for each `[Bloat]` finding in a review plan.
+**As a pass inside another skill:** read `references/pass.md`; it owns the per-host steps.
 
 **On its own**, when the user asks to unbloat or simplify: run all nine steps.
 
@@ -122,6 +113,6 @@ Run the scripts from this skill's folder: `~/.agents/skills/x-unbloat/scripts/` 
 - On its own, commit the simplification by itself, apart from feature work.
 - If a cut removes a capability on purpose, say so.
 - This skill decides whether a unit should exist. Where it lives, what it is called, what its one responsibility
-  is and which way its dependencies point belong to `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global
-  install, `.agents/skills/x-arch/SKILL.md` for a local one). A finding both could claim is reported once, by
+  is and which way its dependencies point belong to `x-arch` (its pass card: `~/.agents/skills/x-arch/references/pass.md` for a
+  global install, `.agents/skills/x-arch/references/pass.md` for a local one). A finding both could claim is reported once, by
   whichever owns it: a one-implementation interface here as speculative abstraction, a misplaced module there.

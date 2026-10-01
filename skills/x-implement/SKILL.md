@@ -41,7 +41,7 @@ Code must document itself. Comments are a last resort, reserved for what the cod
 
 ## No Bloat
 
-Write the least code that works. Follow x-unbloat (`~/.agents/skills/x-unbloat/SKILL.md` for a global install, `.agents/skills/x-unbloat/SKILL.md` for a local one): its ladder before GREEN, and its ladder, table and Never Cut list in REFACTOR. Its rules are not repeated here, so read them there.
+Write the least code that works. Follow x-unbloat's pass card (`~/.agents/skills/x-unbloat/references/pass.md` for a global install, `.agents/skills/x-unbloat/references/pass.md` for a local one): its ladder before GREEN, and its ladder, table and Never Cut list in REFACTOR. Its rules are not repeated here, so read them there.
 
 ## Architecture
 

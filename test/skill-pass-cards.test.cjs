@@ -64,6 +64,7 @@ describe("x-implement read chain", () => {
 const CARD_WORD_LIMIT = 600;
 const CARDS = {
   "x-arch": ["x-review", "x-implement", "x-decompose", "x-fix"],
+  "x-unbloat": ["x-review", "x-refactor", "x-implement", "x-fix"],
 };
 
 describe("pass cards", () => {
@@ -76,12 +77,23 @@ describe("pass cards", () => {
     });
   }
 
-  it("x-implement reads the x-arch card, not its full body", () => {
-    const files = ["x-implement/SKILL.md", "x-implement/references/dir-organization.md"];
-    for (const rel of files) {
-      const refs = referencedFiles(readSkillFile(rel));
-      assert.ok(!refs.includes("x-arch/SKILL.md"), `${rel} names x-arch/SKILL.md`);
-    }
-    assert.ok(referencedFiles(readSkillFile("x-implement/SKILL.md")).includes("x-arch/references/pass.md"));
+  it("no other skill names a carded skill's full body", () => {
+    const offenders = skillTextFiles()
+      .flatMap((rel) => referencedFiles(readSkillFile(rel)).map((ref) => ({ rel, ref })))
+      .filter(namesCardedBodyOfAnotherSkill);
+    assert.deepEqual(offenders, []);
   });
 });
+
+function namesCardedBodyOfAnotherSkill({ rel, ref }) {
+  const [target, file] = ref.split("/");
+  return file === "SKILL.md" && target in CARDS && !rel.startsWith(`${target}/`);
+}
+
+function skillTextFiles() {
+  return fs.readdirSync(SKILLS).flatMap((skill) => {
+    const refsDir = path.join(SKILLS, skill, "references");
+    const refs = fs.existsSync(refsDir) ? fs.readdirSync(refsDir).filter((f) => f.endsWith(".md")).map((f) => `${skill}/references/${f}`) : [];
+    return [`${skill}/SKILL.md`, ...refs].filter((rel) => readSkillFile(rel) !== null);
+  });
+}
