@@ -130,6 +130,21 @@ test('syncs racing one database leave exactly one row per file', async () => {
   }
 });
 
+test('a table another sync is still creating does not fail this one', async () => {
+  const fixture = makeRepo();
+  try {
+    const { syncProject, databasePath } = await load();
+    // A creation in flight: the table's directory is listed before its dataset is committed.
+    fs.mkdirSync(path.join(databasePath(fixture.root), 'code.lance'), { recursive: true });
+
+    const run = await syncProject(await projectOf(fixture));
+
+    assert.equal(run.ok, true, `the sync failed: ${run.reason}`);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test('a deleted file leaves the index', async () => {
   const fixture = makeRepo();
   try {

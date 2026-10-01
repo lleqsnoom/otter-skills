@@ -151,10 +151,19 @@ function desiredRows(project) {
  * A table exists once something is in it. LanceDB refuses an empty table without an explicit schema, and a schema
  * hand-written here would drift from the rows the readers produce — so a table is created by its first write, and a
  * project with no documents simply has no `docs` table.
+ *
+ * A table another process is still creating is listed before its dataset is committed, and opening it then fails
+ * with "not found". That table does not exist yet either: a reader sees no rows, and a writer creates it or, on a
+ * retry after losing the race, merges into it.
  */
 async function tableOf(db, name) {
-  const names = await db.tableNames();
-  return names.includes(name) ? db.openTable(name) : null;
+  if (!(await db.tableNames()).includes(name)) return null;
+  try {
+    return await db.openTable(name);
+  } catch (error) {
+    if (/was not found/.test(error.message)) return null;
+    throw error;
+  }
 }
 
 async function rowsOf(db, name) {
