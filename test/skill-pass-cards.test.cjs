@@ -60,3 +60,28 @@ describe("x-implement read chain", () => {
     assert.equal(readSkillFile("x-nope/references/pass.md"), null);
   });
 });
+
+const CARD_WORD_LIMIT = 600;
+const CARDS = {
+  "x-arch": ["x-review", "x-implement", "x-decompose", "x-fix"],
+};
+
+describe("pass cards", () => {
+  for (const [skill, hosts] of Object.entries(CARDS)) {
+    it(`${skill} has a card of at most ${CARD_WORD_LIMIT} words naming every host`, () => {
+      const card = readSkillFile(`${skill}/references/pass.md`);
+      assert.ok(card, `${skill}/references/pass.md exists`);
+      assert.ok(wordCount(card) <= CARD_WORD_LIMIT, `${skill} card has ${wordCount(card)} words`);
+      for (const host of hosts) assert.match(card, new RegExp(`\\*\\*${host}\\*\\*`), `${skill} card names ${host}`);
+    });
+  }
+
+  it("x-implement reads the x-arch card, not its full body", () => {
+    const files = ["x-implement/SKILL.md", "x-implement/references/dir-organization.md"];
+    for (const rel of files) {
+      const refs = referencedFiles(readSkillFile(rel));
+      assert.ok(!refs.includes("x-arch/SKILL.md"), `${rel} names x-arch/SKILL.md`);
+    }
+    assert.ok(referencedFiles(readSkillFile("x-implement/SKILL.md")).includes("x-arch/references/pass.md"));
+  });
+});

@@ -28,7 +28,7 @@ node <path-to-save-plan.mjs> --epic <slug>
 The flag is named for the artifact the run was decomposed from — the run's plan, or a legacy `E<nn>-epic.md` — and resolves it either way. The script creates the staging directory. Read all `.md` files inside it — one file per user story.
 
 ## Directory Organization
-Place a unit with the code that owns it, and name its directory for a domain concept (`orders/`, `billing/`) rather than a file shape (`models/`, `services/`, `controllers/`). A bag name (`utils`, `common`, `shared`, `helpers`, `tools`, `misc`, `other`) says nothing and is not allowed. One file per concern, imports flow from volatile to stable, never in a cycle. `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) is the fuller statement; see `references/dir-organization.md` for the shape this repo uses.
+Place a unit with the code that owns it, and name its directory for a domain concept (`orders/`, `billing/`) rather than a file shape (`models/`, `services/`, `controllers/`). A bag name (`utils`, `common`, `shared`, `helpers`, `tools`, `misc`, `other`) says nothing and is not allowed. One file per concern, imports flow from volatile to stable, never in a cycle. `x-arch`'s pass card (`~/.agents/skills/x-arch/references/pass.md` for a global install, `.agents/skills/x-arch/references/pass.md` for a local one) is the fuller statement; see `references/dir-organization.md` for the shape this repo uses.
 
 ## Comments
 
@@ -45,7 +45,7 @@ Write the least code that works. Follow x-unbloat (`~/.agents/skills/x-unbloat/S
 
 ## Architecture
 
-Before GREEN, read `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.x-skills/config/arch.json`, `x-arch-lint` is the check that proves the task did not cross a declared boundary.
+Before GREEN, read `x-arch`'s pass card (`~/.agents/skills/x-arch/references/pass.md` for a global install, `.agents/skills/x-arch/references/pass.md` for a local one): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.x-skills/config/arch.json`, `x-arch-lint` is the check that proves the task did not cross a declared boundary.
 
 ## Functional Style
 
