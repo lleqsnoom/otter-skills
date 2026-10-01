@@ -61,3 +61,34 @@ describe("origin artifacts start with their property block", () => {
     assert.ok(fs.readFileSync(path.join(dir, "research.md"), "utf8").startsWith(expected), "research.md is rewritten whole, block included");
   });
 });
+
+const TAG_NOTE = (name, kind) => `---\ntype: tag\ntitle: "${name} (${kind})"\n---\n# ${name}\n\n![[tag.base]]\n`;
+const raw = (cwd, script, ...args) => spawnSync(process.execPath, [path.join(SKILLS, script), ...args], { cwd, encoding: "utf8" });
+
+describe("x-plan tags a run with --topics", () => {
+  it("writes the topics into the plan and creates the tag notes and the shared base it lacks", () => {
+    const cwd = repo();
+    fs.mkdirSync(path.join(cwd, ".x-skills", "tags", "domain"), { recursive: true });
+    fs.writeFileSync(path.join(cwd, ".x-skills", "tags", "domain", "payments.md"), "mine\n");
+    const { dir, state } = cli(cwd, "x-plan/scripts/scenario.mjs", "start", "--slug", "kms", "--topics", "domain/payments,area/board");
+    const plan = fs.readFileSync(path.join(cwd, dir, state.report), "utf8");
+    assert.match(plan, /^topics:\n {2}- "\[\[tags\/domain\/payments\]\]"\n {2}- "\[\[tags\/area\/board\]\]"$/m);
+    assert.equal(fs.readFileSync(path.join(cwd, ".x-skills", "tags", "area", "board.md"), "utf8"), TAG_NOTE("board", "area"));
+    assert.equal(fs.readFileSync(path.join(cwd, ".x-skills", "tags", "domain", "payments.md"), "utf8"), "mine\n", "an existing tag note is never rewritten");
+    assert.equal(
+      fs.readFileSync(path.join(cwd, ".x-skills", "tag.base"), "utf8"),
+      fs.readFileSync(path.join(__dirname, "..", "scripts", "vault", "tag.base"), "utf8"),
+      "x-plan's copy of the shared base is the one the backfill writes",
+    );
+  });
+
+  it("refuses a topic that is not domain/<name> or area/<name>, and a fourth domain topic", () => {
+    const cwd = repo();
+    const bad = raw(cwd, "x-plan/scripts/scenario.mjs", "start", "--slug", "kms", "--topics", "Payments");
+    assert.equal(bad.status, 2);
+    assert.match(bad.stderr + bad.stdout, /Payments/);
+    const many = raw(cwd, "x-plan/scripts/scenario.mjs", "start", "--slug", "kms", "--topics", "domain/a,domain/b,domain/c,domain/d");
+    assert.equal(many.status, 2);
+    assert.match(many.stderr + many.stdout, /three/);
+  });
+});
