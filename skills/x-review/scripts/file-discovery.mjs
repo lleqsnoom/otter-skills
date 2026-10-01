@@ -97,4 +97,4 @@ function findSourceFiles(fileArgs, rootDir) {
   return [...new Set(files)];
 }
 
-export { findSourceFiles, findTrackedSourceFiles, walkDir };
+export { SOURCE_EXTENSIONS, findSourceFiles, findTrackedSourceFiles, walkDir };
