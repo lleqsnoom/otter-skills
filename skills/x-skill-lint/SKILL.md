@@ -45,6 +45,8 @@ violation is found, **2** on a usage error. Each violation names the `skill` and
 | `readme` | The skill is missing from the README skills table. |
 | `cross-skill-import` | A skill's script imports another skill's script — skills must stay standalone. |
 | `copy-drift` | A file shared across skills differs byte-for-byte between copies. |
+| `card-budget` | A pass card (the `pass.md` in a skill's references folder) is over 600 words. A card is what a host reads instead of the skill's whole body, so its length is the cost of every pass. |
+| `pass-ref` | A skill's `SKILL.md` or reference files name another skill's `SKILL.md` while that skill ships a pass card. The violation gives the `file:line` and the card path to name instead. |
 | `fragile-main-guard` | A script compares `import.meta.url` to `process.argv[1]` without `realpathSync`, so it does nothing when run through a symlinked install. |
 | `commonjs-script` | A `scripts/**/*.js` file uses `require(` or `module.exports` while the lint root's `package.json` declares `"type": "module"`, so the script throws before it runs — and it throws for whoever installed the skill, because an installed skill is a symlink into that root. Fix it by renaming the file to `.mjs` with `import` and `export`; `.cjs` is the escape hatch for a tree that must stay CommonJS. |
 | `expectations-shape` | An optional `evals/expectations.json` names another skill, holds no or more than seven `expected_behavior` lines, or lacks a `source` list. |

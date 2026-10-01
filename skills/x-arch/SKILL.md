@@ -33,16 +33,7 @@ Not for these: "should this exist at all" is `x-unbloat`; a specific behaviour-p
 
 ## Two Ways It Runs
 
-**As a pass inside another skill.** No record, and do not stop on uncommitted work: that work is the task.
-The host's scope replaces step 2's. Which groups run depends on whether the host edits code:
-
-- **x-review** (reports only): all five groups over the files it is reviewing. Findings go under
-  `[Architecture]` in that review's plan, each naming its group and a `file:line`.
-- **x-implement** (edits): naming and placement before GREEN, to decide where the new unit goes and what it is
-  called; all groups in REFACTOR. Move and rename only what the current task wrote.
-- **x-decompose** (does not edit): naming and direction before cutting a layer, so a candidate that would cross
-  a declared boundary is triaged as its own run rather than as one task's step.
-- **x-fix** (edits): the groups in each `[Architecture]` finding of a review plan.
+**As a pass inside another skill:** read `references/pass.md`; it owns the per-host steps.
 
 **On its own**, when the user asks about placement, naming, boundaries or inheritance: run every step.
 

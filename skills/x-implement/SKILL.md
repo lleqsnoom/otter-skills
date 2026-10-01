@@ -28,7 +28,7 @@ node <path-to-save-plan.mjs> --epic <slug>
 The flag is named for the artifact the run was decomposed from — the run's plan, or a legacy `E<nn>-epic.md` — and resolves it either way. The script creates the staging directory. Read all `.md` files inside it — one file per user story.
 
 ## Directory Organization
-Place a unit with the code that owns it, and name its directory for a domain concept (`orders/`, `billing/`) rather than a file shape (`models/`, `services/`, `controllers/`). A bag name (`utils`, `common`, `shared`, `helpers`, `tools`, `misc`, `other`) says nothing and is not allowed. One file per concern, imports flow from volatile to stable, never in a cycle. `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) is the fuller statement; see `references/dir-organization.md` for the shape this repo uses.
+Place a unit with the code that owns it, and name its directory for a domain concept (`orders/`, `billing/`) rather than a file shape (`models/`, `services/`, `controllers/`). A bag name (`utils`, `common`, `shared`, `helpers`, `tools`, `misc`, `other`) says nothing and is not allowed. One file per concern, imports flow from volatile to stable, never in a cycle. `x-arch`'s pass card (`~/.agents/skills/x-arch/references/pass.md` for a global install, `.agents/skills/x-arch/references/pass.md` for a local one) is the fuller statement; see `references/dir-organization.md` for the shape this repo uses.
 
 ## Comments
 
@@ -41,11 +41,11 @@ Code must document itself. Comments are a last resort, reserved for what the cod
 
 ## No Bloat
 
-Write the least code that works. Follow x-unbloat (`~/.agents/skills/x-unbloat/SKILL.md` for a global install, `.agents/skills/x-unbloat/SKILL.md` for a local one): its ladder before GREEN, and its ladder, table and Never Cut list in REFACTOR. Its rules are not repeated here, so read them there.
+Write the least code that works. Follow x-unbloat's pass card (`~/.agents/skills/x-unbloat/references/pass.md` for a global install, `.agents/skills/x-unbloat/references/pass.md` for a local one): its ladder before GREEN, and its ladder, table and Never Cut list in REFACTOR. Its rules are not repeated here, so read them there.
 
 ## Architecture
 
-Before GREEN, read `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.x-skills/config/arch.json`, `x-arch-lint` is the check that proves the task did not cross a declared boundary.
+Before GREEN, read `x-arch`'s pass card (`~/.agents/skills/x-arch/references/pass.md` for a global install, `.agents/skills/x-arch/references/pass.md` for a local one): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.x-skills/config/arch.json`, `x-arch-lint` is the check that proves the task did not cross a declared boundary.
 
 ## Functional Style
 
@@ -117,24 +117,28 @@ When a task's scope includes UI (HTML/CSS, templates, components, or styles in a
 
 For each task file in `<run folder>/E<nn>-tasks/`:
 
+**Narrowest tests** — the test files this task wrote or changed, plus the existing ones that exercise the modules
+the diff changed; you pick them. Steps 1–4 run only these. The full suite runs once per task, at COMMIT. If you
+cannot name them, run the full suite and say why.
+
 0. **START** — record that the task began: `node <skill>/scripts/status.mjs <run folder> --start <task file>`. It stamps
    `started` in the task's property block once; a second call keeps the first stamp.
 1. **RED** — Write the minimal failing test for the task's acceptance criterion. It must fail for the *right reason*.
 2. **GREEN** — Write the minimum implementation to pass that test. Nothing more. Walk the x-unbloat ladder before writing.
-3. **REFACTOR** — Evaluate against SOLID/clean code, the comment rules, the x-unbloat pass (steps 3, 5 and 7), the x-arch pass (placement, naming, responsibility, direction, inheritance), and the functional style above. Strip comments that restate code; extract explained blocks into named functions; push side effects to the edges and prefer pure, immutable functions. State what you assessed and what (if anything) improved — or why no changes were needed.
+3. **REFACTOR** — Evaluate against SOLID/clean code, the comment rules, the x-unbloat pass (ladder, table, one cut at a time), the x-arch pass (placement, naming, responsibility, direction, inheritance), and the functional style above. Strip comments that restate code; extract explained blocks into named functions; push side effects to the edges and prefer pure, immutable functions. State what you assessed and what (if anything) improved — or why no changes were needed.
    - **One-sentence test:** every function you wrote must be describable in one sentence; if not, split it.
    - **Reporting test:** if deleting a phase's `push`/output call leaves the phase unusable, the phase was never a unit. Delegate each phase to a named helper that returns data and let the orchestrator collect the report in one place.
 4. **VERIFY — doubt, then x-review + x-fix + test.** Run on every finished task before committing:
    - **Doubt** — on a non-trivial decision (branching logic, a module boundary, an invariant the compiler cannot check, an irreversible change), run the adversarial pass in `references/doubt.md` *before* the review. It is cheaper than review because it aims to disprove the decision while changing it is still cheap.
-   - **Test** — run the task's tests and the full regression suite. All must pass.
-   - **x-review** — run the review skill on the changed files. It writes a plan (`E<nn>-review-plan.md`) into the run folder, which `x-fix` reads.
-   - **x-fix** — resolve every issue in the fix plan. Re-run tests after each fix.
-   - Repeat x-review + x-fix until the plan has no unresolved issues and all tests are green.
+   - **Test** — run the narrowest tests. All must pass.
+   - **x-review** — review the changed files by x-review's pass card (`~/.agents/skills/x-review/references/pass.md` for a global install, `.agents/skills/x-review/references/pass.md` for a local one). It writes a plan (`E<nn>-review-plan.md`) into the run folder, which `x-fix` reads.
+   - **x-fix** — resolve every issue in the fix plan. Re-run the narrowest tests after each fix.
+   - Repeat x-review + x-fix until the plan has no unresolved issues and the narrowest tests are green.
    - **Size check** — compare the files and modules the diff touched with the task's `size` (XS 1 file · S 2–3 · M 4–10
      in one module · L beyond, or a contract change; tests not counted). When they disagree, say so in the run's
      `memory.md` with both numbers: that record is how the scale gets tuned, so never edit `size` to match the diff.
 5. **SYNC DOCS** — Update the spec (`<run folder>/E00-plan.md`) if it exists; otherwise update living docs (README, comments) directly.
-6. **COMMIT** — **Run the floor guard first**: `node ~/.agents/skills/x-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/x-floor/scripts/floor-guard.mjs` for a local install). Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <path-to-commit.mjs> "<message>"` from the x-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If x-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
+6. **COMMIT** — **Run the full suite once**; a red suite blocks the commit. **Then the floor guard**: `node ~/.agents/skills/x-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/x-floor/scripts/floor-guard.mjs` for a local install). Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <path-to-commit.mjs> "<message>"` from the x-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If x-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
 7. **UPDATE STATUS — the task, then the plan.** Two files, and neither write is optional. First mark where your own
    work ended: `node <skill>/scripts/status.mjs <run folder> --ready <task file>` stamps `ready` once — tests green,
    review clean, committed — before any check a person still owes. `ready − started` is the work, `finished − ready`

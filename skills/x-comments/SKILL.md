@@ -13,13 +13,7 @@ Manage code comments: write only the ones that earn their place, remove the nois
 
 ## Two Ways It Runs
 
-**As a pass inside another skill.** No record, and do not stop on uncommitted work: that work is the task. The
-host's scope replaces step 1's.
-
-- **x-review** (reports only): the comment rules are applied to every file under review, and each finding is
-  listed under `[Comments]` in the review's plan rather than fixed here. `x-fix` makes the edits.
-- **x-implement** (edits): the rules bind every line written, and its REFACTOR step strips comments that restate
-  code and extracts over-explained blocks into named functions.
+**As a pass inside another skill:** read `references/pass.md`; it owns the per-host steps.
 
 **On its own**, when the user asks to clean up comments: run every step below and make the edits.
 

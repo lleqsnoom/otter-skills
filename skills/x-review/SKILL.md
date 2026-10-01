@@ -24,13 +24,20 @@ are child skills run **inside** this review — they are not follow-ups to recom
 | 1 | **Metrics** | `save-plan.mjs` — complexity, duplication, refactor patterns | the counts at the top of the plan |
 | 2 | **Principles** | this skill's rules and `references/principles.md` | `[PRINCIPLE]` sections |
 | 3 | **Comments** | **x-comments**, run as a pass (report only) | `[Comments]` |
-| 4 | **Bloat** | **x-unbloat**, run as a pass — its ladder steps 3 and 5 (report only) | `[Bloat]` |
+| 4 | **Bloat** | **x-unbloat**, run as a pass — its ladder and table (report only) | `[Bloat]` |
 | 5 | **Architecture** | **x-arch**, run as a pass, plus **x-arch-lint**'s `arch-check.mjs` | `[Architecture]` |
 | 6 | **Floor** | **x-floor**'s `floor-guard.mjs` on the diff | `[Floor]` |
 
 A plan missing `[Comments]`, `[Bloat]`, `[Architecture]` or `[Floor]` is **incomplete, not clean**: passes 3–6 run
 on every review, including a re-run, and each says plainly when it found nothing. Every pass reports; applying
 the fixes is `x-fix`'s job.
+
+## Two Ways It Runs
+
+**As a pass inside another skill:** x-implement's VERIFY step reads `references/pass.md`; it owns the task-review
+steps.
+
+**On its own**, when the user asks for a review: every section below applies.
 
 ## Scripts
 
@@ -52,9 +59,9 @@ into the one plan file. Do not ask the user what to do, and do not stop after th
 
 1. **Metrics pass — create the plan with all analyses**: `node <path-to>/scripts/save-plan.mjs --slug <topic>` — this runs complexity analysis (AST-based via tree-sitter), duplication check, AND refactor pattern detection in one step. It writes `E<nn>-review-plan.md` into the run folder and prints the full path. When the review is of one task (as x-implement's VERIFY step runs it), pass `--reviews <task file>`: the plan's property block then links the task it reviewed, so Obsidian shows the review hanging off it.
 2. **Principles pass** — write the complexity, SOLID, KISS, DRY and SRP findings into the plan as `[PRINCIPLE]` sections, using the format below.
-3. **Comments pass (part of the review, using x-comments)** — apply the rules in the x-comments skill's `SKILL.md` (`~/.agents/skills/x-comments/SKILL.md` for a global install, `.agents/skills/x-comments/SKILL.md` for a local one) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Report only — `x-fix` makes the edits.
-4. **Bloat pass (part of the review, using x-unbloat)** — apply the ladder in the x-unbloat skill's `SKILL.md` (`~/.agents/skills/x-unbloat/SKILL.md` for a global install, `.agents/skills/x-unbloat/SKILL.md` for a local one) to every reviewed file; x-unbloat's "Two Ways It Runs" names this host's mode as ladder steps 3 and 5. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. A branch for a state the types or the internal callers rule out is reported here too, with the narrower representation named as the fix (x-unbloat's *Bloat, Unless…* row; the rule is *Make the Bad State Impossible* in x-implement's `SKILL.md`) — MAJOR when a caller must handle a failure the type could have excluded, MINOR when the check is only redundant, and never flagged where the input crosses a trust boundary. Never flag what x-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are x-fix's job.
-5. **Architecture pass (part of the review, using x-arch and x-arch-lint)** — apply the rules in the x-arch skill's `SKILL.md` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) to every reviewed file; x-arch's "Two Ways It Runs" names this host's mode as all five groups, report only. Then run `node ~/.agents/skills/x-arch-lint/scripts/arch-check.mjs --root .` (`.agents/skills/x-arch-lint/scripts/arch-check.mjs` for a local install). Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are x-fix's job.
+3. **Comments pass (part of the review, using x-comments)** — apply the rules in x-comments' pass card (`~/.agents/skills/x-comments/references/pass.md` for a global install, `.agents/skills/x-comments/references/pass.md` for a local one) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Report only — `x-fix` makes the edits.
+4. **Bloat pass (part of the review, using x-unbloat)** — apply the ladder and table in x-unbloat's pass card (`~/.agents/skills/x-unbloat/references/pass.md` for a global install, `.agents/skills/x-unbloat/references/pass.md` for a local one) to every reviewed file, in the card's x-review mode. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. A branch for a state the types or the internal callers rule out is reported here too, with the narrower representation named as the fix (x-unbloat's *Bloat, Unless…* row; the rule is *Make the Bad State Impossible* in x-implement's `SKILL.md`) — MAJOR when a caller must handle a failure the type could have excluded, MINOR when the check is only redundant, and never flagged where the input crosses a trust boundary. Never flag what x-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are x-fix's job.
+5. **Architecture pass (part of the review, using x-arch and x-arch-lint)** — apply the rules in x-arch's pass card (`~/.agents/skills/x-arch/references/pass.md` for a global install, `.agents/skills/x-arch/references/pass.md` for a local one) to every reviewed file, in the card's x-review mode: all five groups, report only. Then run `node ~/.agents/skills/x-arch-lint/scripts/arch-check.mjs --root .` (`.agents/skills/x-arch-lint/scripts/arch-check.mjs` for a local install). Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are x-fix's job.
 6. **Floor pass (part of the review, using x-floor)** — run `node ~/.agents/skills/x-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/x-floor/scripts/floor-guard.mjs` for a local install). It compares the quality floor declared at the merge base with the one on disk and reports the moves that lower the bar — a weakened threshold, a dropped rule, a new or extended exception, a silenced checker, unfinished work, a test made easier, a deleted test, or an assertion removed from a test that still exists. Report each under a `[Floor]` heading with its `rule`, `file` and `line`, and copy the guard's `rated` and `unrated` lists in verbatim: a repo with no `.x-skills/config/floor.json` is reported as unrated rather than as clean. Exit 2 is **not** a clean result — say the guard could not run and why. Report only: the fixes are x-fix's job.
 7. **Unmeasured analyses** — an analysis script that failed is not a zero; carry `save-plan.mjs`'s "Analysis incomplete" note into the plan rather than reporting a clean result.
 
@@ -77,18 +84,17 @@ For engineering principles definitions and violation patterns, see `references/p
 
 ## Related Skills
 
-These are the passes this review runs, and where their findings go. Read each skill's `SKILL.md` before running
-its pass; this skill never restates their rules.
+These are the passes this review runs, and where their findings go. Read each skill's pass card before running its
+pass (the paths are in the steps above); this skill never restates their rules.
 
 - **x-comments** — Run as pass 3 of every review (report only). Comment noise, obvious comments, and
   paragraph-long explanations that should be a named function are findings under `[Comments]`; `x-fix` applies
   them, and applying one never changes behavior.
-- **x-unbloat** — Run as pass 4 of every review (report only; x-unbloat names this host's mode as ladder steps 3
-  and 5). It finds code that does not need to exist: speculative abstractions, pass-through wrappers, unused
+- **x-unbloat** — Run as pass 4 of every review (report only, in the x-review mode of x-unbloat's pass card). It finds code that does not need to exist: speculative abstractions, pass-through wrappers, unused
   options, dead code, re-implemented stdlib. Findings go under `[Bloat]`; `x-fix` applies them per x-unbloat's
   *Keep it if* and *Never Cut* rules.
-- **x-arch** with **x-arch-lint** — Run as pass 5 of every review (report only; x-arch names this host's mode as
-  all five groups). x-arch judges where a unit lives, what it is called, what its one responsibility is and which
+- **x-arch** with **x-arch-lint** — Run as pass 5 of every review (report only, in the x-review mode of x-arch's
+  pass card: all five groups). x-arch judges where a unit lives, what it is called, what its one responsibility is and which
   way its dependencies point; x-arch-lint checks the same tree against `.x-skills/config/arch.json` and reports
   `file:line` violations. Findings go under `[Architecture]`; `x-fix` applies them.
 - **x-floor** — Run as pass 6 of every review. `floor-guard.mjs` reports the moves that lower the declared quality

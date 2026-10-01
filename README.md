@@ -560,6 +560,12 @@ a symlink into this tree, so a `.js` script that calls `require` or writes `modu
 anyone runs it, installed or not. `x-skill-lint` fails on that (`commonjs-script`), and the fix is the extension
 and `import`/`export` — a `.cjs` file is the escape hatch for a script that must stay CommonJS.
 
+Skills that run inside other skills — `x-arch`, `x-unbloat`, `x-comments`, and `x-review` for a task review — ship
+a pass card, `references/pass.md`: the per-host steps and the short form of the rules, at most 600 words. A host
+reads the card; a standalone run reads `SKILL.md`. That cuts what one `x-implement` task reads from 12,091 words to
+under half. `x-skill-lint` fails on a card over 600 words (`card-budget`) and on any other skill naming a carded
+skill's `SKILL.md` (`pass-ref`).
+
 | Skill | Description |
 |-------|-------------|
 | `x-analyze` | Interactive analysis skill — research the project and web first, ask via panels (single / multi / open / confirm) until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory. |
@@ -577,7 +583,7 @@ and `import`/`export` — a `.cjs` file is the escape hatch for a script that mu
 | `x-fix` | Resolve issues from fix plans — read, edit, verify, mark complete |
 | `x-floor` | Set and enforce a repository’s quality floor — declare the numbers that must hold, each with its reason, in `.x-skills/config/floor.json`, then report every move that lowers the bar on the current diff: a weakened threshold, a dropped rule, a new or extended exception, a silenced checker (`@ts-ignore`, `eslint-disable`, `noqa`), unfinished work (a stub, an untracked `TODO`, an empty `catch`), a test made easier (`it.skip`, `pytest.mark.skip`), a deleted test, or an assertion removed from a test that still exists. Detection only, exit 1 on a violation. Use when asked to set a quality bar, stop a test being weakened to go green, or prove a diff did not lower the standard; `x-implement` runs it before each commit and `x-review` on every review. |
 | `x-humanize` | Simplify text, an article, a commit or PR to a B2 reading level — measure sentence length and complexity, cut noise, rewrite, then verify no meaning was lost. Use when asked to humanize, simplify, make easy to read, or plain-language a piece of prose. |
-| `x-implement` | Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work, x-arch for placement and naming, and x-unbloat to every change, red-green-refactor per task, verify with x-review + x-fix, run x-floor before each commit, gate on plan completion |
+| `x-implement` | Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work, x-arch for placement and naming, and x-unbloat to every change, red-green-refactor per task, verify with x-review + x-fix, run only the narrowest tests inside those loops and the full suite once before each commit, run x-floor before each commit, gate on plan completion |
 | `x-investigate` | Hypothesis-driven root cause analysis — generate ranked hypotheses from evidence, test systematically with platform tools and git history, eliminate candidates until one root cause remains, output fix plan for x-fix |
 | `x-migrate` | Framework/dependency migration assistant — generates migration plans with breaking changes, upgrade paths, and automated fix candidates from source analysis |
 | `x-parallel` | Run multiple coding tasks in parallel — each task gets an isolated git worktree and its own background agent process with full tools and the parent's project rights, then committed results merge back into your branch |

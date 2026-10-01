@@ -17,7 +17,7 @@ Decide where a unit lives before writing it. What matters is ownership, not the 
    itself; a cycle means the two modules are one module with a lint error.
 
 If the task spec or the plan defines an architecture section, follow it. If not, match the codebase's existing
-conventions before inventing new ones. Read `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install,
-`.agents/skills/x-arch/SKILL.md` for a local one) before the first new directory; when the repo has a
+conventions before inventing new ones. Read `x-arch`'s pass card (`~/.agents/skills/x-arch/references/pass.md` for a global install,
+`.agents/skills/x-arch/references/pass.md` for a local one) before the first new directory; when the repo has a
 `.x-skills/config/arch.json`, that file declares the boundaries it has agreed on and
 `x-arch-lint/scripts/arch-check.mjs` is the check that enforces them.
