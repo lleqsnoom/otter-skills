@@ -68,7 +68,9 @@ beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-review-plan-"));
   const scripts = path.join(root, "scripts");
   fs.mkdirSync(scripts, { recursive: true });
-  fs.copyFileSync(SAVE_PLAN, path.join(scripts, "save-plan.mjs"));
+  for (const sibling of ["save-plan.mjs", "change-scope.mjs", "file-discovery.mjs"]) {
+    fs.copyFileSync(path.join(path.dirname(SAVE_PLAN), sibling), path.join(scripts, sibling));
+  }
   fs.writeFileSync(path.join(scripts, "analyze-complexity.mjs"), COMPLEXITY_STUB);
   fs.writeFileSync(path.join(scripts, "check-duplication.mjs"), DUPLICATION_STUB);
   fs.writeFileSync(path.join(scripts, "analyze-patterns.mjs"), PATTERNS_STUB);
