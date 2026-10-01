@@ -126,7 +126,7 @@ test('a dry run lists the hubs and bases it would create, and creates none', () 
 });
 
 test('the fixture vault holds the same bases the backfill writes', () => {
-  for (const name of ['open-tasks.base', 'by-run.base']) {
+  for (const name of ['open-tasks.base', 'by-run.base', 'tag.base']) {
     assert.equal(
       fs.readFileSync(path.join(__dirname, 'fixtures', 'vault', name), 'utf8'),
       fs.readFileSync(path.join(VAULT_FILES, name), 'utf8'),

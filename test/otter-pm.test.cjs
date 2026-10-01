@@ -565,6 +565,17 @@ test('a title property names an artifact before its heading does', async () => {
   assert.equal(titleFrom('# Epic — kms\n', 'E01-epic'), 'kms', 'a file with no block is named as before');
 });
 
+test('an artifact names its tags with topics, and each tag is a note the board resolves', async () => {
+  const project = await scanVault();
+  const task = vaultFile(project, `${VAULT_RUN}/E02-tasks/L0-T1-a.md`);
+  assert.deepEqual(
+    task.links.filter((link) => link.label === 'Topics').map((link) => link.path),
+    ['tags/domain/fixture-topic.md', 'tags/area/server.md'],
+  );
+  const plan = vaultFile(project, `${VAULT_RUN}/E00-plan.md`);
+  assert.deepEqual(plan.links.filter((link) => link.label === 'Topics').map((link) => link.path), ['tags/domain/fixture-topic.md']);
+});
+
 test('a wikilink is read from the raw line, quoted or not, and a list outside the property block is prose', async () => {
   const { linkFields } = await serverModule('parse');
   assert.deepEqual(linkFields('---\nplan: [[runs/R/E00-plan]]\n---\n'), [{ label: 'Plan', value: 'runs/R/E00-plan.md' }]);

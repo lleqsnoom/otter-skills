@@ -1,6 +1,8 @@
 ---
 type: plan
 run: "[[runs/2026-09-30-0000-R01-fixture/index]]"
+topics:
+  - "[[tags/domain/fixture-topic]]"
 ---
 # Plan — fixture
 

@@ -1,0 +1,15 @@
+filters:
+  and:
+    - file.hasLink(this.file)
+views:
+  - type: table
+    name: Tagged
+    groupBy:
+      property: type
+      direction: ASC
+    order:
+      - file.name
+      - title
+      - run
+      - size
+      - done

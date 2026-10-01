@@ -134,8 +134,8 @@ export function stageStep(name) {
  * named in the artifact it fed (`**Input:**`). Reading them is what turns "the plan came from this analysis" into
  * something a reader can follow, so the keys are listed rather than guessed at — including the keys only a legacy
  * artifact wrote (`spec:` was the handshake the retired `x-epic` used; `epic:` is what a legacy document was named
- * back by). The last five are only ever written as properties: an edge between tasks, a review or a fix and what it
- * answers, and the run's hub note.
+ * back by). The last six are only ever written as properties: an edge between tasks, a review or a fix and what it
+ * answers, the run's hub note, and the tag notes an artifact is about.
  */
 const LINK_FIELDS = new Map([
   ['input', 'Input'],
@@ -151,6 +151,7 @@ const LINK_FIELDS = new Map([
   ['fixes', 'Fixes'],
   ['related', 'Related'],
   ['run', 'Run'],
+  ['topics', 'Topics'],
 ]);
 
 /**
