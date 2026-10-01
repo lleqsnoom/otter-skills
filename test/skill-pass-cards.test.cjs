@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * One non-UI x-implement task makes the agent read x-implement, then x-review and x-fix in VERIFY, then every
+ * One non-UI x-implement task makes the agent read x-implement, then x-review's card and x-fix in VERIFY, then every
  * skill file those name by path. This counts that read chain, so a change to what callers load is measured
  * rather than estimated.
  */
@@ -12,7 +12,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const SKILLS = path.join(__dirname, "..", "skills");
-const ROOTS = ["x-implement/SKILL.md", "x-review/SKILL.md", "x-fix/SKILL.md"];
+const ROOTS = ["x-implement/SKILL.md", "x-review/references/pass.md", "x-fix/SKILL.md"];
 const EXCLUDED = new Set(["x-ui"]);
 const SKILL_FILE_REF = /x-([a-z0-9-]+)\/(SKILL\.md|references\/pass\.md)/g;
 
@@ -46,13 +46,17 @@ function readChain(roots) {
 }
 
 describe("x-implement read chain", () => {
-  it("follows the skill files x-implement, x-review and x-fix name by path", (t) => {
+  it("follows the skill files x-implement, the x-review card and x-fix name by path", (t) => {
     const chain = readChain(ROOTS);
     t.diagnostic(`read chain: ${chain.files.length} files, ${chain.words} words (baseline ${BASELINE_WORDS})`);
     t.diagnostic(chain.files.join(", "));
     for (const skill of ["x-implement", "x-arch", "x-unbloat", "x-comments"]) {
       assert.ok(chain.files.some((f) => f.startsWith(`${skill}/`)), `${skill} is in the chain`);
     }
+  });
+
+  it("is at most half the baseline once VERIFY reads the cards", () => {
+    assert.ok(readChain(ROOTS).words <= BASELINE_WORDS / 2, `${readChain(ROOTS).words} > ${BASELINE_WORDS / 2}`);
   });
 
   it("skips a referenced file that does not exist", () => {
@@ -66,6 +70,7 @@ const CARDS = {
   "x-arch": ["x-review", "x-implement", "x-decompose", "x-fix"],
   "x-unbloat": ["x-review", "x-refactor", "x-implement", "x-fix"],
   "x-comments": ["x-review", "x-implement", "x-fix"],
+  "x-review": ["x-implement"],
 };
 
 describe("pass cards", () => {

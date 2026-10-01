@@ -127,7 +127,7 @@ For each task file in `<run folder>/E<nn>-tasks/`:
 4. **VERIFY — doubt, then x-review + x-fix + test.** Run on every finished task before committing:
    - **Doubt** — on a non-trivial decision (branching logic, a module boundary, an invariant the compiler cannot check, an irreversible change), run the adversarial pass in `references/doubt.md` *before* the review. It is cheaper than review because it aims to disprove the decision while changing it is still cheap.
    - **Test** — run the task's tests and the full regression suite. All must pass.
-   - **x-review** — run the review skill on the changed files. It writes a plan (`E<nn>-review-plan.md`) into the run folder, which `x-fix` reads.
+   - **x-review** — review the changed files by x-review's pass card (`~/.agents/skills/x-review/references/pass.md` for a global install, `.agents/skills/x-review/references/pass.md` for a local one). It writes a plan (`E<nn>-review-plan.md`) into the run folder, which `x-fix` reads.
    - **x-fix** — resolve every issue in the fix plan. Re-run tests after each fix.
    - Repeat x-review + x-fix until the plan has no unresolved issues and all tests are green.
    - **Size check** — compare the files and modules the diff touched with the task's `size` (XS 1 file · S 2–3 · M 4–10

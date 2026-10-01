@@ -24,13 +24,20 @@ are child skills run **inside** this review — they are not follow-ups to recom
 | 1 | **Metrics** | `save-plan.mjs` — complexity, duplication, refactor patterns | the counts at the top of the plan |
 | 2 | **Principles** | this skill's rules and `references/principles.md` | `[PRINCIPLE]` sections |
 | 3 | **Comments** | **x-comments**, run as a pass (report only) | `[Comments]` |
-| 4 | **Bloat** | **x-unbloat**, run as a pass — its ladder steps 3 and 5 (report only) | `[Bloat]` |
+| 4 | **Bloat** | **x-unbloat**, run as a pass — its ladder and table (report only) | `[Bloat]` |
 | 5 | **Architecture** | **x-arch**, run as a pass, plus **x-arch-lint**'s `arch-check.mjs` | `[Architecture]` |
 | 6 | **Floor** | **x-floor**'s `floor-guard.mjs` on the diff | `[Floor]` |
 
 A plan missing `[Comments]`, `[Bloat]`, `[Architecture]` or `[Floor]` is **incomplete, not clean**: passes 3–6 run
 on every review, including a re-run, and each says plainly when it found nothing. Every pass reports; applying
 the fixes is `x-fix`'s job.
+
+## Two Ways It Runs
+
+**As a pass inside another skill:** x-implement's VERIFY step reads `references/pass.md`; it owns the task-review
+steps.
+
+**On its own**, when the user asks for a review: every section below applies.
 
 ## Scripts
 
