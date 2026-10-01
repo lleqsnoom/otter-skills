@@ -42,7 +42,7 @@ graph LR
 ```
 
 ```bash
-node <skill>/scripts/scenario.mjs start --slug <slug>
+node <skill>/scripts/scenario.mjs start --slug <slug> [--topics domain/<x>,area/<y>]   # reuse existing tags in .x-skills/tags/ where one fits
 node <skill>/scripts/scenario.mjs record --dir <dir> --event research --data "<finding>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --event evidence --data "<claim>" --target "<file:line|url>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --to <node>

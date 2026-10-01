@@ -92,3 +92,20 @@ describe("x-plan tags a run with --topics", () => {
     assert.match(many.stderr + many.stdout, /three/);
   });
 });
+
+describe("x-analyze tags its analysis with --topics", () => {
+  it("writes the topics and creates the missing tag note, and writes none when none are given", () => {
+    const cwd = repo();
+    const { dir, state } = cli(cwd, "x-analyze/scripts/scenario.mjs", "start", "--slug", "key", "--topics", "domain/key-rotation");
+    assert.match(fs.readFileSync(path.join(cwd, dir, state.report), "utf8"), /^topics:\n {2}- "\[\[tags\/domain\/key-rotation\]\]"$/m);
+    assert.equal(fs.readFileSync(path.join(cwd, ".x-skills", "tags", "domain", "key-rotation.md"), "utf8"), TAG_NOTE("key-rotation", "domain"));
+    assert.equal(
+      fs.readFileSync(path.join(cwd, ".x-skills", "tag.base"), "utf8"),
+      fs.readFileSync(path.join(__dirname, "..", "scripts", "vault", "tag.base"), "utf8"),
+    );
+
+    const plain = repo();
+    const second = cli(plain, "x-analyze/scripts/scenario.mjs", "start", "--slug", "key");
+    assert.doesNotMatch(fs.readFileSync(path.join(plain, second.dir, second.state.report), "utf8"), /^topics:/m);
+  });
+});

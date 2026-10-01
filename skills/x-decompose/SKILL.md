@@ -144,6 +144,9 @@ run: "[[runs/<run folder>/index]]"
 plan: "[[runs/<run folder>/E<nn>-plan]]"
 depends_on:
   - "[[runs/<run folder>/E<nn>-tasks/L<N>-T<M>-<slug>]]"
+topics:
+  - "[[tags/domain/<a domain tag of the plan>]]"
+  - "[[tags/area/<a module this task touches>]]"
 size: <XS | S | M | L>
 complexity: <clear | complicated | complex>
 complexity_why: <one line a reviewer can check: the pattern it copies, the choice it has to make, or what only trying will tell>
@@ -174,7 +177,10 @@ created: <YYYY-MM-DDThh:mm>
 
 **The block on top is for people and Obsidian, not for the implementer.** `title` is what Obsidian shows on the
 graph node in place of the file name (through the Front Matter Title plugin), so it reads as the task, not its file. Links are quoted wikilinks from the
-`.x-skills` root without `.md` (unquoted, YAML reads `[[x]]` as a nested list). `depends_on` lists only the tasks that
+`.x-skills` root without `.md` (unquoted, YAML reads `[[x]]` as a nested list). `topics` copies the plan's `domain/` tags, then adds one `area/` tag per module the task's **Files:** touch — a
+workspace package (`apps/<x>`, `packages/<x>`, `skills/<x>`), else the top-level folder under `src/`; tests are not
+counted. Tag notes are not created here: x-plan creates a run's tags, and the backfill creates area tags for work
+that has none yet. `depends_on` lists only the tasks that
 produce a state one of this task's Preconditions describes — never a whole layer — and is `[]` when there are none.
 `done`, `started`, `finished` and `reopened` are not in the template: x-implement's `status.mjs` writes them from the
 Definition of Done boxes, and nobody sets them by hand. `**Layer:**` stays in the body because `status.mjs` reads it
