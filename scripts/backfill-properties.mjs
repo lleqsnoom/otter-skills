@@ -35,6 +35,7 @@ const TOP_LEVEL_TYPES = [
   [/^E\d+-analysis\.md$/, 'analysis'],
   [/^E\d+-debug\.md$/, 'debug'],
   [/^E\d+-fix-plan\.md$/, 'fix'],
+  [/^E\d+-summary\.md$/, 'summary'],
 ];
 const NOT_ARTIFACTS = new Set(['memory.md', 'questions.md', 'research_log.md']);
 const TEST_PATH = /(?:^|\/)(?:tests?|__tests__)\/|\.(?:test|spec)\.[a-z]+$/i;
@@ -66,7 +67,7 @@ export function noteLabel(note) {
   return name.replace(/^E\d+-/, '').replace(/[-_]/g, ' ');
 }
 
-const FIXED_TITLES = { plan: 'Plan', analysis: 'Analysis', triage: 'Triage', debug: 'Debug', fix: 'Fix plan' };
+const FIXED_TITLES = { plan: 'Plan', analysis: 'Analysis', triage: 'Triage', debug: 'Debug', fix: 'Fix plan', summary: 'Summary' };
 const RESEARCH_TITLES = { 'research.md': 'Research', 'final_report.md': 'Research report' };
 
 /** This critique's place among the run's critiques, counting from 1 in the order they were numbered. */

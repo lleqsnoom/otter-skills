@@ -38,6 +38,7 @@ function repository() {
   );
   writeFile(path.join(root, RUN, 'E03-critique.md'), `# Roast — login\n\n**Artifact:** .x-skills/${RUN}/E00-plan.md\n`);
   writeFile(path.join(root, RUN, 'memory.md'), '# Memory — login\n');
+  writeFile(path.join(root, RUN, 'E04-summary.md'), '# Summary — login\n');
   writeFile(path.join(root, 'tasks', '07-08-2026-12:56-old', 'task.md'), '# Task: old\n**Effort:** 2h\n');
   return { repo, root };
 }
@@ -60,6 +61,7 @@ test('the backfill adds each artifact the block it can derive', () => {
   );
   assert.ok(read(root, `${RUN}/E00-plan.md`).startsWith(`---\ntype: plan\ntitle: "Plan · login"\n${hub}\ninput: "[[${ANALYSIS_RUN}/E00-analysis]]"\n---\n# Plan — login\n`));
   assert.ok(read(root, `${RUN}/E03-critique.md`).startsWith(`---\ntype: review\ntitle: "Roast of plan (#1)"\n${hub}\nreviews: "[[${RUN}/E00-plan]]"\n---\n`));
+  assert.ok(read(root, `${RUN}/E04-summary.md`).startsWith(`---\ntype: summary\ntitle: "Summary · login"\n${hub}\n---\n`));
   assert.ok(read(root, `${RUN}/E01-triage.md`).startsWith(`---\ntype: triage\ntitle: "Triage · login"\n${hub}\n---\n`));
   assert.ok(read(root, `${ANALYSIS_RUN}/E00-analysis.md`).startsWith(`---\ntype: analysis\ntitle: "Analysis · login-cause"\nrun: "[[${ANALYSIS_RUN}/index]]"\n---\n`));
 });

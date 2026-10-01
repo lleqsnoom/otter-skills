@@ -334,7 +334,7 @@ give every reverse (what a plan was split into, what reviewed a task). No two fi
 
 | Key | From → to | Written by |
 |-----|-----------|------------|
-| `type` | plan · task · triage · review · research · analysis · fix · debug · run | every skill |
+| `type` | plan · task · triage · review · research · analysis · fix · debug · summary · run | every skill |
 | `title` | what the artifact is called in Obsidian: its kind, then its subject (`Plan · <slug>`, `L0-T2 · <task>`, `Review of L2-T1 · <task>`, `Roast of findings (#3)`) | every skill; the backfill for older work |
 | `run` | any artifact → its run's `index` note | every skill that writes into a run |
 | `plan`, `input`, `tasks`, `analysis`, `source`, `from`, `spec`, `epic` | the keys the board has always read as links | x-decompose (`plan`), x-plan (`input`) |
