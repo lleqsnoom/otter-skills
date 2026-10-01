@@ -135,7 +135,11 @@ For each task file in `<run folder>/E<nn>-tasks/`:
      `memory.md` with both numbers: that record is how the scale gets tuned, so never edit `size` to match the diff.
 5. **SYNC DOCS** — Update the spec (`<run folder>/E00-plan.md`) if it exists; otherwise update living docs (README, comments) directly.
 6. **COMMIT** — **Run the floor guard first**: `node ~/.agents/skills/x-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/x-floor/scripts/floor-guard.mjs` for a local install). Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <path-to-commit.mjs> "<message>"` from the x-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If x-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
-7. **UPDATE STATUS — the task, then the plan.** Two files, and neither write is optional:
+7. **UPDATE STATUS — the task, then the plan.** Two files, and neither write is optional. First mark where your own
+   work ended: `node <skill>/scripts/status.mjs <run folder> --ready <task file>` stamps `ready` once — tests green,
+   review clean, committed — before any check a person still owes. `ready − started` is the work, `finished − ready`
+   the wait, and only the first says anything about a task's size.
+
    - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. That checklist carries the task's own criterion plus the five standing rows `x-decompose` wrote in (see Definition of Done above), and both kinds are ticked the same way. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
    - **The plan** — the layers artifact, `<run folder>/E<nn>-plan.md` (or a legacy `E<nn>-epic.md`) — cannot see the task files, so derive it:
      ```bash

@@ -16,12 +16,13 @@
  * check is deferred stays open, and the status line is what says the run is nearly there anyway.
  *
  * It also writes the one thing a task's own property block cannot know by itself: whether its boxes are all ticked.
- * `done` mirrors them both ways, `finished` and `reopened` follow from its turns, and `--start <task file>` stamps
+ * `done` mirrors them both ways, `finished` and `reopened` follow from its turns, `--ready <task file>` stamps when
+ * the agent's own work is done, and `--start <task file>` stamps
  * `started` once — so Obsidian, which cannot read checkboxes, can still tell open work from finished work. Nothing
  * outside the block is ever rewritten, and a task with no block is left exactly as it is.
  *
  * Usage:
- *   node status.mjs <run folder> [--start <task file>] [--epic-done] [--dry-run]
+ *   node status.mjs <run folder> [--start <task file>] [--ready <task file>] [--epic-done] [--dry-run]
  *
  * Exit 0 when the epic is up to date (or was updated), 1 when the run has no epic or no tasks to read, 2 on a usage
  * error. ESM rather than the CommonJS its sibling scripts use, so it runs from inside a checkout of the repo that
@@ -304,12 +305,15 @@ function mirrorTask(text, complete, now) {
   return { text: next.join("\n"), change: `done ${done}${reopened ? ` (reopened ${reopened})` : ""}` };
 }
 
-/** A task's `started`, stamped the first time the task begins and never again. */
-function startTask(text, now) {
+/**
+ * One of a task's moments, stamped the first time it happens and never again: `started` when the work begins, `ready`
+ * when the agent's own work is done — tests green, review clean, committed — before any check a person still owes.
+ */
+function stampOnce(text, key, now) {
   const lines = text.split("\n");
   const end = blockEnd(lines);
-  if (end === -1 || readKey(lines, end, "started") !== undefined) return { text, change: null };
-  return { text: withKey(lines, "started", now).join("\n"), change: `started ${now}` };
+  if (end === -1 || readKey(lines, end, key) !== undefined) return { text, change: null };
+  return { text: withKey(lines, key, now).join("\n"), change: `${key} ${now}` };
 }
 
 /**
@@ -323,15 +327,19 @@ function locate(runDir) {
   return { tasksDir, layersPath: layersName ? path.join(runDir, layersName) : null };
 }
 
+/** The flags that take a task file name, and the moment each one stamps on that task. */
+const STAMP_FLAGS = { "--start": "started", "--ready": "ready" };
+
 /**
- * The run folder, the two switches, and `--start <task file>` — the one flag that takes a value, because the task it
- * names is the whole of what it asks for.
+ * The run folder, the two switches, and the stamp flags — `--start <task file>` and `--ready <task file>`, the only
+ * flags that take a value, because the task they name is the whole of what they ask for.
  */
 function parseArgs(argv) {
   const switches = new Set(["--epic-done", "--dry-run"]);
-  const startAt = argv.indexOf("--start");
-  const start = startAt === -1 ? null : (argv[startAt + 1] ?? "");
-  const rest = startAt === -1 ? argv : argv.filter((_, index) => index !== startAt && index !== startAt + 1);
+  const valued = Object.keys(STAMP_FLAGS).map((flag) => [flag, argv.indexOf(flag)]).filter(([, at]) => at !== -1);
+  const stamps = valued.map(([flag, at]) => ({ key: STAMP_FLAGS[flag], flag, task: argv[at + 1] ?? "" }));
+  const taken = new Set(valued.flatMap(([, at]) => [at, at + 1]));
+  const rest = argv.filter((_, index) => !taken.has(index));
   const unknown = rest.find((arg) => arg.startsWith("--") && !switches.has(arg));
   if (unknown) {
     process.stderr.write(`Unknown argument: ${unknown}\n`);
@@ -341,7 +349,7 @@ function parseArgs(argv) {
     run: rest.find((arg) => !arg.startsWith("--")) ?? null,
     epicDone: rest.includes("--epic-done"),
     dryRun: rest.includes("--dry-run"),
-    start,
+    stamps,
   };
 }
 
@@ -389,38 +397,44 @@ function runFiles(run) {
 }
 
 /** Each task's own properties brought in line with its boxes; returns the changes, written unless it is a dry run. */
-function mirrorTasks(tasksDir, tasks, { now, start, dryRun }) {
+function mirrorTasks(tasksDir, tasks, { now, stamps, dryRun }) {
   const edits = tasks.map((task) => {
     const file = path.join(tasksDir, task.name);
     const text = fs.readFileSync(file, "utf8");
-    const started = task.name === start ? startTask(text, now) : { text, change: null };
-    const mirrored = mirrorTask(started.text, task.complete, now);
-    return { file, name: task.name, text: mirrored.text, changes: [started.change, mirrored.change].filter(Boolean) };
+    const stamped = stamps
+      .filter((stamp) => stamp.task === task.name)
+      .reduce((current, stamp) => {
+        const next = stampOnce(current.text, stamp.key, now);
+        return { text: next.text, changes: [...current.changes, next.change].filter(Boolean) };
+      }, { text, changes: [] });
+    const mirrored = mirrorTask(stamped.text, task.complete, now);
+    return { file, name: task.name, text: mirrored.text, changes: [...stamped.changes, mirrored.change].filter(Boolean) };
   });
   if (!dryRun) for (const edit of edits.filter((candidate) => candidate.changes.length)) fs.writeFileSync(edit.file, edit.text, "utf8");
   return edits.flatMap((edit) => edit.changes.map((change) => `${edit.name}: ${change}`));
 }
 
-/** `--start` names a task file of this run, or the call is refused before anything is written. */
-function refuseUnknownStart(tasks, start) {
-  if (start === null || tasks.some((task) => task.name === start)) return;
-  refuse(`No task ${start || "(none named)"} in this run — --start takes a task file name from its tasks folder.`, 2);
+/** Each stamp flag names a task file of this run, or the call is refused before anything is written. */
+function refuseUnknownStamp(tasks, stamps) {
+  const unknown = stamps.find((stamp) => !tasks.some((task) => task.name === stamp.task));
+  if (!unknown) return;
+  refuse(`No task ${unknown.task || "(none named)"} in this run — ${unknown.flag} takes a task file name from its tasks folder.`, 2);
 }
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.run) refuse("Usage: node status.mjs <run folder> [--start <task file>] [--epic-done] [--dry-run]", 2);
+  if (!args.run) refuse("Usage: node status.mjs <run folder> [--start <task file>] [--ready <task file>] [--epic-done] [--dry-run]", 2);
 
   const { tasks, layersPath } = runFiles(args.run);
-  refuseUnknownStart(tasks, args.start);
+  refuseUnknownStamp(tasks, args.stamps);
   warnUnlayered(tasks);
   const report = summarise(tasks);
   const { text, changes } = applyStatus(fs.readFileSync(layersPath, "utf8"), report, { epicDone: args.epicDone });
   if (!args.dryRun && changes.length) fs.writeFileSync(layersPath, text, "utf8");
-  const taskChanges = mirrorTasks(locate(args.run).tasksDir, tasks, { now: new Date().toISOString(), start: args.start, dryRun: args.dryRun });
+  const taskChanges = mirrorTasks(locate(args.run).tasksDir, tasks, { now: new Date().toISOString(), stamps: args.stamps, dryRun: args.dryRun });
   announce({ layersPath, report, changes: [...changes, ...taskChanges], dryRun: args.dryRun });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) main();
 
-export { applyStatus, artifactOf, boxesIn, locate, mirrorTask, parseTask, readTasks, startTask, statusLine, summarise };
+export { applyStatus, artifactOf, boxesIn, locate, mirrorTask, parseTask, readTasks, stampOnce, statusLine, summarise };

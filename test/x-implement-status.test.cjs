@@ -411,3 +411,23 @@ describe("x-implement status: a plan that starts with its property block", () =>
     assert.equal(fs.readFileSync(plan, "utf8"), once, "a second run finds the same line and changes nothing");
   });
 });
+
+describe("x-implement status: --ready marks the end of the agent's own work", () => {
+  it("stamps ready once, beside started, and leaves done to the boxes", () => {
+    const { run, task } = propertyFixture();
+    status(run, "--start", "L0-T1-rule.md");
+    assert.equal(status(run, "--ready", "L0-T1-rule.md").status, 0);
+    const first = property(task, "ready");
+    assert.match(first, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+    assert.equal(property(task, "done"), "false", "ready is not done: a person's check may still be open");
+    status(run, "--ready", "L0-T1-rule.md");
+    assert.equal(property(task, "ready"), first);
+  });
+
+  it("refuses to mark ready a task the run does not hold", () => {
+    const { run } = propertyFixture();
+    const result = status(run, "--ready", "L9-T9-missing.md");
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /L9-T9-missing\.md/);
+  });
+});
