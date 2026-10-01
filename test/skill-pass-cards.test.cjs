@@ -83,6 +83,10 @@ describe("pass cards", () => {
     });
   }
 
+  it("the x-arch card keeps naming as the only enforced group when no arch.json exists", () => {
+    assert.match(readSkillFile("x-arch/references/pass.md"), /no `?\.x-skills\/config\/arch\.json`?[^.]*naming/i);
+  });
+
   it("the real tree has no card over budget and no caller naming a carded body", () => {
     const result = spawnSync(process.execPath, [LINT, "--root", path.join(__dirname, "..")], { encoding: "utf8" });
     const hits = JSON.parse(result.stdout).violations.filter((v) => v.rule === "card-budget" || v.rule === "pass-ref");

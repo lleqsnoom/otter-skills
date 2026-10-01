@@ -17,6 +17,8 @@ No record of its own, and uncommitted work is the task, not a reason to stop. Th
 
 When the repo has `.x-skills/config/arch.json`, it declares the allowed directions and banned names; a group it
 says nothing about is `unrated`, not `ok`. `x-arch-lint/scripts/arch-check.mjs --root .` checks the declaration.
+With no `.x-skills/config/arch.json`, naming is the only group enforced: the other four are `unrated`, and a
+suspected boundary or direction problem is reported as unrated, never as a violation.
 
 ## Rules
 
