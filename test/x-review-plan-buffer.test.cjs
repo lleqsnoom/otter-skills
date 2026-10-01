@@ -145,3 +145,18 @@ describe("save-plan starts the plan with its property block", () => {
     assert.ok(fs.readFileSync(result.stdout.trim(), "utf8").startsWith('---\ntype: review\ntitle: "Review · plan"\n---\n# Code Review — Fix Plan\n'));
   });
 });
+
+describe("save-plan copies the reviewed task's topics", () => {
+  it("lists the same topics as the task it reviews, and none when the task has none", () => {
+    const run = path.join(root, ".x-skills", "runs", "2026-01-01-0900-R01-demo");
+    const task = path.join(run, "E02-tasks", "L0-T1-a.md");
+    fs.mkdirSync(path.dirname(task), { recursive: true });
+    fs.writeFileSync(task, '---\ntype: task\ntopics:\n  - "[[tags/domain/tags]]"\n  - "[[tags/area/server]]"\nsize: S\n---\n# Task: a\n');
+    const tagged = spawnSync(process.execPath, [entry, "--output", run, "--reviews", task], { cwd: root, encoding: "utf8" });
+    assert.match(fs.readFileSync(tagged.stdout.trim(), "utf8"), /^topics:\n {2}- "\[\[tags\/domain\/tags\]\]"\n {2}- "\[\[tags\/area\/server\]\]"\n---$/m);
+
+    fs.writeFileSync(task, "# Task: a\n");
+    const plain = spawnSync(process.execPath, [entry, "--output", run, "--reviews", task], { cwd: root, encoding: "utf8" });
+    assert.doesNotMatch(fs.readFileSync(plain.stdout.trim(), "utf8"), /^topics:/m);
+  });
+});

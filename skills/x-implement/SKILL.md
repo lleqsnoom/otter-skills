@@ -152,7 +152,7 @@ All tasks `- [x]` and green → close the run:
      node <skill>/scripts/status.mjs <run folder> --epic-done
      ```
      Those boxes are the plan's acceptance criteria rather than a count of tasks, so they are ticked on your word and not on arithmetic — and only when no task is still open, because a status the tasks contradict is worse than no status.
-   - Write `<run folder>/E<nn>-summary.md`: the plan's `goal:`, one line per completed task, and the test results. It starts with its property block — `type: summary`, `title: "Summary · <run topic>"`, `run`, and `plan` linking the plan it closes.
+   - Write `<run folder>/E<nn>-summary.md`: the plan's `goal:`, one line per completed task, and the test results. It starts with its property block — `type: summary`, `title: "Summary · <run topic>"`, `run`, `plan` linking the plan it closes, and the plan's `topics`.
    - Run `x-roast` on the summary, then `x-humanize` on it; each appends its own `E<nn>` artifact beside it.
    - Rewrite the summary from the humanized text.
    - If the plan carries an `issue:` and the repo has an `origin` remote, offer to post the summary with a `confirm` panel (yes/no); on yes run `gh issue comment <n> -F <summary>`. Never invent an issue number, and never post without the panel.

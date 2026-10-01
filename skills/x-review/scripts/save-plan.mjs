@@ -265,6 +265,18 @@ function generatePlanHeader(stats, branch, failed = []) {
   return lines.join("\n");
 }
 
+/** The `topics` items of a file's leading property block, as written; none when it has no block or no topics. */
+function topicsOf(file) {
+  if (!file || !fs.existsSync(file)) return [];
+  const lines = fs.readFileSync(file, "utf8").split("\n");
+  const end = lines[0]?.trim() === "---" ? lines.findIndex((line, index) => index > 0 && line.trim() === "---") : -1;
+  const start = lines.findIndex((line, index) => index > 0 && index < end && line === "topics:");
+  if (start === -1) return [];
+  const rest = lines.slice(start + 1, end);
+  const stop = rest.findIndex((line) => !/^\s+-\s/.test(line));
+  return stop === -1 ? rest : rest.slice(0, stop);
+}
+
 /** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
@@ -289,6 +301,7 @@ function noteLabel(note) {
 function propertyBlock(runDir, reviewed) {
   const run = vaultNote(path.join(runDir, "index"));
   const target = reviewed ? vaultNote(reviewed) : null;
+  const topics = target ? topicsOf(reviewed) : [];
   const title = target ? `Review of ${noteLabel(target)}` : `Review · ${runSlug(runDir)}`;
   return [
     "---",
@@ -296,6 +309,7 @@ function propertyBlock(runDir, reviewed) {
     `title: ${JSON.stringify(title)}`,
     ...(run ? [`run: "[[${run}]]"`] : []),
     ...(target ? [`reviews: "[[${target}]]"`] : []),
+    ...(topics.length ? ["topics:", ...topics] : []),
     "---",
     "",
   ].join("\n");
