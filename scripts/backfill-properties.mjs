@@ -24,7 +24,7 @@ import { boldFields, parseWikilink, splitProperties } from '../src/server/parse.
  * `scripts/vault/`, in the form Obsidian saves them. Neither is ever overwritten.
  *
  * Usage:
- *   node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--dry-run]
+ *   node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--domains <run-to-domains.json>] [--dry-run]
  */
 
 const TOP_LEVEL_TYPES = [
@@ -225,12 +225,58 @@ export function missingFiles(root, tags = []) {
   return [...hubs, ...bases, ...notes].filter((file) => !existsSync(join(root, file.relPath)));
 }
 
+const DOMAIN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * A run's domain tags in its artifact's `topics`, ahead of the areas: added only where missing, into the list the block
+ * has or a new one. Domains are a person's call — what the work was about — so they come from a map the user approved,
+ * never from the files.
+ */
+export function withDomains(text, names) {
+  const lines = text.split('\n');
+  const end = lines[0] === '---' ? lines.findIndex((line, index) => index > 0 && line === '---') : -1;
+  if (end === -1 || !names.length) return { text, added: [] };
+  const at = lines.findIndex((line, index) => index > 0 && index < end && line === 'topics:');
+  const present = new Set(at === -1 ? [] : lines.slice(at + 1, end));
+  const missing = names.map((name) => `  - "[[tags/domain/${name}]]"`).filter((item) => !present.has(item));
+  if (!missing.length) return { text, added: [] };
+  return { text: insertTopics(lines, at, end, missing).join('\n'), added: ['domain topics'] };
+}
+
+/** Topic items at the head of the block's `topics` list, or a new list just before the block closes. */
+function insertTopics(lines, at, end, items) {
+  if (at === -1) return [...lines.slice(0, end), 'topics:', ...items, ...lines.slice(end)];
+  return [...lines.slice(0, at + 1), ...items, ...lines.slice(at + 1)];
+}
+
+/** What is wrong with one entry of the domains map, or `null`. */
+function domainProblem(root, run, names) {
+  if (!existsSync(join(root, 'runs', run))) return `no run ${run} in ${root}`;
+  if (!Array.isArray(names) || names.some((name) => !DOMAIN.test(name))) return `${run}: a domain is lower-case kebab-case`;
+  return names.length > 3 ? `${run}: at most three domains per run` : null;
+}
+
+/** The approved run → domains map, checked whole before anything is written; a problem is refused with exit 2. */
+function readDomains(root, file) {
+  if (!file) return {};
+  const map = JSON.parse(readFileSync(file, 'utf8'));
+  const problem = Object.entries(map)
+    .map(([run, names]) => domainProblem(root, run, names))
+    .find(Boolean);
+  if (problem) {
+    process.stderr.write(`${problem}\n`);
+    process.exit(2);
+  }
+  return map;
+}
+
 function parseArgs(argv) {
-  const args = { root: null, dryRun: false };
+  const args = { root: null, dryRun: false, domains: null };
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
     if (flag === '--dry-run') args.dryRun = true;
     else if (flag === '--root') args.root = argv[(index += 1)] ?? null;
+    else if (flag === '--domains') args.domains = argv[(index += 1)] ?? null;
     else {
       process.stderr.write(`Unknown argument: ${flag}\n`);
       process.exit(2);
@@ -253,7 +299,7 @@ function apply(root, edits, dryRun) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.root) {
-    process.stderr.write('Usage: node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--dry-run]\n');
+    process.stderr.write('Usage: node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--domains <run-to-domains.json>] [--dry-run]\n');
     process.exit(2);
   }
   const root = basename(args.root) === '.x-skills' ? args.root : join(args.root, '.x-skills');
@@ -265,7 +311,13 @@ function main() {
     .filter((name) => String(name).endsWith('.md'))
     .map((name) => `runs/${String(name).split('\\').join('/')}`)
     .sort();
-  const results = files.map((relPath) => ({ relPath, ...backfillText(root, relPath, readFileSync(join(root, relPath), 'utf8')) }));
+  const domains = readDomains(root, args.domains);
+  const results = files.map((relPath) => {
+    const filled = backfillText(root, relPath, readFileSync(join(root, relPath), 'utf8'));
+    const names = artifactType(relPath) === 'run' ? [] : (domains[relPath.split('/')[1]] ?? []);
+    const tagged = withDomains(filled.text, names);
+    return { relPath, text: tagged.text, added: [...filled.added, ...tagged.added] };
+  });
   const changed = results
     .filter((result) => result.added.length)
     .map((result) => ({ ...result, note: `+ ${result.added.join(', ')}` }));

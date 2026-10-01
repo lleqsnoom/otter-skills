@@ -390,6 +390,12 @@ is set, so a second run changes nothing. It creates each run's `index` hub, the 
 links, when they are missing. `depends_on` and `complexity` are left for a person, and no `finished` is stamped, because the
 backfill cannot know when old work finished.
 
+Domain tags need a person's judgement, so the backfill takes them from a map you approve:
+`--domains run-domains.json`, where `{"2026-09-28-0847-R01-add-mcp-server": ["mcp-server"]}` adds `domain/mcp-server`
+to every artifact of that run (the hub excepted), ahead of its areas, and creates the tag note. A run the map names
+but the vault does not have, a name that is not lower-case kebab-case, or a fourth domain refuses the whole map with
+exit 2 before anything is written.
+
 ## The board
 
 Five lanes, in this order: **To do**, **In progress**, **Unsorted**, **Done**, **Closed**. What an item's own data

@@ -187,3 +187,40 @@ test('a Files line is read as paths: a list inside parentheses and a prose entry
   assert.match(task, /^topics:\n {2}- "\[\[tags\/area\/server\]\]"\n(?! {2}-)/m);
   assert.match(task, /^size: XS$/m, 'one source path, the vault fixture being a test');
 });
+
+function domains(repo, map) {
+  const file = path.join(repo, 'domains.json');
+  fs.writeFileSync(file, JSON.stringify(map));
+  return file;
+}
+
+test('--domains adds a run’s domain tags to each of its artifacts, ahead of their areas, and creates the notes', () => {
+  const { repo, root } = repository();
+  writeFile(path.join(root, RUN, 'E02-tasks', 'L1-T1-c.md'), '# Task: c\n**Layer:** 1 — x\n**Files:** src/server/a.mjs (mod)\n');
+  const map = domains(repo, { [path.basename(RUN)]: ['login', 'auth'] });
+  const result = backfill('--root', repo, '--domains', map);
+  assert.equal(result.status, 0, result.stderr);
+
+  assert.match(
+    read(root, `${RUN}/E02-tasks/L1-T1-c.md`),
+    /^topics:\n {2}- "\[\[tags\/domain\/login\]\]"\n {2}- "\[\[tags\/domain\/auth\]\]"\n {2}- "\[\[tags\/area\/server\]\]"$/m,
+  );
+  assert.match(read(root, `${RUN}/E00-plan.md`), /^topics:\n {2}- "\[\[tags\/domain\/login\]\]"\n {2}- "\[\[tags\/domain\/auth\]\]"\n---$/m);
+  assert.doesNotMatch(read(root, `${RUN}/index.md`), /topics/, 'the hub links nothing');
+  assert.doesNotMatch(read(root, `${ANALYSIS_RUN}/E00-analysis.md`), /topics/, 'a run not in the map is left alone');
+  assert.equal(read(root, 'tags/domain/auth.md'), '---\ntype: tag\ntitle: "auth (domain)"\n---\n# auth\n\n![[tag.base]]\n');
+
+  const before = read(root, `${RUN}/E02-tasks/L1-T1-c.md`);
+  backfill('--root', repo, '--domains', map);
+  assert.equal(read(root, `${RUN}/E02-tasks/L1-T1-c.md`), before, 'a second run adds nothing');
+});
+
+test('--domains refuses a run it cannot find, a malformed name, and a fourth domain, before writing anything', () => {
+  for (const map of [{ 'no-such-run': ['x'] }, { [path.basename(RUN)]: ['Bad Name'] }, { [path.basename(RUN)]: ['a', 'b', 'c', 'd'] }]) {
+    const { repo, root } = repository();
+    const before = read(root, `${RUN}/E00-plan.md`);
+    const result = backfill('--root', repo, '--domains', domains(repo, map));
+    assert.equal(result.status, 2, JSON.stringify(map));
+    assert.equal(read(root, `${RUN}/E00-plan.md`), before);
+  }
+});
