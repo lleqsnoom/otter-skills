@@ -8,10 +8,12 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const SKILLS = path.join(__dirname, "..", "skills");
+const LINT = path.join(SKILLS, "x-skill-lint", "scripts", "lint.mjs");
 const ROOTS = ["x-implement/SKILL.md", "x-review/references/pass.md", "x-fix/SKILL.md"];
 const EXCLUDED = new Set(["x-ui"]);
 const SKILL_FILE_REF = /x-([a-z0-9-]+)\/(SKILL\.md|references\/pass\.md)/g;
@@ -65,7 +67,6 @@ describe("x-implement read chain", () => {
   });
 });
 
-const CARD_WORD_LIMIT = 600;
 const CARDS = {
   "x-arch": ["x-review", "x-implement", "x-decompose", "x-fix"],
   "x-unbloat": ["x-review", "x-refactor", "x-implement", "x-fix"],
@@ -75,31 +76,17 @@ const CARDS = {
 
 describe("pass cards", () => {
   for (const [skill, hosts] of Object.entries(CARDS)) {
-    it(`${skill} has a card of at most ${CARD_WORD_LIMIT} words naming every host`, () => {
+    it(`${skill} has a card naming every host`, () => {
       const card = readSkillFile(`${skill}/references/pass.md`);
       assert.ok(card, `${skill}/references/pass.md exists`);
-      assert.ok(wordCount(card) <= CARD_WORD_LIMIT, `${skill} card has ${wordCount(card)} words`);
       for (const host of hosts) assert.match(card, new RegExp(`\\*\\*${host}\\*\\*`), `${skill} card names ${host}`);
     });
   }
 
-  it("no other skill names a carded skill's full body", () => {
-    const offenders = skillTextFiles()
-      .flatMap((rel) => referencedFiles(readSkillFile(rel)).map((ref) => ({ rel, ref })))
-      .filter(namesCardedBodyOfAnotherSkill);
-    assert.deepEqual(offenders, []);
+  it("the real tree has no card over budget and no caller naming a carded body", () => {
+    const result = spawnSync(process.execPath, [LINT, "--root", path.join(__dirname, "..")], { encoding: "utf8" });
+    const hits = JSON.parse(result.stdout).violations.filter((v) => v.rule === "card-budget" || v.rule === "pass-ref");
+    assert.deepEqual(hits, []);
   });
 });
 
-function namesCardedBodyOfAnotherSkill({ rel, ref }) {
-  const [target, file] = ref.split("/");
-  return file === "SKILL.md" && target in CARDS && !rel.startsWith(`${target}/`);
-}
-
-function skillTextFiles() {
-  return fs.readdirSync(SKILLS).flatMap((skill) => {
-    const refsDir = path.join(SKILLS, skill, "references");
-    const refs = fs.existsSync(refsDir) ? fs.readdirSync(refsDir).filter((f) => f.endsWith(".md")).map((f) => `${skill}/references/${f}`) : [];
-    return [`${skill}/SKILL.md`, ...refs].filter((rel) => readSkillFile(rel) !== null);
-  });
-}

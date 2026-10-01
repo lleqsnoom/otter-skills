@@ -250,6 +250,50 @@ export function copyDrift(skillsDir, names) {
   return violations;
 }
 
+const PASS_CARD = "references/pass.md";
+const PASS_CARD_WORD_LIMIT = 600;
+
+const wordCount = (text) => text.split(/\s+/).filter(Boolean).length;
+
+/** SKILL.md and every Markdown file under references/, relative to the skill folder. */
+function skillTextFiles(dir) {
+  const refsDir = path.join(dir, "references");
+  const refs = fs.existsSync(refsDir) ? fs.readdirSync(refsDir).filter((f) => f.endsWith(".md")).map((f) => `references/${f}`) : [];
+  return ["SKILL.md", ...refs].filter((rel) => fs.existsSync(path.join(dir, rel)));
+}
+
+/** Each place `name`'s files cite another carded skill's SKILL.md, with the line it is on. */
+function carriedBodyRefs(dir, name, carded) {
+  return skillTextFiles(dir).flatMap((rel) =>
+    fs
+      .readFileSync(path.join(dir, rel), "utf8")
+      .split(/\r?\n/)
+      .flatMap((line, i) => crossSkillRefs(line).map((ref) => ({ ...ref, at: `${rel}:${i + 1}` })))
+      .filter((ref) => ref.rel === "SKILL.md" && ref.target !== name && carded.has(ref.target)),
+  );
+}
+
+// A pass card lets a host read a short card instead of a skill's whole body. Two moves undo that without any
+// test failing: the card outgrowing its budget, and a caller going back to the full SKILL.md.
+export function passCardProblems(skillsDir, names) {
+  const carded = new Set(names.filter((name) => fs.existsSync(path.join(skillsDir, name, PASS_CARD))));
+  const overBudget = [...carded].flatMap((name) => {
+    const words = wordCount(fs.readFileSync(path.join(skillsDir, name, PASS_CARD), "utf8"));
+    return words > PASS_CARD_WORD_LIMIT
+      ? [{ skill: name, rule: "card-budget", file: PASS_CARD, detail: `${PASS_CARD} has ${words} words; the budget is ${PASS_CARD_WORD_LIMIT}` }]
+      : [];
+  });
+  const bodyRefs = names.flatMap((name) =>
+    carriedBodyRefs(path.join(skillsDir, name), name, carded).map((ref) => ({
+      skill: name,
+      rule: "pass-ref",
+      file: ref.at,
+      detail: `names ${ref.target}/SKILL.md; ${ref.target} has a pass card, so name ${ref.target}/${PASS_CARD}`,
+    })),
+  );
+  return [...overBudget, ...bodyRefs];
+}
+
 export function readmeSkills(readmeText) {
   const set = new Set();
   const re = /^\|\s*`?(x-[a-z0-9-]+)`?\s*\|/gm;
@@ -348,6 +392,7 @@ export function lintRepo(root = REPO_ROOT) {
   }
 
   violations.push(...copyDrift(skillsDir, names));
+  violations.push(...passCardProblems(skillsDir, names));
 
   return { root, skills: names.length, violations };
 }
