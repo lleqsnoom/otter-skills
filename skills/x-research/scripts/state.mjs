@@ -526,10 +526,45 @@ export function renderMemoryLine(entry) {
   return `- [${entry.ts}] ${parts.join(": ")}`;
 }
 
-export function renderResearchMd(state) {
+/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+function vaultNote(target) {
+  const parts = path.resolve(target).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** An artifact's property block: its type, its title, the run hub of `runDir`, and the artifacts it names by key. */
+function propertyBlock(type, title, runDir, links = {}) {
+  const run = vaultNote(path.join(runDir, "index"));
+  const named = Object.entries(links)
+    .map(([key, target]) => [key, target ? vaultNote(target) : null])
+    .filter(([, note]) => note);
+  return [
+    "---",
+    `type: ${type}`,
+    `title: ${JSON.stringify(title)}`,
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...named.map(([key, note]) => `${key}: "[[${note}]]"`),
+    "---",
+    "",
+  ].join("\n");
+}
+
+/** The research report's block: it sits in `<run>/E<nn>-research/`, so its run hub is one folder up. */
+function researchBlock(runDir, kind) {
+  const run = runDir ? path.dirname(runDir) : null;
+  return run ? propertyBlock("research", `${kind} · ${runSlug(run)}`, run) : "";
+}
+
+export function renderResearchMd(state, runDir = null) {
   const dir = state.direction === "minimize" ? "<=" : ">=";
   const lines = [
-    `# Research — ${state.slug}`,
+    `${researchBlock(runDir, "Research")}# Research — ${state.slug}`,
     "",
     `**Goal:** ${state.goal || "(not set)"}`,
     `**Metric:** ${state.metric} (${state.direction} → target ${dir} ${state.target})`,
@@ -581,12 +616,12 @@ export function logLineFor(entry) {
   }${entry.change ? ` — ${cell(entry.change)}` : ""}`;
 }
 
-export function renderFinalReportMd(state) {
+export function renderFinalReportMd(state, runDir = null) {
   const s = summarize(state);
   const v = verify(state);
   const dir = state.direction === "minimize" ? "<=" : ">=";
   const lines = [
-    `# Final report — ${state.slug}`,
+    `${researchBlock(runDir, "Research report")}# Final report — ${state.slug}`,
     "",
     `**Outcome:** ${state.phase === "done" ? "target met" : "escalated (cap reached without meeting target)"}`,
     `**Stop reason:** ${state.stopReason || "(none)"}`,
@@ -671,10 +706,10 @@ function loadState(dir) {
 function persist(dir, state) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "state.json"), `${JSON.stringify(state, null, 2)}\n`);
-  fs.writeFileSync(path.join(dir, "research.md"), renderResearchMd(state));
+  fs.writeFileSync(path.join(dir, "research.md"), renderResearchMd(state, dir));
   fs.writeFileSync(path.join(dir, "results.tsv"), renderResultsTsv(state));
   if (STOP_PHASES.has(state.phase)) {
-    fs.writeFileSync(path.join(dir, "final_report.md"), renderFinalReportMd(state));
+    fs.writeFileSync(path.join(dir, "final_report.md"), renderFinalReportMd(state, dir));
   }
 }
 

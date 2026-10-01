@@ -34,18 +34,18 @@ Layer 3 (Polish)       → Task 3.1: add monitoring + documentation
 
 **Key rule:** After any task completes, the system must be in a working state. You should never have "Task 1 done but nothing runs yet."
 
-**Read the architecture before cutting.** `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) decides placement, naming, responsibility and dependency direction, and `.x-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the effort cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
+**Read the architecture before cutting.** `x-arch` (`~/.agents/skills/x-arch/SKILL.md` for a global install, `.agents/skills/x-arch/SKILL.md` for a local one) decides placement, naming, responsibility and dependency direction, and `.x-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the size cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
 
 ## Triage Rule
 
-A layer is a coherent increment and a task is one step inside it. Some "steps" are not steps at all: they are subsystems with their own contract, their own layers, and their own unknowns. Written as a task file they hand the implementer an interface nobody agreed on and blow the effort cap. Triage is the pass that catches this before a single file exists.
+A layer is a coherent increment and a task is one step inside it. Some "steps" are not steps at all: they are subsystems with their own contract, their own layers, and their own unknowns. Written as a task file they hand the implementer an interface nobody agreed on and blow the size cap. Triage is the pass that catches this before a single file exists.
 
 ```
 candidate from a layer
   ├─ duplicate, or the layer's scope out already covers it ..... drop
-  ├─ own contract / own layers / effort far over the cap ........ plan    (its own x-plan run)
+  ├─ own contract / own layers / size XL ........................ plan    (its own x-plan run)
   ├─ shape unknown: what to build, or why it fails .............. analyze (its own x-analyze run)
-  └─ one change, one check, ≤4h, ≤2 files, no new interface ..... task    (a file in E<nn>-tasks/)
+  └─ one change, one check, size ≤ M, no new interface .......... task    (a file in E<nn>-tasks/)
 ```
 
 **Triage is a reading pass with a verdict — not a second plan, and not implementation.** Per candidate: read the layer entry, search the repository where the candidate lands, walk the signals in `references/triage-rules.md` in order, and stop at the first one that fires. Record the verdict with its reason; `plan` and `analyze` also cite `file:line` or URL evidence, because those two verdicts cost the user a whole run and an uncited decision is a preference.
@@ -102,6 +102,10 @@ node <path-to-triage.mjs> verify --dir <run folder> [--source <artifact>]   # ex
    | `task-file-missing` / `task-file-duplicate` / `orphan-task-file` / `verdict-not-task` | the files in this ledger's own `E<nn>-tasks/` and its `task` verdicts do not match one for one |
    | `bad-name` | a task file is not named `L<N>-T<M>-<slug>.md` |
    | `no-tasks-dir` / `no-report` | the tasks folder or the triage report is missing |
+   | `no-size` / `bad-size` / `no-complexity` / `bad-complexity` | a task's property block has no `size` or `complexity`, or a value outside its scale (see *Size and complexity*) |
+   | `unjustified-l` / `oversize` | a `size: L` with no `complexity_why`, or a `size: XL` — an XL is a plan, not a task |
+
+   The size rows apply to ledgers that record `taskProperties: true`, which every `start` now writes; a ledger started before tasks carried a property block verifies as it always did.
 
    `verify` prints `{ dir, ledger, source, candidates, taskFiles, tasksDir, violations }` and exits 1 on any violation, 2 on a usage error.
 
@@ -133,9 +137,23 @@ The triage report is a live file and the script owns two blocks of it: `## Verdi
 ## Task Format
 
 ```markdown
+---
+type: task
+title: "L<N>-T<M> · <the task name, as in its heading>"
+run: "[[runs/<run folder>/index]]"
+plan: "[[runs/<run folder>/E<nn>-plan]]"
+depends_on:
+  - "[[runs/<run folder>/E<nn>-tasks/L<N>-T<M>-<slug>]]"
+topics:
+  - "[[tags/domain/<a domain tag of the plan>]]"
+  - "[[tags/area/<a module this task touches>]]"
+size: <XS | S | M | L>
+complexity: <clear | complicated | complex>
+complexity_why: <one line a reviewer can check: the pattern it copies, the choice it has to make, or what only trying will tell>
+created: <YYYY-MM-DDThh:mm>
+---
 # Task: <descriptive name — what this task accomplishes>
 **Layer:** <N> — <layer name from the plan>
-**Effort:** <hours, e.g. "2h">
 **Files:** src/<module>/<file>.js (new), tests/<module>.test.<ext> (mod)
 ## Goal
 <1-2 sentences on what this task makes work that didn't work before>
@@ -157,6 +175,41 @@ The triage report is a live file and the script owns two blocks of it: `## Verdi
 <Concrete codebase state required before starting. Describe the state, not task dependencies within the layer.>
 ```
 
+**The block on top is for people and Obsidian, not for the implementer.** `title` is what Obsidian shows on the
+graph node in place of the file name (through the Front Matter Title plugin), so it reads as the task, not its file. Links are quoted wikilinks from the
+`.x-skills` root without `.md` (unquoted, YAML reads `[[x]]` as a nested list). `topics` copies the plan's `domain/` tags, then adds one `area/` tag per module the task's **Files:** touch — a
+workspace package (`apps/<x>`, `packages/<x>`, `skills/<x>`), else the top-level folder under `src/`; tests are not
+counted. Tag notes are not created here: x-plan creates a run's tags, and the backfill creates area tags for work
+that has none yet. `depends_on` lists only the tasks that
+produce a state one of this task's Preconditions describes — never a whole layer — and is `[]` when there are none.
+`done`, `started`, `finished` and `reopened` are not in the template: x-implement's `status.mjs` writes them from the
+Definition of Done boxes, and nobody sets them by hand. `**Layer:**` stays in the body because `status.mjs` reads it
+there.
+
+### Size and complexity
+
+**Size is what the change touches**, checked against the diff afterwards. A *module* is a workspace package in a
+monorepo, otherwise a top-level folder under `src/`; tests do not count.
+
+| Size | Touches | Is it a task? |
+|------|---------|---------------|
+| XS | 1 file | yes |
+| S | 2–3 files in one module | yes |
+| M | 4–10 files in one module | yes — the typical task |
+| L | more than 10 files, more than one module, or a contract change (API, schema, public type) | only with a one-line reason in `complexity_why`; otherwise split it |
+| XL | several contracts, or an unsettled design | no — triage says `plan` |
+
+**Complexity is how much is unknown**, by one question: *could you write the steps before starting?*
+
+| Complexity | Answer | What it means for the work |
+|------------|--------|----------------------------|
+| clear | yes — the repo has a pattern to copy | the agent runs it; a light review is enough |
+| complicated | yes, after a design call between options | the agent proposes, a person checks the decision |
+| complex | no — only trying it will tell | spike or prototype first, a person in the loop |
+
+The two are independent: an XS complex task (one flag with an unknown runtime effect) is riskier than an M clear
+one (an endpoint copied from its sibling). Hours are not estimated: an agent's time does not predict the work.
+
 **The first row is the task's own acceptance criterion; the five below it are the standing bar**, the same for
 every task in every layer: see *Definition of Done* in `x-implement`'s `SKILL.md` for what each one means. A
 task's own rows vary and answer *did we build this?*; the standing rows do not, and answer *is it ready?*. Write
@@ -170,8 +223,8 @@ a task is unfinished, and a bar that lives only in a skill's prose can never be 
 3. **Tasks within a layer are small steps** — A layer might be 1 task (simple change) or 3 tasks (complex change broken into steps). But the layer as a whole is the increment.
 4. **First task of L0 = working prototype** — This is the most important task. It creates a project skeleton where data flows end-to-end with mocks, and a test proves it works. If this task isn't concrete enough, the plan needs more clarity.
 5. **Regression is a DOD item for L1+** — Every task in L1+ must verify that previous layer tests still pass. This is non-negotiable.
-6. **No cross-references between task files** — Each file is self-contained. If Task 1.2 needs context from Task 1.1, inline it. The implementer reads one file and has everything they need. A task that consumes what a child run delivers describes the resulting state (`the physics module is present and its tests pass`), never the run it came from.
-7. **Effort ≤ 4 hours per task, or the cap the plan states** — the default is a working convention, not a measurement: a change that cannot be written and verified in one sitting is exactly where an unstated interface hides, which is what triage is looking for. A plan that carries `constraint: task size ≤ <n>` overrides it. Over the cap a candidate is several tasks, or a `plan` when the size comes from an unsettled contract; triage decides which, and `references/task-rules.md` holds the gates.
+6. **No cross-references between task files** — Each file is self-contained. If Task 1.2 needs context from Task 1.1, inline it. The implementer reads one file and has everything they need. A task that consumes what a child run delivers describes the resulting state (`the physics module is present and its tests pass`), never the run it came from. The property block's links are navigation for people and Obsidian, not context: the body never relies on them, and Preconditions still describe a state, never a task.
+7. **Size ≤ M per task, or the cap the plan states** — an L needs a one-line reason in `complexity_why`, and an XL is not a task: triage says `plan`. The cap is a working convention, not a measurement: a change that touches more than one module or a contract is exactly where an unstated interface hides, which is what triage is looking for. A plan that carries `constraint: task size ≤ <size>` overrides it. Over the cap a candidate is several tasks, or a `plan` when the size comes from an unsettled contract; triage decides which, and `references/task-rules.md` holds the gates.
 
 ### How Many Tasks Per Layer?
 

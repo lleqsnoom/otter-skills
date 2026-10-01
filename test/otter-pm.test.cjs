@@ -410,6 +410,178 @@ test('an artifact names the one it read, and a path that leads nowhere is not a 
   assert.deepEqual(epic.links, [], 'a skeleton placeholder is not a link either');
 });
 
+/**
+ * `test/fixtures/vault` is a `.x-skills` tree that also opens as an Obsidian vault: artifacts that name each other
+ * with wikilink properties, beside a legacy task that names its plan with a bold-label path. Scanned from a copy,
+ * because the folder the board reads is named `.x-skills` and the one in git cannot be.
+ */
+async function scanVault() {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-vault-'));
+  const root = path.join(repo, '.x-skills');
+  fs.cpSync(path.join(__dirname, 'fixtures', 'vault'), root, { recursive: true });
+  const scan = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'scan.mjs')).href);
+  scan.clearParseCache();
+  return scan.scanRoot(root);
+}
+
+/** Every file record the scan holds, wherever a category filed it. */
+function filesOf(project) {
+  const walk = (node) => [...(node.items ?? []), ...(node.files ?? []), ...(node.groups ?? []).flatMap(walk)];
+  return project.categories.flatMap(walk);
+}
+
+const VAULT_RUN = 'runs/2026-09-30-0000-R01-fixture';
+
+function vaultFile(project, relPath) {
+  return filesOf(project).find((file) => file.relPath === relPath);
+}
+
+test('an artifact names the ones it read with wikilink properties, scalar or list', async () => {
+  const project = await scanVault();
+  const task = vaultFile(project, `${VAULT_RUN}/E02-tasks/L0-T2-b.md`);
+
+  assert.deepEqual(task.links, [
+    { label: 'Run', path: `${VAULT_RUN}/index.md`, name: 'index.md' },
+    { label: 'Plan', path: `${VAULT_RUN}/E00-plan.md`, name: 'E00-plan.md' },
+    { label: 'Depends on', path: `${VAULT_RUN}/E02-tasks/L0-T1-a.md`, name: 'L0-T1-a.md' },
+  ], 'an alias is ignored, a list gives one link per item, a task never written is not a link, and tags are not links');
+
+  const review = vaultFile(project, `${VAULT_RUN}/E03-review.md`);
+  assert.deepEqual(
+    review.links.map((link) => [link.label, link.path]),
+    [['Run', `${VAULT_RUN}/index.md`], ['Reviews', `${VAULT_RUN}/E02-tasks/L0-T2-b.md`]],
+  );
+
+  const legacy = vaultFile(project, 'tasks/legacy-task.md');
+  assert.deepEqual(
+    legacy.links.map((link) => [link.label, link.path]),
+    [['Plan', `${VAULT_RUN}/E00-plan.md`]],
+    'a bold-label path still links as it always has',
+  );
+});
+
+test('a task carries its size, complexity and done from its properties, beside its byte size', async () => {
+  const project = await scanVault();
+  const task = vaultFile(project, `${VAULT_RUN}/E02-tasks/L0-T2-b.md`);
+  assert.equal(task.fields.size, 'M');
+  assert.equal(task.fields.complexity, 'complicated');
+  assert.equal(task.fields.done, 'false');
+  assert.equal(typeof task.size, 'number', 'the record’s own size is still the file’s byte count');
+
+  const legacy = vaultFile(project, 'tasks/legacy-task.md');
+  assert.equal(legacy.fields.effort, '3h');
+  assert.equal('size' in legacy.fields, false);
+  assert.equal('complexity' in legacy.fields, false);
+});
+
+test('a property outside its enum, or a block that is not on line 1 or never closes, is not read', async () => {
+  const { propertyFields } = await serverModule('parse');
+  assert.deepEqual(propertyFields('---\nsize: huge\ncomplexity: "clear"\ndone: maybe\n---\n'), { complexity: 'clear' });
+  assert.deepEqual(propertyFields('# Epic\n\n---\nsize: M\n---\n'), {}, 'a horizontal rule is not a property block');
+  assert.deepEqual(propertyFields('---\nsize: M\n'), {}, 'an unclosed block is not one');
+});
+
+/**
+ * Obsidian groups a base's view by one property only, so each view names exactly one. The files are in the form
+ * Obsidian itself saves them in — bare property names, unquoted filter statements — so opening the vault does not
+ * rewrite them. Read as text: the app has no YAML parser of its own, and these files are for Obsidian.
+ */
+test('the vault’s two bases each group one view by one property, in the form Obsidian saves', () => {
+  const base = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', 'vault', name), 'utf8');
+  const groupings = (text) => [...text.matchAll(/^\s+groupBy:\n\s+property: (\S+)$/gm)].map((match) => match[1]);
+
+  const open = base('open-tasks.base');
+  assert.deepEqual(groupings(open), ['size']);
+  assert.match(open, /^ {4}- type == "task"$/m);
+  assert.match(open, /^ {4}- done != true$/m, 'a done task is not an open one');
+  assert.equal((open.match(/^\s+- type: /gm) || []).length, 1);
+
+  const byRun = base('by-run.base');
+  assert.deepEqual(groupings(byRun), ['run']);
+  assert.equal((byRun.match(/^\s+- type: /gm) || []).length, 1);
+});
+
+test('a task card wears its size in place of an effort, and its complexity beside it; a legacy card keeps its hours', async () => {
+  const project = await scanVault();
+  const { searchItemsForProject } = await import(pathToFileURL(path.join(APP_SRC, 'lib', 'items.ts')).href);
+  const items = searchItemsForProject(project);
+  const card = (relPath) => items.find((item) => item.relPath === relPath);
+
+  const task = card(`${VAULT_RUN}/E02-tasks/L0-T2-b.md`);
+  assert.equal(task.size, 'M');
+  assert.equal(task.complexity, 'complicated');
+  assert.ok(task.badges.includes('M'));
+  assert.equal(task.effort, null);
+
+  const legacy = card('tasks/legacy-task.md');
+  assert.equal(legacy.size, null);
+  assert.equal(legacy.complexity, null);
+  assert.ok(legacy.badges.includes('3h'), 'a task written before sizes still shows its hours');
+});
+
+test('a task’s own plan link decides its epic before the run or the slug is guessed from', async () => {
+  const { epicIndex, epicOfTasks } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'epics.mjs')).href);
+  const plan = (run) => ({ name: 'E00-plan.md', title: `${run} plan`, relPath: `runs/${run}/E00-plan.md`, runPath: `runs/${run}`, step: 0 });
+  const index = epicIndex([{ id: 'plan', work: 'epic', items: [plan('A'), plan('B')], groups: [] }]);
+  const tasks = (links) => ({ runPath: 'runs/A', step: 2, name: 'E02-tasks', files: [{ links }] });
+
+  assert.equal(epicOfTasks(index, tasks([{ label: 'Plan', path: 'runs/B/E00-plan.md' }])).relPath, 'runs/B/E00-plan.md', 'the link wins over the run');
+  assert.equal(epicOfTasks(index, tasks([])).relPath, 'runs/A/E00-plan.md', 'with no link, the run decides as before');
+  assert.equal(
+    epicOfTasks(index, tasks([{ label: 'Plan', path: 'runs/B/notes.md' }])).relPath,
+    'runs/A/E00-plan.md',
+    'a link to something that is not an epic falls back to the guess, never to no epic',
+  );
+  assert.equal(
+    epicOfTasks(index, { runPath: null, step: null, name: 'loose-task.md', links: [{ label: 'Plan', path: 'runs/B/E00-plan.md' }] }).relPath,
+    'runs/B/E00-plan.md',
+    'a single task file names its plan with its own links',
+  );
+});
+
+test('a task inside a collection follows its own plan link, not the first one its folder holds', async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-vault-'));
+  const root = path.join(repo, '.x-skills');
+  fs.cpSync(path.join(__dirname, 'fixtures', 'vault'), root, { recursive: true });
+  const other = 'runs/2026-09-29-0000-R01-other';
+  writeFile(path.join(root, other, 'E00-plan.md'), '---\ntype: plan\n---\n# Plan — other\n\n## Layers\n');
+  const moved = path.join(root, VAULT_RUN, 'E02-tasks', 'L0-T2-b.md');
+  fs.writeFileSync(moved, fs.readFileSync(moved, 'utf8').replace(/^plan: .*$/m, `plan: "[[${other}/E00-plan]]"`));
+
+  const scan = await import(pathToFileURL(path.join(ROOT, 'src', 'server', 'scan.mjs')).href);
+  scan.clearParseCache();
+  const { searchItemsForProject } = await import(pathToFileURL(path.join(APP_SRC, 'lib', 'items.ts')).href);
+  const items = searchItemsForProject(scan.scanRoot(root));
+  const epicOf = (name) => items.find((item) => item.relPath === `${VAULT_RUN}/E02-tasks/${name}`).epic?.relPath;
+
+  assert.equal(epicOf('L0-T2-b.md'), `${other}/E00-plan.md`);
+  assert.equal(epicOf('L0-T1-a.md'), `${VAULT_RUN}/E00-plan.md`);
+});
+
+test('a title property names an artifact before its heading does', async () => {
+  const { titleFrom } = await serverModule('parse');
+  assert.equal(titleFrom('---\ntitle: "Review of L2-T1 · x"\n---\n# Code Review — Fix Plan\n', 'E15-review-plan'), 'Review of L2-T1 · x');
+  assert.equal(titleFrom('---\ntitle: ""\n---\n# Plan — kms\n', 'E00-plan'), 'kms', 'an empty title is no title: the heading is read as before');
+  assert.equal(titleFrom('# Epic — kms\n', 'E01-epic'), 'kms', 'a file with no block is named as before');
+});
+
+test('an artifact names its tags with topics, and each tag is a note the board resolves', async () => {
+  const project = await scanVault();
+  const task = vaultFile(project, `${VAULT_RUN}/E02-tasks/L0-T1-a.md`);
+  assert.deepEqual(
+    task.links.filter((link) => link.label === 'Topics').map((link) => link.path),
+    ['tags/domain/fixture-topic.md', 'tags/area/server.md'],
+  );
+  const plan = vaultFile(project, `${VAULT_RUN}/E00-plan.md`);
+  assert.deepEqual(plan.links.filter((link) => link.label === 'Topics').map((link) => link.path), ['tags/domain/fixture-topic.md']);
+});
+
+test('a wikilink is read from the raw line, quoted or not, and a list outside the property block is prose', async () => {
+  const { linkFields } = await serverModule('parse');
+  assert.deepEqual(linkFields('---\nplan: [[runs/R/E00-plan]]\n---\n'), [{ label: 'Plan', value: 'runs/R/E00-plan.md' }]);
+  assert.deepEqual(linkFields('# Plan\n\n**Tasks:**\n- runs/R/E02-tasks/\n'), [], 'a legacy bullet under a bold label is not a link');
+});
+
 test('one artifact read in two places is one hit in search', async () => {
   const { onePerPath } = await import(pathToFileURL(path.join(ROOT, 'src', 'lib', 'board.mjs')).href);
 
@@ -463,6 +635,42 @@ test('the snapshot exposes the fixture repository, and file content is rendered 
 
   const unknown = snapshot.readFileContent('not-a-project', 'runs/nope.md');
   assert.equal(unknown.status, 404);
+});
+
+test('a file read carries its property block as properties, and renders only the body', async () => {
+  const { root, snapshot } = await load();
+  fs.cpSync(path.join(__dirname, 'fixtures', 'vault'), root, { recursive: true });
+  writeFile(path.join(root, 'unsafe.md'), '---\nrelated: "<script>alert(1)</script>"\n---\n# t\n');
+  snapshot.invalidateSnapshot();
+  const project = snapshot.getSnapshot({ force: true }).projects[0];
+
+  const task = snapshot.readFileContent(project.id, `${VAULT_RUN}/E02-tasks/L0-T2-b.md`).body;
+  assert.deepEqual(task.properties.slice(0, 4), [
+    { key: 'type', values: [{ text: 'task', path: null }] },
+    { key: 'run', values: [{ text: 'index', path: `${VAULT_RUN}/index.md` }] },
+    { key: 'plan', values: [{ text: 'the plan', path: `${VAULT_RUN}/E00-plan.md` }] },
+    {
+      key: 'depends_on',
+      values: [
+        { text: 'L0-T1-a', path: `${VAULT_RUN}/E02-tasks/L0-T1-a.md` },
+        { text: 'L0-T9-never-written', path: null },
+      ],
+    },
+  ], 'a wikilink shows its alias or its note name, and links only when the note exists');
+  assert.deepEqual(
+    task.properties.find((entry) => entry.key === 'tags').values.map((value) => value.text),
+    ['x/task', 'area/fixture'],
+  );
+  assert.doesNotMatch(task.html, /type: task/, 'the block is not rendered as body text');
+  assert.match(task.html, /<h1[^>]*>Task: b<\/h1>/);
+  assert.match(task.raw, /^---\ntype: task\n/, 'the editor still gets the whole file');
+
+  const legacy = snapshot.readFileContent(project.id, 'tasks/legacy-task.md').body;
+  assert.deepEqual(legacy.properties, []);
+  assert.match(legacy.html, /<h1[^>]*>Task: legacy<\/h1>/);
+
+  const unsafe = snapshot.readFileContent(project.id, 'unsafe.md').body;
+  assert.deepEqual(unsafe.properties, [{ key: 'related', values: [{ text: '<script>alert(1)</script>', path: null }] }], 'a value is data; the view renders it as text');
 });
 
 test('raw HTML in an artifact is stripped of what could run', async () => {

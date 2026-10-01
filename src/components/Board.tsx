@@ -20,6 +20,7 @@ import type { BoardColumn, BoardDeletions, BoardMoves, BoardOrder, BoardOrders }
 import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
 import { Card, CardHead, CardTitle, Chip, EpicPill, ProgressBar, StatusBadge } from './Card';
+import { ComplexityMark } from './Complexity';
 
 export function WorkCard(props: {
   item: WorkItem;
@@ -83,9 +84,10 @@ export function WorkCard(props: {
         <p class="m-0 line-clamp-2 text-chrome text-muted-foreground">{props.item.excerpt}</p>
       </Show>
 
-      <Show when={props.item.badges.length}>
+      <Show when={props.item.badges.length || props.item.complexity}>
         <div class="flex flex-wrap items-center gap-1">
           <For each={props.item.badges}>{(badge) => <Chip>{badge}</Chip>}</For>
+          <ComplexityMark complexity={props.item.complexity} class="ml-1" />
         </div>
       </Show>
 

@@ -72,7 +72,7 @@ export function layerReport(text) {
   return { layers: headings.length, gaps };
 }
 
-export function createState({ slug, goal = null, root = REPORT_ROOT, now = new Date(), fresh = false, run = null } = {}) {
+export function createState({ slug, goal = null, input = null, topics = [], root = REPORT_ROOT, now = new Date(), fresh = false, run = null } = {}) {
   if (!slug || typeof slug !== "string") throw new Error("slug is required");
   const when = now.toISOString();
   const runDirAbs = resolveRunDir(slug, { now, root, fresh, run });
@@ -81,6 +81,8 @@ export function createState({ slug, goal = null, root = REPORT_ROOT, now = new D
     skill: SKILL,
     slug,
     goal,
+    input,
+    topics,
     createdAt: when,
     updatedAt: when,
     node: START_NODE,
@@ -228,6 +230,88 @@ function writeMemory(dir, state, fromIndex) {
   if (lines) fs.appendFileSync(file, `${lines}\n`);
 }
 
+/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+function vaultNote(target) {
+  const parts = path.resolve(target).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** An artifact's property block: its type, its title, the run hub of `runDir`, the artifacts it names by key, its tags. */
+function propertyBlock(type, title, runDir, links = {}, topics = []) {
+  const run = vaultNote(path.join(runDir, "index"));
+  const named = Object.entries(links)
+    .map(([key, target]) => [key, target ? vaultNote(target) : null])
+    .filter(([, note]) => note);
+  return [
+    "---",
+    `type: ${type}`,
+    `title: ${JSON.stringify(title)}`,
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...named.map(([key, note]) => `${key}: "[[${note}]]"`),
+    ...(topics.length ? ["topics:", ...topics.map((topic) => `  - "[[tags/${topic}]]"`)] : []),
+    "---",
+    "",
+  ].join("\n");
+}
+
+const TOPIC = /^(domain|area)\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const usageError = (message) => Object.assign(new Error(message), { exitCode: 2 });
+
+/** The run's topics from `--topics domain/a,area/b`: each `domain/<name>` or `area/<name>`, at most three domain ones. */
+function parseTopics(value) {
+  if (!value || value === true) return [];
+  const topics = String(value)
+    .split(",")
+    .map((topic) => topic.trim())
+    .filter(Boolean);
+  const bad = topics.find((topic) => !TOPIC.test(topic));
+  if (bad) throw usageError(`topic "${bad}" is not domain/<name> or area/<name> in lower-case kebab-case`);
+  if (topics.filter((topic) => topic.startsWith("domain/")).length > 3) throw usageError("at most three domain topics per run");
+  return topics;
+}
+
+/** The shared base every tag note embeds: what links the note it is embedded in, which makes each tag its own index. */
+const TAG_BASE = `filters:
+  and:
+    - file.hasLink(this.file)
+views:
+  - type: table
+    name: Tagged
+    groupBy:
+      property: type
+      direction: ASC
+    order:
+      - file.name
+      - title
+      - run
+      - size
+      - done
+`;
+
+const tagNote = (topic) => {
+  const [kind, name] = topic.split("/");
+  return `---\ntype: tag\ntitle: "${name} (${kind})"\n---\n# ${name}\n\n![[tag.base]]\n`;
+};
+
+/** Each tag note the topics need, and the shared base, created in the run's vault when missing; never rewritten. */
+function ensureTagNotes(runDir, topics) {
+  const parts = path.resolve(runDir).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  if (at === -1 || !topics.length) return;
+  const vault = parts.slice(0, at + 1).join(path.sep);
+  const files = [["tag.base", TAG_BASE], ...topics.map((topic) => [`tags/${topic}.md`, tagNote(topic)])];
+  for (const [rel, text] of files.filter(([rel]) => !fs.existsSync(path.join(vault, rel)))) {
+    fs.mkdirSync(path.dirname(path.join(vault, rel)), { recursive: true });
+    fs.writeFileSync(path.join(vault, rel), text);
+  }
+}
+
 /**
  * The plan is written before the memory and the state, so a write that fails leaves the node where it
  * was. Committing the state first reported failure for a transition that had already happened.
@@ -236,7 +320,8 @@ function persist(dir, state, { fromIndex, writeReport }) {
   fs.mkdirSync(dir, { recursive: true });
   if (writeReport) {
     const text = reportTextFor(dir, state);
-    const body = upsertScenario(text || `# Plan — ${state.slug}\n`, renderGraphMermaid(state));
+    const head = `${propertyBlock("plan", `Plan · ${runSlug(dir)}`, dir, { input: state.input }, state.topics)}# Plan — ${state.slug}\n`;
+    const body = upsertScenario(text || head, renderGraphMermaid(state));
     fs.writeFileSync(path.join(dir, state.report), body);
   }
   writeMemory(dir, state, fromIndex);
@@ -262,7 +347,7 @@ function usage() {
     "x-plan scenario — graph-driven planning state machine.",
     "",
     "Usage:",
-    "  node scenario.mjs start --slug <s> [--goal <text>] [--root <dir>]",
+    "  node scenario.mjs start --slug <s> [--goal <text>] [--input <analysis or research file>] [--topics domain/<x>,area/<y>] [--root <dir>]",
     "  node scenario.mjs status --dir <dir>",
     "  node scenario.mjs record --dir <dir> --event <kind> [--data <text>] [--target <id>] [--status <s>] [--reason <r>]",
     "  node scenario.mjs record --dir <dir> --to <node>",
@@ -275,15 +360,19 @@ function usage() {
 function commandStart(args) {
   if (!args.slug || args.slug === true) throw new Error("--slug is required");
   const root = args.root === true || !args.root ? REPORT_ROOT : args.root;
+  const topics = parseTopics(args.topics);
   const state = createState({
     slug: args.slug,
     goal: args.goal === true ? null : args.goal,
+    input: args.input === true ? null : (args.input ?? null),
+    topics,
     root,
     fresh: args["new-run"] === true,
     run: args.run === undefined || args.run === true ? null : Number(args.run),
   });
   const dir = state.runDir;
   persist(dir, state, { fromIndex: 0, writeReport: true });
+  ensureTagNotes(dir, topics);
   return { dir, state, node: state.node };
 }
 
@@ -354,7 +443,7 @@ function main() {
     throw new Error(`unknown command "${command}"`);
   } catch (err) {
     process.stderr.write(`${JSON.stringify({ error: err.message })}\n`);
-    process.exit(1);
+    process.exit(err.exitCode ?? 1);
   }
 }
 

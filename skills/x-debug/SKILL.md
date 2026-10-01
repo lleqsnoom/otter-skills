@@ -23,6 +23,9 @@ This creates:
 - `<run folder>/E<nn>-debug.md` — debug session doc (required for x-fix handoff)
 - `<run folder>/E<nn>-fix-plan.md` — fix plan (required input for x-fix skill)
 
+Both start with a property block: the session is `type: debug` and links the brief or review named by `--fixes`, and
+the fix plan is `type: fix` and links the session it was written from — so the run reads as one chain in Obsidian.
+
 **Never skip this step.** It is required even for behavioral bugs with no stack trace (e.g., "SSE event not triggered", "wrong value displayed"). analyze.mjs will create empty hypothesis lists in that case, but the docs MUST exist before any further work.
 
 ## Usage
@@ -31,6 +34,7 @@ This creates:
 node <path-to>/scripts/analyze.mjs --error "TypeError: Cannot read property 'foo' of undefined" [--file src/main.js]
 node <path-to>/scripts/analyze.mjs --context . [--session-id my-session]
 node <path-to>/scripts/analyze.mjs --no-reproduce --error "..."  # skip auto-reproduction
+node <path-to>/scripts/analyze.mjs --error "..." --fixes <run folder>/E<nn>-triage.md  # link the brief or review this session answers
 ```
 
 **Output**: Debug session and fix plan as `E<nn>-` artifacts in one run folder under `.x-skills/runs/`.

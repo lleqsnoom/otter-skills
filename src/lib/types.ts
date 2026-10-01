@@ -184,6 +184,17 @@ export interface OrcaSource {
   reason: string | null;
 }
 
+/** One value of an artifact's property block: its text, and the note it links to when that note is in the project. */
+export interface PropertyValue {
+  text: string;
+  path: string | null;
+}
+
+export interface FileProperty {
+  key: string;
+  values: PropertyValue[];
+}
+
 export interface FileContent {
   projectId: string;
   relPath: string;
@@ -199,6 +210,8 @@ export interface FileContent {
   /** Whether the app may write this file back — decided on the server, where the text set lives. */
   editable: boolean;
   html: string | null;
+  /** The leading property block, lifted out of `html`; empty when the file has none. */
+  properties: FileProperty[];
   raw: string;
   truncated: boolean;
   size: number;

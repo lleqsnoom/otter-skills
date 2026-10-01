@@ -63,6 +63,13 @@ Ask a `single` panel: "Does it happen every time, or only sometimes?", with thes
 When all fields are populated, write `<run folder>/E<nn>-triage.md`:
 
 ```markdown
+---
+type: triage
+title: "Triage · <the run's topic>"
+run: "[[runs/<run folder>/index]]"
+topics:
+  - "[[tags/domain/<what the bug is about, an existing tag where one fits>]]"
+---
 # Triage Brief — <session-id>
 
 **Platform:** web | mobile | tv | backend | gaming

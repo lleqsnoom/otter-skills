@@ -6,6 +6,7 @@ import { Marked } from 'marked';
 import { resolveRoots } from './config.mjs';
 import { boardForProject } from './board.mjs';
 import { highlightCode, highlightFence, languageForFile } from './highlight.mjs';
+import { parseWikilink, splitProperties } from './parse.mjs';
 import { clearParseCache, scanRoot, TEXT_EXTENSIONS } from './scan.mjs';
 
 const SNAPSHOT_TTL_MS = 4000;
@@ -137,6 +138,14 @@ function locate(projectId, relPath) {
   return { project, full, stat, extension: extname(full).toLowerCase() };
 }
 
+/** A property value as the view shows it: a wikilink becomes a path only when that note is in the project. */
+function propertyValue(root, value) {
+  const link = parseWikilink(value);
+  if (!link) return { text: value, path: null };
+  const exists = insideRoot(root, link.path) && statSync(join(root, link.path), { throwIfNoEntry: false })?.isFile();
+  return { text: link.text, path: exists ? link.path : null };
+}
+
 export function readFileContent(projectId, relPath) {
   const found = locate(projectId, relPath);
   if (found.status) return found;
@@ -157,7 +166,12 @@ export function readFileContent(projectId, relPath) {
   // extension is one that says nothing (`.txt`, `.csv`). `null` here means plain text, which is a real answer.
   const dialect = isMarkdown ? { language: null, detected: false } : languageForFile(text, extension.replace('.', ''));
   const highlighted = isMarkdown ? null : highlightCode(text, dialect.language, { detected: dialect.detected });
-  const html = isMarkdown ? scrub(markdown.parse(text)) : (highlighted?.html ?? null);
+  const { properties, body } = isMarkdown ? splitProperties(text) : { properties: [], body: text };
+  const shownProperties = properties.map(({ key, values }) => ({
+    key,
+    values: values.map((value) => propertyValue(found.project.root, value)),
+  }));
+  const html = isMarkdown ? scrub(markdown.parse(body)) : (highlighted?.html ?? null);
 
   return {
     status: 200,
@@ -177,6 +191,8 @@ export function readFileContent(projectId, relPath) {
        */
       editable: TEXT_EXTENSIONS.has(extension) && !truncated,
       html,
+      /** The leading property block, lifted out of `html` so the view can show it as data rather than as prose. */
+      properties: shownProperties,
       raw: text,
       truncated,
       size: stat.size,

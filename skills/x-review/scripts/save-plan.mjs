@@ -27,6 +27,7 @@ function parseArgs(argv) {
     else if (argv[i] === "--branch" && i + 1 < argv.length) args.branch = argv[++i];
     else if (argv[i] === "--new-run") args.newRun = true;
     else if (argv[i] === "--run" && i + 1 < argv.length) args.run = argv[++i];
+    else if (argv[i] === "--reviews" && i + 1 < argv.length) args.reviews = argv[++i];
   }
   return args;
 }
@@ -264,13 +265,63 @@ function generatePlanHeader(stats, branch, failed = []) {
   return lines.join("\n");
 }
 
+/** The `topics` items of a file's leading property block, as written; none when it has no block or no topics. */
+function topicsOf(file) {
+  if (!file || !fs.existsSync(file)) return [];
+  const lines = fs.readFileSync(file, "utf8").split("\n");
+  const end = lines[0]?.trim() === "---" ? lines.findIndex((line, index) => index > 0 && line.trim() === "---") : -1;
+  const start = lines.findIndex((line, index) => index > 0 && index < end && line === "topics:");
+  if (start === -1) return [];
+  const rest = lines.slice(start + 1, end);
+  const stop = rest.findIndex((line) => !/^\s+-\s/.test(line));
+  return stop === -1 ? rest : rest.slice(0, stop);
+}
+
+/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+function vaultNote(target) {
+  const parts = path.resolve(target).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** A note's file name as words: `L0-T2-some-task` reads `L0-T2 · some task`, `E00-plan` reads `plan`. */
+function noteLabel(note) {
+  const name = path.basename(note).replace(/\.md$/, "");
+  const task = name.match(/^(L\d+-T\d+)-(.+)$/);
+  if (task) return `${task[1]} · ${task[2].replace(/-/g, " ")}`;
+  return name.replace(/^E\d+-/, "").replace(/[-_]/g, " ");
+}
+
+/** The plan's property block: a review, its title, the run hub it belongs to, and what it reviewed when that is in the vault. */
+function propertyBlock(runDir, reviewed) {
+  const run = vaultNote(path.join(runDir, "index"));
+  const target = reviewed ? vaultNote(reviewed) : null;
+  const topics = target ? topicsOf(reviewed) : [];
+  const title = target ? `Review of ${noteLabel(target)}` : `Review · ${runSlug(runDir)}`;
+  return [
+    "---",
+    "type: review",
+    `title: ${JSON.stringify(title)}`,
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...(target ? [`reviews: "[[${target}]]"`] : []),
+    ...(topics.length ? ["topics:", ...topics] : []),
+    "---",
+    "",
+  ].join("\n");
+}
+
 // ── Main ──────────────────────────────────────────────────────────────
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (!args.output && !args.slug) {
-    console.error("Usage: node save-plan.mjs [--output <dir> | --slug <topic>] [--branch <name>]");
+    console.error("Usage: node save-plan.mjs [--output <dir> | --slug <topic>] [--branch <name>] [--reviews <task or plan file>]");
     process.exit(1);
   }
 
@@ -300,7 +351,7 @@ function main() {
   const failed = [complexity, duplication, patterns].filter((run) => !run.ok);
   const header = generatePlanHeader(stats, branch, failed);
 
-  fs.writeFileSync(fullPath, header + "\n\n---\n\n## Issues (fill in during review)\n");
+  fs.writeFileSync(fullPath, propertyBlock(dir, args.reviews) + header + "\n\n---\n\n## Issues (fill in during review)\n");
   console.log(fullPath);
 }
 

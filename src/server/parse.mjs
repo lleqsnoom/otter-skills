@@ -11,6 +11,9 @@ const TITLE_PREFIXES = [
 ];
 
 export function titleFrom(markdown, fallback) {
+  // A title the artifact gives itself is the name Obsidian shows too, so the board and the graph agree.
+  const named = splitProperties(markdown).properties.find((property) => property.key === 'title')?.values[0];
+  if (named) return named;
   const heading = markdown.match(/^#\s+(.+)$/m);
   if (!heading) return fallback;
   let title = heading[1].trim();
@@ -131,7 +134,8 @@ export function stageStep(name) {
  * named in the artifact it fed (`**Input:**`). Reading them is what turns "the plan came from this analysis" into
  * something a reader can follow, so the keys are listed rather than guessed at — including the keys only a legacy
  * artifact wrote (`spec:` was the handshake the retired `x-epic` used; `epic:` is what a legacy document was named
- * back by).
+ * back by). The last six are only ever written as properties: an edge between tasks, a review or a fix and what it
+ * answers, the run's hub note, and the tag notes an artifact is about.
  */
 const LINK_FIELDS = new Map([
   ['input', 'Input'],
@@ -142,6 +146,12 @@ const LINK_FIELDS = new Map([
   ['analysis', 'Analysis'],
   ['source', 'Source'],
   ['from', 'From'],
+  ['depends_on', 'Depends on'],
+  ['reviews', 'Reviews'],
+  ['fixes', 'Fixes'],
+  ['related', 'Related'],
+  ['run', 'Run'],
+  ['topics', 'Topics'],
 ]);
 
 /**
@@ -160,21 +170,118 @@ function cleanLinkValue(value) {
     .trim();
 }
 
+const FIELD_LINE = /^\s*(?:\*\*)?([A-Za-z][A-Za-z /_-]*?)(?:\*\*)?:\s*(?:\*\*)?\s*(.*)$/;
+const LIST_ITEM = /^\s*-\s+(.+)$/;
+const WIKILINK = /^\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]$/;
+
 /**
- * The artifacts one document names, in the order they were written: `{ label, value }` with the value as the
- * document spelled it. Whether the path leads anywhere is the caller's question — it is the one holding the root.
+ * A wikilink as a path from the vault root and the text it is shown as. Obsidian writes `[[runs/R/E00-plan]]` with no
+ * extension, maybe a heading (`#…`) and an alias (`|the plan`); the path gets `.md` and the text is the alias, else the
+ * note's own name. Anything that is not a wikilink is `null`.
+ */
+export function parseWikilink(value) {
+  const match = String(value).trim().match(WIKILINK);
+  if (!match) return null;
+  const note = match[1].trim();
+  return { path: /\.[a-z0-9]+$/i.test(note) ? note : `${note}.md`, text: match[2]?.trim() || note.split('/').pop() };
+}
+
+function linkTarget(value) {
+  const cleaned = cleanLinkValue(value);
+  return parseWikilink(cleaned)?.path ?? cleaned;
+}
+
+/** The line that closes a leading `---` property block, or -1 when the document has none. */
+function propertyBlockEnd(lines) {
+  if (lines[0]?.trim() !== '---') return -1;
+  return lines.findIndex((line, index) => index > 0 && line.trim() === '---');
+}
+
+/** The values a card may show for each property it reads; anything else a file says is not carried. */
+const PROPERTY_VALUES = {
+  size: new Set(['XS', 'S', 'M', 'L', 'XL']),
+  complexity: new Set(['clear', 'complicated', 'complex']),
+  done: new Set(['true', 'false']),
+};
+
+/** The card's properties from the leading `---` block, each kept only when it is one of its allowed values. */
+export function propertyFields(markdown) {
+  return Object.fromEntries(
+    splitProperties(markdown)
+      .properties.filter(({ key, values }) => values.length === 1 && PROPERTY_VALUES[key]?.has(values[0]))
+      .map(({ key, values }) => [key, values[0]]),
+  );
+}
+
+/**
+ * The leading `---` block as `{ key, values }` in the order it was written, and the document after it. A value is
+ * returned as written, quotes aside: the block is the file's own data, and what to make of it is the reader's call.
+ */
+export function splitProperties(markdown) {
+  const lines = markdown.split('\n');
+  const end = propertyBlockEnd(lines);
+  if (end === -1) return { properties: [], body: markdown };
+  return { properties: propertyEntries(lines.slice(1, end)), body: lines.slice(end + 1).join('\n') };
+}
+
+function propertyEntries(lines) {
+  const entries = [];
+  for (const line of lines) {
+    const item = line.match(LIST_ITEM);
+    const field = !item && line.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+    if (item && entries.length) entries.at(-1).values.push(unquote(item[1]));
+    if (field) entries.push({ key: field[1], values: inlineValues(field[2].trim()) });
+  }
+  return entries;
+}
+
+/** `[]` and `[a, b]` are YAML's inline lists; `[[x]]` is a wikilink written without its quotes, so it is one value. */
+function inlineValues(value) {
+  if (!value) return [];
+  const list = !value.startsWith('[[') && value.match(/^\[(.*)\]$/);
+  if (!list) return [unquote(value)];
+  return list[1].split(',').map((part) => unquote(part.trim())).filter(Boolean);
+}
+
+function unquote(value) {
+  return value.trim().replace(/^(["'])(.*)\1$/, '$2');
+}
+
+/**
+ * The `key: value` pairs of a header. Inside the leading `---` property block a bare `key:` opens a YAML list, one
+ * pair per `- item` under it; outside it a bullet is prose, so a legacy document's lists never turn into links.
+ */
+function headerEntries(lines) {
+  const closing = propertyBlockEnd(lines);
+  const entries = [];
+  let listKey = null;
+  lines.forEach((line, index) => {
+    const item = listKey && line.match(LIST_ITEM);
+    if (item) {
+      entries.push([listKey, item[1]]);
+      return;
+    }
+    const field = line.match(FIELD_LINE);
+    const value = field?.[2].trim();
+    listKey = field && !value && index < closing ? field[1] : null;
+    if (value) entries.push([field[1], value]);
+  });
+  return entries;
+}
+
+/**
+ * The artifacts one document names, in the order they were written: `{ label, value }` with the value as a path from
+ * the vault root or as the document spelled it. Whether the path leads anywhere is the caller's question — it is the
+ * one holding the root.
  */
 export function linkFields(markdown) {
   const found = [];
   const seen = new Set();
   // The header is where a stage names its input; a `Plan:` further down is prose about a plan.
-  const lines = markdown.split('\n').slice(0, 60);
-  for (const line of lines) {
-    const match = line.match(/^\s*(?:\*\*)?([A-Za-z][A-Za-z /_-]*?)(?:\*\*)?:\s*(?:\*\*)?\s*(.+)$/);
-    if (!match) continue;
-    const label = LINK_FIELDS.get(match[1].trim().toLowerCase().replace(/\s+/g, '-'));
+  for (const [key, raw] of headerEntries(markdown.split('\n').slice(0, 60))) {
+    const label = LINK_FIELDS.get(key.trim().toLowerCase().replace(/\s+/g, '-'));
     if (!label) continue;
-    const value = cleanLinkValue(match[2]);
+    const value = linkTarget(raw);
     if (!value || !LINK_VALUE.test(value) || seen.has(value)) continue;
     seen.add(value);
     found.push({ label, value });

@@ -1,8 +1,8 @@
 /**
  * Epics, and the tasks that belong to them.
  *
- * An epic and the work it was split into are written by two skills and neither document names the other, so the link
- * is read from the tree. There are exactly two ways the two meet:
+ * A task written with a property block names its plan (`plan: "[[runs/<run>/E00-plan]]"`), and that link decides.
+ * Older tasks name nothing, so for them the link is read from the tree. There are exactly two ways the two meet:
  *
  * - **The same run.** A run numbers its epic `E<nn>-epic.md` and its tasks `E<nn>-tasks/` at different rungs, so the
  *   run folder is the identity both carry (`runPath`) and the rungs are what say whose tasks they are.
@@ -139,9 +139,27 @@ export function epicOfSelf(index, subject) {
 }
 
 /**
+ * The plan a subject names with its own `plan` link: a file's own links, or the links of the files a collection holds.
+ *
+ * @param {EpicSubject & { links?: { label: string, path: string }[], files?: { links?: { label: string, path: string }[] }[] }} subject
+ * @returns {string | null}
+ */
+function linkedPlan(subject) {
+  const links = subject.links ?? (subject.files ?? []).flatMap((file) => file.links ?? []);
+  return links.find((link) => link.label === 'Plan')?.path ?? null;
+}
+
+/** The indexed epic a subject's own `plan` link names, or `null` when it names none or names something else. */
+function linkedEpic(index, subject) {
+  const named = linkedPlan(subject);
+  return named ? ([...index.values()].find((epic) => epic.relPath === named) ?? null) : null;
+}
+
+/**
  * The epic a task collection belongs to.
  *
- * Two rules, and they are the two ways an epic and its work meet:
+ * A `plan` link the task itself wrote wins. Without one, two rules, and they are the two ways an epic and its work
+ * meet:
  *
  * - **By slug**, for work filed in a folder of its own: `tasks/<stamp>-<slug>/` belongs to `epics/<stamp>-<slug>.md`
  *   however far apart the two stamps are.
@@ -157,6 +175,8 @@ export function epicOfSelf(index, subject) {
  * @returns {EpicRef | null}
  */
 export function epicOfTasks(index, subject) {
+  const linked = linkedEpic(index, subject);
+  if (linked) return linked;
   if (!subject.runPath) return index.get(epicKey(null, null, subject.name)) ?? null;
   const above = [...index.values()].filter(
     (epic) => epic.runPath === subject.runPath && epic.step != null && subject.step != null && epic.step < subject.step,

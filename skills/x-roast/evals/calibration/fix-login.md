@@ -1,6 +1,6 @@
 # Task — Fix the login bug
 
-**Estimate:** 1 h, should be quick
+**Size:** XS · **Complexity:** clear — should be quick
 
 Users say login is broken sometimes. bcrypt only uses the first 72 bytes of a password, so long
 passwords are the likely cause. Switch password hashing from bcrypt to SHA-256, which has no length

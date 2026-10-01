@@ -235,6 +235,8 @@ export function createLedger(runDir, { slug = null, source = null, now = new Dat
     updatedAt: now.toISOString(),
     dir: displayPath(dirAbs),
     report: path.basename(reportAbs),
+    /** Tasks cut under this ledger carry a property block, so `verify` holds their size and complexity to the scales. */
+    taskProperties: true,
     verdicts: [],
   };
 }
@@ -510,6 +512,43 @@ export function fileMatchViolations(ledger, byId, tasksDir) {
   return violations;
 }
 
+const TASK_SIZES = new Set(["XS", "S", "M", "L", "XL"]);
+const TASK_COMPLEXITIES = new Set(["clear", "complicated", "complex"]);
+
+/** The `key: value` scalars of a task's leading `---` block, quotes stripped; empty when it has none. */
+export function taskProperties(text) {
+  const lines = text.split("\n");
+  if (lines[0]?.trim() !== "---") return {};
+  const end = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
+  if (end === -1) return {};
+  return Object.fromEntries(
+    lines
+      .slice(1, end)
+      .map((line) => line.match(/^([a-z_]+):\s*(.*)$/))
+      .filter(Boolean)
+      .map(([, key, value]) => [key, value.trim().replace(/^(["'])(.*)\1$/, "$2")]),
+  );
+}
+
+/** Each check a task's property block must pass: the rule, when it fires, and what it says. */
+const SIZE_RULES = [
+  ["no-size", ({ size }) => !size, () => "a task names its size: XS, S, M or L"],
+  ["bad-size", ({ size }) => size && !TASK_SIZES.has(size), ({ size }) => `size "${size}" is not XS, S, M, L or XL`],
+  ["no-complexity", ({ complexity }) => !complexity, () => "a task names its complexity: clear, complicated or complex"],
+  [
+    "bad-complexity",
+    ({ complexity }) => complexity && !TASK_COMPLEXITIES.has(complexity),
+    ({ complexity }) => `complexity "${complexity}" is not clear, complicated or complex`,
+  ],
+  ["unjustified-l", ({ size, complexity_why: why }) => size === "L" && !why, () => "an L carries its reason in complexity_why"],
+  ["oversize", ({ size }) => size === "XL", () => "an XL is a plan, not a task: triage it again"],
+];
+
+/** What one task's size and complexity say against the scales the template writes them on. */
+export function sizeViolations(name, properties) {
+  return SIZE_RULES.filter(([, fires]) => fires(properties)).map(([rule, , detail]) => ({ rule, file: name, detail: detail(properties) }));
+}
+
 /**
  * Triage is complete when every candidate carries a verdict with a reason, every
  * `plan` and `analyze` verdict names a child run that exists and holds an artifact,
@@ -529,6 +568,9 @@ export function computeViolations(ledger, { reportText = "", tasksDir = null, fi
   const files = taskFiles(tasksDir);
   const { violations: naming, byId } = taskFileIds(files);
   violations.push(...naming, ...fileMatchViolations(ledger, byId, tasksDir));
+  if (ledger.taskProperties) {
+    violations.push(...files.flatMap((name) => sizeViolations(name, taskProperties(fs.readFileSync(path.join(tasksDir, name), "utf8")))));
+  }
   return { violations, files };
 }
 

@@ -68,7 +68,7 @@ and the finding says which it is.
 | Dimension | Weight | Anchor |
 |-----------|:------:|--------|
 | `testability` | 3 | The definition of done can be verified by a third party with a command or check. A 1 means completion is a matter of opinion. |
-| `estimation` | 2 | Effort/scope estimate is justified against comparable work. A 1 means the estimate is a guess with no basis. |
+| `estimation` | 2 | The task's `size` matches what it touches (XS 1 file · S 2–3 · M 4–10 in one module · L beyond, or a contract change) and `complexity_why` gives a reason a reviewer can check. A 1 means the size or complexity is missing, or contradicts the task's own **Files:** list. |
 
 ### `spec` — adds
 | Dimension | Weight | Anchor |

@@ -3,7 +3,7 @@
 
 /**
  * x-debug analyzer — evidence-based root cause analysis.
- * Usage: node analyze.mjs --error "msg" [--file src.js] [--slug topic] [--no-reproduce]
+ * Usage: node analyze.mjs --error "msg" [--file src.js] [--slug topic] [--no-reproduce] [--fixes <brief or review>]
  * Writes every artifact into .x-skills/runs/<stamp>-R<nn>-<slug>/.
  */
 
@@ -123,7 +123,7 @@ const REPRO_TEMPLATES = {
 function parseArgs(argv) {
   const args = argv.slice(2);
   let errorText = null, targetFile = null, contextDir = ".", sessionId = null, slug = null, reproduce = true;
-  let newRun = false, run = null;
+  let newRun = false, run = null, fixes = null;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--error" && i + 1 < args.length) errorText = args[++i];
     else if (args[i] === "--file" && i + 1 < args.length) targetFile = args[++i];
@@ -133,9 +133,10 @@ function parseArgs(argv) {
     else if (args[i] === "--new-run") newRun = true;
     else if (args[i] === "--run" && i + 1 < args.length) run = Number(args[++i]);
     else if (args[i] === "--no-reproduce") reproduce = false;
+    else if (args[i] === "--fixes" && i + 1 < args.length) fixes = args[++i];
     else if (!args[i].startsWith("--")) targetFile = args[i];
   }
-  return { errorText, targetFile, contextDir, sessionId, slug, reproduce, fresh: newRun, run };
+  return { errorText, targetFile, contextDir, sessionId, slug, reproduce, fresh: newRun, run, fixes };
 }
 
 function matchPatterns(errorText) {
@@ -179,13 +180,40 @@ function reproduceLocally(errorText, targetFile, runDir) {
   }
 }
 
-function generateSession(errorText, matches, targetFile, sessionId, runDir) {
+/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+function vaultNote(target) {
+  const parts = path.resolve(target).split(path.sep);
+  const at = parts.lastIndexOf(".x-skills");
+  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
+function runSlug(runDir) {
+  return path.basename(path.resolve(runDir)).replace(/^\d{4}-\d{2}-\d{2}-\d{4}-R\d+-/, "");
+}
+
+/** An artifact's property block: its type, its title, the run hub it belongs to, and what it answers when that is in the vault. */
+function propertyBlock(type, title, runDir, fixes) {
+  const run = vaultNote(path.join(runDir, "index"));
+  const target = fixes ? vaultNote(fixes) : null;
+  return [
+    "---",
+    `type: ${type}`,
+    `title: ${JSON.stringify(title)}`,
+    ...(run ? [`run: "[[${run}]]"`] : []),
+    ...(target ? [`fixes: "[[${target}]]"`] : []),
+    "---",
+    "",
+  ].join("\n");
+}
+
+function generateSession(errorText, matches, targetFile, sessionId, runDir, fixes = null) {
   fs.mkdirSync(runDir, { recursive: true });
   const prefix = nextE(runDir);
   const fileName = `${prefix}-debug`;
   const filePath = path.join(runDir, fileName + ".md");
 
-  let md = "# Debug Session\n\n**Error:** `" + errorText + "`\n";
+  let md = propertyBlock("debug", `Debug · ${runSlug(runDir)}`, runDir, fixes) + "# Debug Session\n\n**Error:** `" + errorText + "`\n";
   if (targetFile) md += "**File:** " + path.relative(process.cwd(), targetFile) + "\n";
   md += "\n## Hypotheses\n";
   for (const m of matches) md += "- **" + m.category + "**: " + m.description + "\n";
@@ -195,12 +223,12 @@ function generateSession(errorText, matches, targetFile, sessionId, runDir) {
   return { sessionId: fileName, reportPath: filePath, errorText, matches };
 }
 
-function exportFixPlan(errorText, matches, targetFile, sessionId, confirmed, runDir) {
+function exportFixPlan(errorText, matches, targetFile, sessionId, confirmed, runDir, sessionPath = null) {
   if (confirmed === undefined) confirmed = false;
   fs.mkdirSync(runDir, { recursive: true });
   const filePath = path.join(runDir, nextE(runDir) + "-fix-plan.md");
 
-  let plan = "# Fix Plan\n\n**Error:** `" + errorText + "`\n\n";
+  let plan = propertyBlock("fix", `Fix plan · ${runSlug(runDir)}`, runDir, sessionPath) + "# Fix Plan\n\n**Error:** `" + errorText + "`\n\n";
   if (!confirmed) {
     plan += "## Test Hypotheses First\n";
     for (const m of matches) {
@@ -249,8 +277,8 @@ async function main() {
     }
   }
 
-  const session = generateSession(errorText, matches, targetResolved, sessionId, runDir);
-  const fixPlan = exportFixPlan(errorText, matches, targetResolved, sessionId, false, runDir);
+  const session = generateSession(errorText, matches, targetResolved, sessionId, runDir, args.fixes);
+  const fixPlan = exportFixPlan(errorText, matches, targetResolved, sessionId, false, runDir, session.reportPath);
 
   console.log(JSON.stringify(Object.assign({}, session, { fixPlanPath: fixPlan.filePath, rootCauseConfirmed: false, reproduction: reproResult }), null, 2));
   process.stderr.write("\nDebug session: " + session.reportPath + "\nFix plan: " + fixPlan.filePath + "\n");

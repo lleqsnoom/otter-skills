@@ -2,7 +2,7 @@ import { createMemo, For, Show } from 'solid-js';
 
 import { isDeleted } from '../lib/board.mjs';
 import { epicIndex, epicOfTasks } from '../lib/epics.mjs';
-import { formatDate, relativeTime } from '../lib/items';
+import { complexityOf, formatDate, relativeTime, sizeOf } from '../lib/items';
 import { navigate, routeGroupFile } from '../lib/router';
 import type { BoardDeletions, FileRef, Group, Project } from '../lib/types';
 import { Badge } from '../ui/Badge';
@@ -10,6 +10,7 @@ import { Button } from '../ui/Button';
 import { Artifact } from './Artifact';
 import { Breadcrumbs, rootCrumb } from './Breadcrumbs';
 import { EpicPill, ProgressBar, StatusBadge } from './Card';
+import { ComplexityMark } from './Complexity';
 import { Reads } from './Reads';
 
 const PREFERRED = ['plan', 'analysis', 'epic', 'summary', 'investigate', 'triage', 'review', 'reflection', 'doc'];
@@ -161,6 +162,8 @@ function ArtifactList(props: {
                   <Show when={file.layer !== null}>
                     <Badge tone="unknown">L{file.layer}</Badge>
                   </Show>
+                  <Show when={sizeOf(file)}>{(size) => <Badge tone="unknown">{size()}</Badge>}</Show>
+                  <ComplexityMark complexity={complexityOf(file)} />
                 </span>
                 <Show when={file.progress?.total}>
                   <ProgressBar progress={file.progress} class="col-span-2" />

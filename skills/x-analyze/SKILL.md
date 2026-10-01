@@ -42,7 +42,7 @@ graph LR
 ```
 
 ```bash
-node <skill>/scripts/scenario.mjs start --slug <slug>
+node <skill>/scripts/scenario.mjs start --slug <slug> [--topics domain/<x>,area/<y>]   # reuse existing tags in .x-skills/tags/ where one fits
 node <skill>/scripts/scenario.mjs record --dir <dir> --event research --data "<finding>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --event evidence --data "<claim>" --target "<file:line|url>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --to <node>
@@ -163,13 +163,15 @@ Once you have enough information (or the user confirms they want to proceed with
 **What:** <specific change or fix described clearly>
 **Where:** <file(s) and location>
 **Risk:** <low / medium / high — what could break>
-**Effort:** <small / medium / large — time estimate>
+**Size:** <XS 1 file · S 2–3 files · M 4–10 files in one module · L beyond, more than one module, or a contract change · XL several contracts — tests not counted>
+**Complexity:** <clear — a pattern to copy · complicated — a design call between options · complex — only trying it tells> — <one line a reviewer can check>
 
 ### Option B: <alternative, if applicable>
 **What:** ...
 **Where:** ...
 **Risk:** ...
-**Effort:** ...
+**Size:** ...
+**Complexity:** ...
 
 ## Decision
 <What the user chose to do — fix now, create tasks, gather more info, or defer>
