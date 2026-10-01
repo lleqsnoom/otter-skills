@@ -65,6 +65,7 @@ const CARD_WORD_LIMIT = 600;
 const CARDS = {
   "x-arch": ["x-review", "x-implement", "x-decompose", "x-fix"],
   "x-unbloat": ["x-review", "x-refactor", "x-implement", "x-fix"],
+  "x-comments": ["x-review", "x-implement", "x-fix"],
 };
 
 describe("pass cards", () => {
