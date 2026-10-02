@@ -143,6 +143,19 @@ describe("x-autoreflection stall signals", async () => {
     assert.equal(scan.signals.some((signal) => signal.kind === "blocking-wait"), false);
   });
 
+  it("stays quiet on a look at a running job that asked not to wait", () => {
+    const session = transcript([
+      { role: "user", parts: [text(OPENING)] },
+      { role: "assistant", parts: [call("c1", "bash", { command: "npm run dev" })] },
+      { role: "tool", parts: [result("c1", "bash", "Background shell started with ID: 2E8")] },
+      { role: "assistant", parts: [call("c2", "job_output", { shell_id: "2E8", wait: false })] },
+      { role: "tool", parts: [result("c2", "job_output", "Status: running\n\n▲ Next.js - Local: https://localhost:3003")] },
+      { role: "assistant", parts: [text("The server is on 3003; setting the cookie next.")] },
+    ]);
+    const scan = mod.scanSession(normalized(session), { skillNames: [] });
+    assert.equal(scan.signals.some((signal) => signal.kind === "blocking-wait"), false);
+  });
+
   it("names the skill whose script the parked command runs", () => {
     const session = transcript([
       { role: "user", parts: [text(OPENING)] },
