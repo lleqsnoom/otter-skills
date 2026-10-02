@@ -1,8 +1,18 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, normalize, relative, resolve, sep } from 'node:path';
 
-import { defaultRun } from './create.mjs';
 import { TEXT_EXTENSIONS } from './scan.mjs';
+
+/** `run(command, args, { cwd }) -> { status, stdout, stderr }`. */
+function defaultRun(command, args, { cwd = process.cwd() } = {}) {
+  const done = spawnSync(command, args, { cwd, encoding: 'utf8' });
+  return {
+    status: done.status ?? 1,
+    stdout: done.stdout ?? '',
+    stderr: done.stderr || done.error?.message || '',
+  };
+}
 
 /**
  * The repository as a whole, which is what an agent needs and what the board never reads: the board's scanner stops

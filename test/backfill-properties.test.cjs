@@ -148,7 +148,7 @@ test('a task gains the code areas its Files touch, and the vault the tag notes f
   const { repo, root } = repository();
   writeFile(
     path.join(root, RUN, 'E02-tasks', 'L1-T1-c.md'),
-    '# Task: c\n**Layer:** 1 — x\n**Files:** `src/server/a.mjs` (mod), skills/x-plan/b.mjs (new), apps/app-web/src/main.ts (new), test/a.test.cjs (new), package.json (mod)\n\n## Definition of Done\n- [ ] c\n',
+    '# Task: c\n**Layer:** 1 — x\n**Files:** `src/server/a.mjs` (mod), skills/o-plan/b.mjs (new), apps/app-web/src/main.ts (new), test/a.test.cjs (new), package.json (mod)\n\n## Definition of Done\n- [ ] c\n',
   );
   writeFile(path.join(root, 'tags', 'area', 'server.md'), 'mine\n');
   const result = backfill('--root', repo);
@@ -156,10 +156,10 @@ test('a task gains the code areas its Files touch, and the vault the tag notes f
 
   assert.match(
     read(root, `${RUN}/E02-tasks/L1-T1-c.md`),
-    /^topics:\n {2}- "\[\[tags\/area\/server\]\]"\n {2}- "\[\[tags\/area\/x-plan\]\]"\n {2}- "\[\[tags\/area\/app-web\]\]"$/m,
+    /^topics:\n {2}- "\[\[tags\/area\/server\]\]"\n {2}- "\[\[tags\/area\/o-plan\]\]"\n {2}- "\[\[tags\/area\/app-web\]\]"$/m,
     'one area per module, in the order the Files line names them; tests and root files name none',
   );
-  assert.equal(read(root, 'tags/area/x-plan.md'), '---\ntype: tag\ntitle: "x-plan (area)"\n---\n# x-plan\n\n![[tag.base]]\n');
+  assert.equal(read(root, 'tags/area/o-plan.md'), '---\ntype: tag\ntitle: "o-plan (area)"\n---\n# o-plan\n\n![[tag.base]]\n');
   assert.equal(read(root, 'tags/area/server.md'), 'mine\n', 'an existing tag note is kept');
   assert.equal(read(root, 'tag.base'), fs.readFileSync(path.join(VAULT_FILES, 'tag.base'), 'utf8'));
   assert.doesNotMatch(read(root, `${RUN}/E02-tasks/L0-T1-a.md`), /^topics:/m, 'a task whose files sit at the top of src/ names no area');

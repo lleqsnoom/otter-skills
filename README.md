@@ -1,12 +1,12 @@
 # Otter PM
 
-A suite of skills (`x-*`) for planning, building, reviewing and improving code, each one a
-`SKILL.md` with its scripts, references and evals — plus a local project board over `.x-skills`
-trees. The skills write the `.x-skills` runs the board reads, so both halves sit in one checkout.
+A suite of skills (`o-*`) for planning, building, reviewing and improving code, each one a
+`SKILL.md` with its scripts, references and evals — plus an MCP server (`otter-pm-mcp`) that
+exposes a project's `.x-skills` tasks, documents and code over stdio.
 
 ## Install
 
-Link the skills into your agents and register the board's MCP server:
+Link the skills into your agents and register the MCP server:
 
 ```bash
 npm run install
@@ -18,76 +18,62 @@ Or install the suite as a Claude Code plugin (no local linking):
 /plugin marketplace add lleqsnoom/otter-pm
 ```
 
-The board runs as a user service; open it with `oc-otter-pm open` (or `--browser`). Full setup for
-the service, the desktop entries and the wrapper is in [`docs/install.md`](docs/install.md).
-
-## Running it
-
-```bash
-oc-otter-pm open            # a chrome-less window on the board
-oc-otter-pm open --browser  # the same board in a browser tab
-oc-otter-pm port            # print the URL it is serving on
-```
-
-Keep it running as a user service: `systemctl --user start oc-otter-pm`. Develop it: `npm run dev`
-(hot reload), `npm run serve`, `npm run build`, `npm test`.
-
 ## Skills
 
 | Skill | What it does | Say when |
 |---|---|---|
-| `x-plan` | Three approaches → a layered spec, gated on your approval | "plan this feature", "what's the spec" |
-| `x-decompose` | Cut an approved plan into triaged task files | "break this down into tasks" |
-| `x-implement` | Build tasks test-first, review-clean, one commit each | "implement the tasks" |
-| `x-fix` | Resolve a review's fix plan | "fix these findings" |
-| `x-review` | Review code against principles and spec, running every pass | "review this diff" |
-| `x-commit` | Write a conventional commit message | "commit this" |
-| `x-release` | Write the PR body | "write the PR description" |
-| `x-triage` | Structured intake for a bug or request | "a bug came in" |
-| `x-investigate` | Root cause by ranked, tested hypotheses | "why is this failing" |
-| `x-debug` | Reproduce, fix the root cause, verify | "debug this" |
-| `x-reproduce` | Generate a minimal repro case | "make a repro" |
-| `x-verify` | Mutation and property tests after a fix | "verify the fix" |
-| `x-differential` | Review the diff hunk-by-hunk for regression risk | "what could this break" |
-| `x-second-opinion` | Fresh-context re-review of a change | "second opinion before shipping" |
-| `x-arch` | Placement, naming, responsibility, dependency direction | "where does this live" |
-| `x-arch-lint` | Check the tree against the declared architecture | "prove the boundaries hold" |
-| `x-floor` | Declare and enforce the quality floor | "set or check the quality bar" |
-| `x-unbloat` | Cut code to what the task needs | "unbloat this" |
-| `x-comments` | Comment hygiene: add why, remove noise | "clean up comments" |
-| `x-refactor` | Refactoring suggestions with before/after | "suggest refactors" |
-| `x-skill-lint` | Validate the repo's own skills | "lint the skills" |
-| `x-test-gen` | Generate test stubs from code | "scaffold tests" |
-| `x-ui` | Design and audit UIs | "audit this screen" |
-| `x-browser` | Open the app in a real browser with devtools MCP | "open the app" |
-| `x-parallel` | Run independent tasks in isolated worktrees | "parallelize these tasks" |
-| `x-analyze` | Interactive analysis → thesis and three options | "analyze this" |
-| `x-research` | Metric-driven iteration toward a number | "research or tune X" |
-| `x-roast` | Critique a non-code artifact, scored by a script | "roast this" |
-| `x-humanize` | Simplify text to a B2 reading level | "simplify this text" |
-| `x-essay` | Write an article on a fixed critique loop | "write an article" |
-| `x-api-draft` | Draft an API design from requirements | "draft the API" |
-| `x-api-swagger` | API design draft → OpenAPI YAML | "make the OpenAPI" |
-| `x-migrate` | Framework or dependency migration plan | "migrate to X" |
-| `x-rollback` | Revert with multi-step confirmation | "roll this back" |
-| `x-search` | Search indexed repos by meaning or identifier | "where is this defined" |
-| `x-brief` | Write a handoff brief for the session | "hand off mid-work" |
-| `x-domain` | Glossary and ADRs as repo artifacts | "record the terms or decision" |
-| `x-interview` | Stress-test a decision with the user | "grill this decision" |
-| `x-sketch` | Throwaway prototype to answer a question | "prototype this" |
-| `x-walkthrough` | Script the human-only steps | "walk me through the manual steps" |
-| `x-guide` | Route you to the right skill | "which skill fits" |
-| `x-autoreflection` | Turn sessions into approved skill fixes | "reflect on sessions" |
+| `o-plan` | Three approaches → a layered spec, gated on your approval | "plan this feature", "what's the spec" |
+| `o-decompose` | Cut an approved plan into triaged task files | "break this down into tasks" |
+| `o-implement` | Build tasks test-first, review-clean, one commit each | "implement the tasks" |
+| `o-fix` | Resolve a review's fix plan | "fix these findings" |
+| `o-review` | Review code against principles and spec, running every pass | "review this diff" |
+| `o-commit` | Write a conventional commit message | "commit this" |
+| `o-release` | Write the PR body | "write the PR description" |
+| `o-triage` | Structured intake for a bug or request | "a bug came in" |
+| `o-investigate` | Root cause by ranked, tested hypotheses | "why is this failing" |
+| `o-debug` | Reproduce, fix the root cause, verify | "debug this" |
+| `o-reproduce` | Generate a minimal repro case | "make a repro" |
+| `o-verify` | Mutation and property tests after a fix | "verify the fix" |
+| `o-differential` | Review the diff hunk-by-hunk for regression risk | "what could this break" |
+| `o-second-opinion` | Fresh-context re-review of a change | "second opinion before shipping" |
+| `o-arch` | Placement, naming, responsibility, dependency direction | "where does this live" |
+| `o-arch-lint` | Check the tree against the declared architecture | "prove the boundaries hold" |
+| `o-floor` | Declare and enforce the quality floor | "set or check the quality bar" |
+| `o-unbloat` | Cut code to what the task needs | "unbloat this" |
+| `o-comments` | Comment hygiene: add why, remove noise | "clean up comments" |
+| `o-refactor` | Refactoring suggestions with before/after | "suggest refactors" |
+| `o-skill-lint` | Validate the repo's own skills | "lint the skills" |
+| `o-test-gen` | Generate test stubs from code | "scaffold tests" |
+| `o-ui` | Design and audit UIs | "audit this screen" |
+| `o-browser` | Open the app in a real browser with devtools MCP | "open the app" |
+| `o-parallel` | Run independent tasks in isolated worktrees | "parallelize these tasks" |
+| `o-analyze` | Interactive analysis → thesis and three options | "analyze this" |
+| `o-research` | Metric-driven iteration toward a number | "research or tune X" |
+| `o-roast` | Critique a non-code artifact, scored by a script | "roast this" |
+| `o-humanize` | Simplify text to a B2 reading level | "simplify this text" |
+| `o-essay` | Write an article on a fixed critique loop | "write an article" |
+| `o-api-draft` | Draft an API design from requirements | "draft the API" |
+| `o-api-swagger` | API design draft → OpenAPI YAML | "make the OpenAPI" |
+| `o-migrate` | Framework or dependency migration plan | "migrate to X" |
+| `o-rollback` | Revert with multi-step confirmation | "roll this back" |
+| `o-search` | Search indexed repos by meaning or identifier | "where is this defined" |
+| `o-brief` | Write a handoff brief for the session | "hand off mid-work" |
+| `o-domain` | Glossary and ADRs as repo artifacts | "record the terms or decision" |
+| `o-interview` | Stress-test a decision with the user | "grill this decision" |
+| `o-sketch` | Throwaway prototype to answer a question | "prototype this" |
+| `o-walkthrough` | Script the human-only steps | "walk me through the manual steps" |
+| `o-guide` | Route you to the right skill | "which skill fits" |
+| `o-autoreflection` | Turn sessions into approved skill fixes | "reflect on sessions" |
 
 ## Autoreflection
 
-`x-autoreflection` reads the sessions of a window and turns what they show into fixes you approve.
+`o-autoreflection` reads the sessions of a window and turns what they show into fixes you approve.
 
 ```bash
-x-autoreflection 24h     # last day
-x-autoreflection 7d      # last week
-x-autoreflection 2w      # last fortnight
-x-autoreflection         # no period: reflect on one session instead
+o-autoreflection 24h     # last day
+o-autoreflection 7d      # last week
+o-autoreflection 2w      # last fortnight
+o-autoreflection         # no period: reflect on one session instead
 ```
 
 It runs in three stages, and you stay in control:
@@ -101,20 +87,21 @@ It runs in three stages, and you stay in control:
 
 A background pass can run stage 1 on a cadence (`hooks/background-reflection.mjs`, tunable via
 `AUTOHARNESS_REFLECT_EVERY_N`); stages 2 and 3 are always human-triggered. For details see
-`skills/x-autoreflection/SKILL.md`.
+`skills/o-autoreflection/SKILL.md`.
 
 ## The MCP server
 
-`otter-pm-mcp` exposes the same repositories over stdio, so an agent can ask what a project's tasks,
-documents and code say. `npm run install` writes the entry into each agent's config; installed
-globally from this checkout, the whole entry is `{ "command": "otter-pm-mcp" }`.
+`otter-pm-mcp` exposes a project's tasks, documents and code over stdio, so an agent can ask what
+it says. `npm run install` writes the entry into each agent's config; installed globally from this
+checkout, the whole entry is `{ "command": "otter-pm-mcp" }`.
 
 ```json
 { "mcpServers": { "otter-pm": { "command": "otter-pm-mcp" } } }
 ```
 
 It takes no arguments and there is nothing to keep running — the client starts and stops it over
-stdio. The same roots as the board decide what it can see.
+stdio. Roots come from `otter-pm.config.json`, Orca's project list, `--root` flags,
+`$OTTER_PM_ROOTS`, discovery, or the current directory, and decide what it can see.
 
 | Tool | Answers |
 |------|---------|
@@ -134,8 +121,3 @@ stdio. The same roots as the board decide what it can see.
 Each project keeps its own database at `<repo>/.x-skills/knowledge.lance/`, derived and rebuildable:
 deleting it costs the next fuzzy call a rebuild and nothing else. The server writes only its own
 database, never a repository file.
-
-## Endpoints
-
-The board serves one HTTP surface and the MCP server is stdio-only; see `docs/install.md` for the
-board's routes.

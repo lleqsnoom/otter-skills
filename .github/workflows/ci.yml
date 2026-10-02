@@ -1,11 +1,9 @@
 name: otter-pm
 
-# The app is its own package, but it is not published: this runs the tests, the typecheck and the skill-corpus
-# checks, and stops there.
+# The skills and MCP server are the repository, and nothing else checks them: this runs the tests and the
+# skill-corpus checks, and stops there.
 #
-# It runs on a pull request as well as on main. A failing test and a type that no longer compiles are both cheaper to
-# find before a merge than after one — and the second one arrives on a branch the moment a dependency brings its own
-# types with it, which is how `@types/node` turned `Buffer` into something the DOM's `BodyInit` refuses.
+# It runs on a pull request as well as on main, so a broken skill is cheaper to find before a merge than after one.
 on:
   workflow_dispatch:
   push:
@@ -22,15 +20,14 @@ jobs:
           node-version: 24
       - run: npm ci || npm install --no-audit --no-fund
       - run: npm test
-      - run: npm run typecheck
       # The skills are the other half of this repository, and nothing else checks them: `npm test` exercises
       # the lint against fixture trees, never against this one. Run it here, so a broken `references/` path, a
       # citation of a skill that no longer exists, a CommonJS script or a skill missing from the README table
       # cannot reach main.
-      - run: node skills/x-skill-lint/scripts/lint.mjs
+      - run: node skills/o-skill-lint/scripts/lint.mjs
       # The guard's rules are fixtures; this proves they still describe what it claims to enforce.
-      - run: node skills/x-floor/scripts/floor-guard.mjs --self-test
+      - run: node skills/o-floor/scripts/floor-guard.mjs --self-test
       # The floor sits below the measured baseline (74.6% rank-1 over 67 should-trigger queries) so an
       # unrelated description edit does not turn this red. Raise it as routing improves; never lower it to make
       # a regression pass.
-      - run: node skills/x-skill-lint/scripts/trigger-rate.mjs --min-rank1 70
+      - run: node skills/o-skill-lint/scripts/trigger-rate.mjs --min-rank1 70

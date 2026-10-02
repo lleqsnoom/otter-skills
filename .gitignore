@@ -1,13 +1,5 @@
 node_modules/
-dist/
-.astro/
 board.json
-
-# npm pack output
-*.tgz
-
-# Sample tree written by `npm run demo`
-demo/
 
 # The per-project index: a derived database, rebuilt on the next fuzzy call
 .x-skills/knowledge.lance/

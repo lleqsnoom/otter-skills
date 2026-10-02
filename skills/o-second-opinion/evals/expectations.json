@@ -1,0 +1,10 @@
+{
+  "skill": "o-second-opinion",
+  "expected_behavior": [
+    "The reviewer receives only the diff, the spec, and the question — never the session, the conversation, or the memory that produced the implementation.",
+    "Every review ends in exactly one of two verdicts: at least one substantive objection grounded as file:line, or the word clean with what was checked.",
+    "A review that returns neither objections nor an explicit clean verdict is not a verdict, and the pass runs again rather than recording it.",
+    "The pass records the verdict as E<nn>-second-opinion.md in the run folder and routes objections to o-fix; it never edits code itself."
+  ],
+  "source": ["SKILL.md: The verdict contract", "SKILL.md: Procedure", "SKILL.md: Rules"]
+}

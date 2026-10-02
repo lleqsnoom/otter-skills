@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * The review-plan gate: a hook that refuses an x-review plan missing one of the four pass headings.
- * x-review's prose already says a plan without [Comments], [Bloat], [Architecture] and [Floor] is
+ * The review-plan gate: a hook that refuses an o-review plan missing one of the four pass headings.
+ * o-review's prose already says a plan without [Comments], [Bloat], [Architecture] and [Floor] is
  * incomplete, not clean; this hook makes that enforced rather than remembered, exiting 1 with one
  * actionable line per missing heading and 0, silently, on a complete plan.
  *
@@ -15,10 +15,10 @@
 import { readFileSync } from "node:fs";
 
 const HEADINGS = [
-  ["[Comments]", "comments pass (x-comments)"],
-  ["[Bloat]", "bloat pass (x-unbloat)"],
-  ["[Architecture]", "architecture pass (x-arch)"],
-  ["[Floor]", "floor pass (x-floor)"],
+  ["[Comments]", "comments pass (o-comments)"],
+  ["[Bloat]", "bloat pass (o-unbloat)"],
+  ["[Architecture]", "architecture pass (o-arch)"],
+  ["[Floor]", "floor pass (o-floor)"],
 ];
 
 const headingLines = (text, heading) =>
@@ -29,7 +29,7 @@ const missing = (text) => HEADINGS.filter(([heading]) => !headingLines(text, hea
 const linesFor = (missingHeadings) =>
   missingHeadings.map(
     ([heading, pass]) =>
-      `review plan is missing ${heading} — x-review requires the ${pass} to report under this heading; add a "## ${heading}" section to the plan`,
+      `review plan is missing ${heading} — o-review requires the ${pass} to report under this heading; add a "## ${heading}" section to the plan`,
   );
 
 const readFileOrNull = (file) => {

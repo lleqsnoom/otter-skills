@@ -9,7 +9,7 @@
       "source": "./skills",
       "commands": "./commands",
       "hooks": "./hooks",
-      "description": "The x-* skill suite: plan, implement, review, fix, research and project management over .x-skills runs." 
+      "description": "The o-* skill suite: plan, implement, review, fix, research and project management over .x-skills runs." 
     }
   ]
 }

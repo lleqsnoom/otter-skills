@@ -1,0 +1,13 @@
+{
+  "skill": "o-parallel",
+  "expected_behavior": [
+    "write the task file to `<worktree>/TASK.md` (ignored via `.git/info/exclude`, never merged)",
+    "inherit your rights: copy each project config file (`.crushrc`, `crushrc`, `.crush.json`, `crush.json`) found between the repo root and your cwd into the worktree root, and exclude them from git so they never reach a commit",
+    "a task only counts as failed after all attempts are exhausted",
+    "The working tree must be clean before dispatch; the script refuses to run otherwise."
+  ],
+  "source": [
+    "How It Works",
+    "Rules"
+  ]
+}

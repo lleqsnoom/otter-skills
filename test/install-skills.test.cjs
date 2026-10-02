@@ -108,7 +108,7 @@ test('a second run has nothing left to do', () => {
   const again = run(home);
 
   assert.equal(again.status, 0, again.stderr);
-  assert.match(again.stdout, /kept\s+x-plan/, 'the links are already right');
+  assert.match(again.stdout, /kept\s+o-plan/, 'the links are already right');
 });
 
 test('a dry run writes nothing', () => {

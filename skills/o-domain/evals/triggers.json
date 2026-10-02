@@ -1,0 +1,19 @@
+{
+  "skill": "o-domain",
+  "queries": [
+    { "query": "what should we call the thing a customer buys?", "should_trigger": true },
+    { "query": "our docs keep saying shipment and delivery interchangeably", "should_trigger": true },
+    { "query": "record the decision to move billing to usage-based pricing", "should_trigger": true },
+    { "query": "start a glossary for this repo", "should_trigger": true },
+    { "query": "write an ADR for the queue choice", "should_trigger": true },
+    { "query": "the code cancels whole orders but the team says partial cancellation works", "should_trigger": true },
+    { "query": "is a draft shipment the same as a pending shipment?", "should_trigger": true },
+    { "query": "sharpen the terms before we plan this feature", "should_trigger": true },
+    { "query": "review my diff before merge", "should_trigger": false },
+    { "query": "write a commit message", "should_trigger": false },
+    { "query": "why does this test fail on CI?", "should_trigger": false },
+    { "query": "plan the billing refactor", "should_trigger": false },
+    { "query": "roast this article", "should_trigger": false },
+    { "query": "simplify this function", "should_trigger": false }
+  ]
+}

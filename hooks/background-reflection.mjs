@@ -2,7 +2,7 @@
 
 /**
  * Background reflection — a Stop hook that counts work and, when a session has done enough of it,
- * runs x-autoreflection's analyze stage in the background, report-only.
+ * runs o-autoreflection's analyze stage in the background, report-only.
  *
  * The trigger is deterministic, not judgemental: it counts tool calls and fires when the count
  * crosses AUTOHARNESS_REFLECT_EVERY_N. The fired pass runs `improve.mjs <period> --no-plan`, which
@@ -20,7 +20,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SKILL = path.resolve(__dirname, "..", "skills", "x-autoreflection");
+const SKILL = path.resolve(__dirname, "..", "skills", "o-autoreflection");
 
 export const DEFAULT_THRESHOLD = 50;
 export const DEFAULT_PERIOD = "24h";

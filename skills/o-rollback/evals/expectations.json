@@ -1,0 +1,12 @@
+{
+  "skill": "o-rollback",
+  "expected_behavior": [
+    "Any uncommitted change makes the script refuse with exit 1 and a clean-tree message before touching anything.",
+    "--dry-run prints a JSON plan and creates no revert commit, so the impact is shown before the action.",
+    "A revert is committed only after explicit confirmation \u2014 the literal REVERT \u2014 and commits through o-commit when available."
+  ],
+  "source": [
+    "Safety Checks",
+    "Definition of Done"
+  ]
+}

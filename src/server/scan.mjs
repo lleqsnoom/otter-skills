@@ -19,7 +19,7 @@ import {
 } from './parse.mjs';
 
 const MAX_READ_BYTES = 1024 * 1024;
-/** The extensions this app reads as text — and therefore the ones it may write back; see `snapshot.mjs`. */
+/** The extensions the server reads as text. */
 export const TEXT_EXTENSIONS = new Set(['.md', '.markdown', '.json', '.txt', '.yml', '.yaml', '.sh', '.py', '.js', '.mjs', '.ts', '.tsx', '.mmd', '.csv', '.toml']);
 const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown']);
 
@@ -274,7 +274,7 @@ function compareFiles(a, b) {
  * The rungs of a run: every `E<nn>-<kind>` it holds, in the order it built them.
  *
  * Read from the folder rather than from the files collected under it, because a stage can be a *folder* —
- * x-decompose writes `E02-tasks/` — and its rung would otherwise be invisible while its task files look like
+ * o-decompose writes `E02-tasks/` — and its rung would otherwise be invisible while its task files look like
  * loose artifacts of the run.
  */
 function stagesFor(root, dir) {
@@ -467,12 +467,12 @@ function recountCategory(category) {
  * The stages of every run, read where a reader looks for that kind of work.
  *
  * The skills write a run as one folder holding everything it produced, numbered in the order it was built
- * (`x-plan`: "a plain name sort lists the run in the order it was built"). That is the right unit to *work* in and
+ * (`o-plan`: "a plain name sort lists the run in the order it was built"). That is the right unit to *work* in and
  * the wrong one to *find* things in: an analysis that has to be found inside a run is not in Analysis, and the
  * category that names it looks like a folder nothing has written to since the skills moved into run folders.
  *
  * So each rung is also read in the category of its kind — the artifact itself where the rung is a file, the folder
- * as a collection where x-decompose wrote `E02-tasks/`. Nothing is written: a stage keeps the path it came from,
+ * as a collection where o-decompose wrote `E02-tasks/`. Nothing is written: a stage keeps the path it came from,
  * so it is the same file in two places, and the pair it travelled with (`runPath`, `runTitle`) is what a screen
  * says instead of leaving a reader to guess where it came from. A run that is *already* filed in the category its
  * own stage belongs to is skipped — there it would be the same work listed twice.

@@ -89,7 +89,7 @@ export function dateFrom(value) {
 const ARTIFACT_KINDS = [
   [/^E\d+-analysis/i, 'analysis'],
   [/^E\d+-plan/i, 'plan'],
-  // `E<nn>-epic.md` is the plan under the name the retired `x-epic` gave it, so it reads where the plan reads: a run
+  // `E<nn>-epic.md` is the plan under the name the retired `o-epic` gave it, so it reads where the plan reads: a run
   // folder holding one is not orphaned by the skill being gone.
   [/^E\d+-epic/i, 'plan'],
   [/^E\d+-tasks/i, 'tasks'],
@@ -100,7 +100,7 @@ const ARTIFACT_KINDS = [
   [/^E\d+-summary/i, 'summary'],
   [/^E\d+-reflection/i, 'reflection'],
   [/^E\d+[-_]/i, 'artifact'],
-  // A task file is `task-1.2-…` where a run named it, `1.2-…` where x-decompose did, and `L0-0.1-…` where it
+  // A task file is `task-1.2-…` where a run named it, `1.2-…` where o-decompose did, and `L0-0.1-…` where it
   // numbered the layer into the name.
   [/^task[-_]/i, 'task'],
   [/^\d+(\.\d+)?[-_]/, 'task'],
@@ -119,7 +119,7 @@ export function artifactKind(name) {
 
 /**
  * The `E<nn>` a run numbered an artifact with. The skills write every artifact of a run as
- * `E<nn>-<kind>.md` or `E<nn>-<kind>/` in execution order (`x-plan`: "a plain name sort lists the run in the
+ * `E<nn>-<kind>.md` or `E<nn>-<kind>/` in execution order (`o-plan`: "a plain name sort lists the run in the
  * order it was built"), so the number is the rung an artifact occupies and the kind is which rung it is. Anything
  * without a number — `memory.md`, a bench note — is not part of the ladder and reads here as `null`.
  */
@@ -129,11 +129,11 @@ export function stageStep(name) {
 }
 
 /**
- * The fields an artifact may name another artifact in. The skills hand a path forward rather than a copy — x-plan
+ * The fields an artifact may name another artifact in. The skills hand a path forward rather than a copy — o-plan
  * passes `E00-plan.md` to the run that decomposes it, and an analysis routed onward is
  * named in the artifact it fed (`**Input:**`). Reading them is what turns "the plan came from this analysis" into
  * something a reader can follow, so the keys are listed rather than guessed at — including the keys only a legacy
- * artifact wrote (`spec:` was the handshake the retired `x-epic` used; `epic:` is what a legacy document was named
+ * artifact wrote (`spec:` was the handshake the retired `o-epic` used; `epic:` is what a legacy document was named
  * back by). The last six are only ever written as properties: an edge between tasks, a review or a fix and what it
  * answers, the run's hub note, and the tag notes an artifact is about.
  */

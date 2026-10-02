@@ -53,7 +53,7 @@ describe("plugin marketplace", () => {
   it("declares the four loop commands as files that name their skill", () => {
     const marketplace = JSON.parse(fs.readFileSync(MARKETPLACE, "utf8"));
     const [plugin] = marketplace.plugins;
-    const loop = ["x-fix", "x-implement", "x-plan", "x-review"];
+    const loop = ["o-fix", "o-implement", "o-plan", "o-review"];
     assert.equal(typeof plugin.commands, "string", "the plugin must declare its commands directory");
     const commandsDir = path.join(ROOT, plugin.commands);
     assert.equal(fs.existsSync(commandsDir), true, `commands directory ${plugin.commands} does not exist`);

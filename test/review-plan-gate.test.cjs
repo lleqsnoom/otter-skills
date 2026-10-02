@@ -1,10 +1,10 @@
 "use strict";
 
 /**
- * The review-plan gate turns x-review's "a plan missing a pass heading is incomplete, not clean" from
+ * The review-plan gate turns o-review's "a plan missing a pass heading is incomplete, not clean" from
  * prose into a fact: whatever text crosses the hook must carry the four pass headings, and a plan that
  * does not is refused with one actionable line per missing heading, never a silent pass. The tests pin
- * that on stdin text, on a JSON hook payload, and on the plan template x-review actually ships.
+ * that on stdin text, on a JSON hook payload, and on the plan template o-review actually ships.
  */
 
 const { describe, it } = require("node:test");
@@ -16,7 +16,7 @@ const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
 const GATE = path.join(ROOT, "hooks", "review-plan-gate.mjs");
-const SKILL = path.join(ROOT, "skills", "x-review", "SKILL.md");
+const SKILL = path.join(ROOT, "skills", "o-review", "SKILL.md");
 
 const HEADINGS = ["[Comments]", "[Bloat]", "[Architecture]", "[Floor]"];
 
@@ -30,7 +30,7 @@ const shippedPlanTemplate = () => {
   const source = fs.readFileSync(SKILL, "utf8");
   const fences = [...source.matchAll(/```[a-z]*\n([\s\S]*?)```/g)].map((match) => match[1]);
   const template = fences.find((fence) => fence.includes("## [Comments]"));
-  assert.ok(template, "x-review's SKILL.md must carry a fenced plan template with a [Comments] heading");
+  assert.ok(template, "o-review's SKILL.md must carry a fenced plan template with a [Comments] heading");
   return template;
 };
 
@@ -42,7 +42,7 @@ describe("review-plan gate hook", () => {
     assert.equal(result.stderr, "");
   });
 
-  it("exits 0 on x-review's shipped plan template", () => {
+  it("exits 0 on o-review's shipped plan template", () => {
     const result = run(shippedPlanTemplate());
     assert.equal(result.status, 0, result.stderr);
   });
@@ -64,7 +64,7 @@ describe("review-plan gate hook", () => {
     assert.equal(lines.length, HEADINGS.length);
     for (const heading of HEADINGS) {
       assert.ok(lines.some((line) => line.includes(heading)), `no line names ${heading}`);
-      assert.ok(lines.every((line) => line.includes("x-review")), "every line is actionable");
+      assert.ok(lines.every((line) => line.includes("o-review")), "every line is actionable");
     }
   });
 

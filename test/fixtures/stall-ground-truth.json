@@ -73,17 +73,17 @@
     {
       "id": "4e5e4963-c1bc-4091-9231-1d4fb87761cd",
       "host": "claude",
-      "note": "an x-autoreflection session: no wait, no complaint"
+      "note": "an o-autoreflection session: no wait, no complaint"
     },
     {
       "id": "d933acca-1527-4ef9-bf18-5bc798ada05b",
       "host": "claude",
-      "note": "an x-review session: no wait, no complaint"
+      "note": "an o-review session: no wait, no complaint"
     },
     {
       "id": "5fe2b092-3d07-4371-841e-f1cd75bd4418",
       "host": "claude",
-      "note": "an x-research session: no wait, no complaint"
+      "note": "an o-research session: no wait, no complaint"
     },
     {
       "id": "3dcff3cd75ba442e",

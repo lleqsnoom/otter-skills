@@ -5,7 +5,7 @@ import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pathToFileURL } from 'node:url';
 
-import { parseTask } from '../skills/x-implement/scripts/status.mjs';
+import { parseTask } from '../skills/o-implement/scripts/status.mjs';
 import { boldFields, parseWikilink, splitProperties } from '../src/server/parse.mjs';
 
 /**

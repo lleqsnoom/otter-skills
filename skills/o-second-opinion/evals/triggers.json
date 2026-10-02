@@ -1,0 +1,19 @@
+{
+  "skill": "o-second-opinion",
+  "queries": [
+    { "query": "get a second opinion on this change before shipping", "should_trigger": true },
+    { "query": "have someone else review the diff with fresh eyes", "should_trigger": true },
+    { "query": "I want an independent review of this change", "should_trigger": true },
+    { "query": "check this diff against the spec before we merge", "should_trigger": true },
+    { "query": "did the same-context review miss anything?", "should_trigger": true },
+    { "query": "critique this change from outside the session", "should_trigger": true },
+    { "query": "review the change without knowing how it was built", "should_trigger": true },
+    { "query": "is this change actually clean or does it just look clean?", "should_trigger": true },
+    { "query": "review my changes", "should_trigger": false },
+    { "query": "fix the failing test", "should_trigger": false },
+    { "query": "plan the feature", "should_trigger": false },
+    { "query": "commit this", "should_trigger": false },
+    { "query": "why is this failing", "should_trigger": false },
+    { "query": "attack the change with mutants", "should_trigger": false }
+  ]
+}

@@ -1,9 +1,0 @@
-[Desktop Entry]
-Version=1.0
-Name=Otter PM
-Comment=Local project board over .x-skills trees
-Exec=oc-otter-pm open
-Terminal=false
-Type=Application
-Icon=otter-pm
-StartupNotify=true

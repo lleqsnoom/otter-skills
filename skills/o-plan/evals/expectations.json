@@ -1,0 +1,11 @@
+{
+  "skill": "o-plan",
+  "expected_behavior": [
+    "A plan hands off to o-decompose only after scenario.mjs guard --gate layers_complete exits 0: every layer block carries its five fields, and a layer without a definition of done is refused.",
+    "Exactly three approaches with trade-offs are proposed before the spec is written, and a plan that proposes only one is rejected as a rationalization.",
+    "Every user-facing question renders as a panel, never as a paragraph of batched questions; check-questions.mjs is the gate that refuses the prose form.",
+    "Never write over work in progress: a run whose plan still has unchecked layers gets a --new-run, never a rewrite of the old folder, and when it is unclear whether the plan is live the skill asks before touching it.",
+    "A source the user named that could not be opened is reported at the top of the next message and asked for, never worked around in silence."
+  ],
+  "source": ["SKILL.md: Handoff Flow", "SKILL.md: Common Rationalizations", "SKILL.md: spec rules"]
+}

@@ -1,0 +1,12 @@
+{
+  "skill": "o-comments",
+  "expected_behavior": [
+    "Where a magic value comes from or what invariant it must satisfy.",
+    "Never add a comment that can be replaced by a better name.",
+    "Removing comments must never change behavior; refactoring must preserve it. Run the project's tests after refactoring."
+  ],
+  "source": [
+    "What a Good Comment Explains",
+    "Rules"
+  ]
+}
