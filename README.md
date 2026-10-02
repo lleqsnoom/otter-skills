@@ -565,6 +565,13 @@ a symlink into this tree, so a `.js` script that calls `require` or writes `modu
 anyone runs it, installed or not. `x-skill-lint` fails on that (`commonjs-script`), and the fix is the extension
 and `import`/`export` — a `.cjs` file is the escape hatch for a script that must stay CommonJS.
 
+The suite gates on the same checks: `npm test` starts with `npm run validate:skills`
+(`scripts/validate-skills.mjs`), which runs x-skill-lint's checks over `skills/` — parseable
+frontmatter whose name matches the folder, every referenced `scripts/*` and `references/*` existing,
+evals files that parse, every skill in the README table — and adds trail of bits' zero-items rule:
+a checker that inspects zero items must fail, not pass. A broken skill fails the suite before it
+can ship, and the failure names the file.
+
 Skills that run inside other skills — `x-arch`, `x-unbloat`, `x-comments`, and `x-review` for a task review — ship
 a pass card, `references/pass.md`: the per-host steps and the short form of the rules, at most 600 words. A host
 reads the card; a standalone run reads `SKILL.md`. That cuts what one `x-implement` task reads from 12,091 words to
