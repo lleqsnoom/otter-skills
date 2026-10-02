@@ -1,7 +1,7 @@
 ---
 name: o-investigate
-description: Hypothesis-driven root cause analysis — generate ranked hypotheses from evidence, test systematically with platform tools and git history, eliminate candidates until one root cause remains, output fix plan for o-fix
-version: 1.0.1
+description: Hypothesis-driven root cause analysis — generate ranked hypotheses from evidence, test systematically with platform tools and git history, eliminate candidates until one root cause remains, output fix plan for o-fix. Use when asked why something is flaky, regressed or broken and the first look explains nothing.
+version: 1.0.2
 author: Community
 tags: [debugging, root-cause, hypothesis-testing, git-bisect, triage]
 user-invocable: true
@@ -10,6 +10,8 @@ user-invocable: true
 # O-Investigate — Hypothesis-Driven Root Cause Analysis
 
 Generate hypotheses, test them with platform tools and git history, and eliminate until one root cause remains.
+
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
 
 ## Prerequisites
 
@@ -37,7 +39,7 @@ Read `<run folder>/E<nn>-triage.md` to extract:
 Run `hypothesize.mjs` with the error text from triage evidence to get a ranked list:
 
 ```bash
-node <path-to>/scripts/hypothesize.mjs --error "<error text>" [--context .]
+node <skill>/scripts/hypothesize.mjs --error "<error text>" [--context .]
 ```
 
 The script outputs JSON array of `{rank, id, description, test, likelihood}`. If no patterns match, proceed with manual hypothesis generation based on code context and stack traces — do not abort.
@@ -57,7 +59,7 @@ If the repo has no commits (fresh init), note this limitation and proceed with o
 
 ### 3. Route Investigation Tools by Platform
 
-Read the triage brief's **Platform** field and use corresponding tools from o-triage's routing table (`<o-triage skill root>/scripts/route.mjs` — `~/.agents/skills/o-triage/scripts/route.mjs` for a global install, `.agents/skills/o-triage/scripts/route.mjs` for a local one):
+Read the triage brief's **Platform** field and use corresponding tools from o-triage's routing table (`<skills>/o-triage/scripts/route.mjs`):
 
 | Platform | Tools (from triage brief) | Concrete Actions |
 |----------|---------------------------|-----------------|

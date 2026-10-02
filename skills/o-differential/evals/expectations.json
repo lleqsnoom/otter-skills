@@ -7,5 +7,9 @@
     "Silent risk is the top severity: a change whose failure no test or caller would notice is reported ahead of a breaking one that fails loudly.",
     "The result lands as E<nn>-differential.md in the run folder, and silent or unmapped rows route to o-fix while a table of only guarded rows unblocks ship."
   ],
-  "source": ["SKILL.md: The risk table", "SKILL.md: Rules", "SKILL.md: Procedure"]
+  "source": [
+    "SKILL.md: The risk table",
+    "SKILL.md: Rules",
+    "SKILL.md: Procedure"
+  ]
 }

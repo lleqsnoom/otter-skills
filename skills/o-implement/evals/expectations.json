@@ -7,5 +7,9 @@
     "After an o-parallel batch merges, the full test suite and the VERIFY step run on the merged changes before any status update is made.",
     "A floor-guard exit of 2 (could not run) is reported as not-a-pass, and a red suite blocks the commit instead of being committed beside."
   ],
-  "source": ["SKILL.md: Workflow", "SKILL.md: Definition of Done", "SKILL.md: Parallelize Independent Tasks"]
+  "source": [
+    "SKILL.md: Workflow",
+    "SKILL.md: Definition of Done",
+    "SKILL.md: Parallelize Independent Tasks"
+  ]
 }

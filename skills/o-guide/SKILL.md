@@ -1,7 +1,7 @@
 ---
 name: o-guide
 description: Route the user to the right skill or flow for their situation — name where they sit on the map (an idea, a bug, an incoming issue, a foggy effort, cleaning up the codebase) and which skill starts it, so the process for any goal has a first command. Use when asked which skill fits, where to start, what the workflow or process is, or when the user is unsure which skill to run; user-invoked, so it never fires on its own.
-version: 1.2.1
+version: 1.2.2
 author: Community
 tags: [router, workflow, skills, navigation, onboarding]
 user-invocable: true
@@ -65,7 +65,7 @@ A starting situation that generates work, then merges onto the main flow:
 - **o-refactor** — refactoring suggestions.
 - **o-comments** — comment hygiene.
 - **o-floor** — declare and enforce the quality floor.
-- **o-search** — find which repository owns a behavior.
+- **o-search** — find where a behavior lives, in this repository or another this machine reads.
 - **o-research** — compile sourced findings.
 - **o-api-draft / o-api-swagger** — API design to OpenAPI.
 - **o-ui / o-browser** — frontend work and its browser check.

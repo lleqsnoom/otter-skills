@@ -1,7 +1,7 @@
 ---
 name: o-ui
-description: Design and audit app UIs to be clean, clear, and effective — framework-agnostic method (Vue/React/HTML) with component-selection, row-action, and pre-flight rules.
-version: 3.1.1
+description: Design and audit app UIs to be clean, clear, and effective — framework-agnostic method (Vue/React/HTML) with component-selection, row-action, and pre-flight rules. Use when building or auditing a UI's components, forms or tables.
+version: 3.1.2
 author: Community
 tags: [ui, html, css, usability, readability, minimalism, accessibility, frontend, design]
 user-invocable: true

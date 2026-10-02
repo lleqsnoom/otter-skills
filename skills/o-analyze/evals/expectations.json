@@ -1,11 +1,11 @@
 {
   "skill": "o-analyze",
   "expected_behavior": [
-    "Guide the user through understanding their problem, formulating a thesis with evidence, proposing solutions, and routing to the right action (fix or task creation). This is an interactive conversation skill — it asks questions, clarifies ambiguities, and only proceeds when confident.",
-    "`verify` answers only one question — whether the run is finished — so mid-run it exits 1 even when every",
-    "analysis file to be non-empty. A mid-run `verify` exits 1 even when every guard passes — it answers only",
-    "For every aspect of the problem you are uncertain about, ask a focused question as a panel (`single`, `multi`, `open`, or `confirm`) — never in prose. Group related questions but never ask more than 3 at once.",
-    "Suggested clarification dimensions (ask only what's genuinely unclear):"
+    "Every clarifying question reaches the user as a panel (single, multi, open or confirm), at most three at a time, never as a paragraph of questions.",
+    "Questions cover only what is genuinely unclear; anything the project, the web or the run history can answer is looked up first.",
+    "The analysis states a thesis backed by cited evidence (file:line or URL) and a mechanical check, then offers three distinct solutions with their trade-offs.",
+    "The run ends routed to an action — a fix or task creation — rather than with a summary and no next step.",
+    "A mid-run verify that exits 1 is read as 'not finished yet', not as a failed guard."
   ],
   "source": [
     "o-analyze",

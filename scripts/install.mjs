@@ -232,7 +232,7 @@ function installSkills(args) {
 function summary(args, installed, mcp) {
   const skillsLine =
     `${TOOL}: ${args.dryRun ? 'would link' : 'linked'} ${installed.linked} of ${installed.names.length}` +
-    ` skills to ${ROOT} from ${args.target}` +
+    ` skills from ${SOURCE} into ${args.target}` +
     (installed.mirror ? `, mirrored under ${join(home(), '.claude', 'skills')}` : '');
   const mcpLine =
     `${TOOL}: ${args.dryRun ? 'would register' : 'registered'} ${SERVER} mcp with ` +

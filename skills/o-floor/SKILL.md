@@ -1,7 +1,7 @@
 ---
 name: o-floor
-description: Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .o-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a rule dropped, a new or extended exception, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work (a stub, a TODO with no tracker reference, an empty catch), a test made easier (it.skip, pytest.mark.skip), a deleted test, or an assertion removed from a test that still exists. Detection only, never writes code, exit 1 on a violation. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard; o-implement runs it before each commit and o-review on every review.
-version: 1.0.1
+description: Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .o-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work, a test made easier, a deleted test, or a removed assertion. Detection only. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard.
+version: 1.0.2
 author: Community
 tags: [quality, floor, constraints, guard, thresholds, suppression, coverage, enforcement, ratchet]
 user-invocable: true
@@ -33,13 +33,13 @@ not the code.
 ## Run it
 
 ```bash
-node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --root .
-node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --root . --base HEAD       # uncommitted work only
-node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --root . --config path/to/floor.json
-node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --self-test
+node <skill>/scripts/floor-guard.mjs --root .
+node <skill>/scripts/floor-guard.mjs --root . --base HEAD       # uncommitted work only
+node <skill>/scripts/floor-guard.mjs --root . --config path/to/floor.json
+node <skill>/scripts/floor-guard.mjs --self-test
 ```
 
-A local install is `.agents/skills/o-floor/scripts/floor-guard.mjs`. `--root` and the paths under it resolve from
+`<skill>` is this skill's folder. `--root` and the paths under it resolve from
 the working directory, so a relative path works from anywhere the script can be reached. The base defaults to the
 first of `origin/main`, `origin/master`, `main`, `master` that resolves; the floor file defaults to
 `.o-skills/config/floor.json`, read from the working tree and from the merge base.

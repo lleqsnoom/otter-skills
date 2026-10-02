@@ -1,7 +1,7 @@
 ---
 name: o-verify
-description: After o-fix or an implementation, attack the change instead of trusting it — property-based tests over the changed functions with a per-language tool (fast-check, hypothesis, proptest) and a mutation pass over the diff (Stryker, mutmut, cargo-mutants), then gate on survivors-equals-zero-or-explained — every mutant no test killed ships only with an owner and a reason in .o-skills/config/verify.json. Reports a missing test runner and stops rather than inventing one. Use when asked to verify a fix beyond its tests, run a mutation pass, catch silent regressions before ship, or prove a change cannot break quietly; o-fix hands off to it.
-version: 1.1.1
+description: After o-fix or an implementation, attack the change instead of trusting it — property-based tests over the changed functions (fast-check, hypothesis, proptest) and a mutation pass over the diff (Stryker, mutmut, cargo-mutants), gated on survivors-equals-zero-or-explained. Use when asked to verify a fix beyond its tests, run a mutation pass, catch silent regressions before ship, or prove a change cannot break quietly.
+version: 1.1.2
 author: Community
 tags: [verification, property-based-testing, mutation-testing, survivors, gate, quality]
 user-invocable: true
@@ -22,6 +22,8 @@ none is worth writing.
 
 The pass never edits code, thresholds, or tests. It runs commands and reads reports.
 
+`<skill>` below is this skill's folder.
+
 ## When to use
 
 - "Is this fix actually fixed?", "run a mutation pass", "make sure nothing broke quietly".
@@ -36,10 +38,10 @@ catch it if this code stopped working?
 ## Run it
 
 ```bash
-node ~/.agents/skills/o-verify/scripts/verify.mjs --root .
-node ~/.agents/skills/o-verify/scripts/verify.mjs --root . --base HEAD       # uncommitted work only
-node ~/.agents/skills/o-verify/scripts/verify.mjs --root . --dry-run         # plan and gate, run nothing
-node ~/.agents/skills/o-verify/scripts/verify.mjs --self-test
+node <skill>/scripts/verify.mjs --root .
+node <skill>/scripts/verify.mjs --root . --base HEAD       # uncommitted work only
+node <skill>/scripts/verify.mjs --root . --dry-run         # plan and gate, run nothing
+node <skill>/scripts/verify.mjs --self-test
 ```
 
 The base defaults to the first of `origin/main`, `origin/master`, `main`, `master` that resolves.

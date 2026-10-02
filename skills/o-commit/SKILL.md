@@ -1,7 +1,7 @@
 ---
 name: o-commit
-description: Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body
-version: 1.1.1
+description: Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body — validated by a script before it lands. Use whenever work is ready to land in git.
+version: 1.1.2
 author: Community
 tags: [conventional-commits, git, commit-messages, commit-changes]
 user-invocable: true
@@ -17,20 +17,20 @@ All scripts self-resolve via `__dirname` — run from any working directory:
 
 ```bash
 # Suggest a type + scope from the staged changes
-node <path-to>/scripts/suggest-type.mjs
+node <skill>/scripts/suggest-type.mjs
 
 # Validate AND commit atomically
-node <path-to>/scripts/commit.mjs "<message>"
+node <skill>/scripts/commit.mjs "<message>"
 ```
 
-**Auto-discovery**: Scripts resolve their own location via `__dirname`, so they work whether installed globally (`~/.agents/skills/o-commit/scripts/`) or locally (`.agents/skills/o-commit/scripts/`).
+`<skill>` is this skill's folder; its scripts find their own files from there, so run them from any directory.
 
 ## Workflow
 
-1. Run `node <path-to>/scripts/suggest-type.mjs` to analyze staged changes and suggest a type + scope.
+1. Run `node <skill>/scripts/suggest-type.mjs` to analyze staged changes and suggest a type + scope.
 2. Pick the best suggestion, or override if context demands it.
 3. Draft the **complete** commit message in imperative mood: `type[(scope)]: description`.
-4. Run `node <path-to>/scripts/commit.mjs "<message>"` — this script validates AND commits atomically, and **you** run it: never hand the user a `git commit` command to paste, and never end a turn with the message drafted and the commit waiting for a go-ahead. The one exception is a tree holding someone else's uncommitted work — then name your own files and ask before staging them.
+4. Run `node <skill>/scripts/commit.mjs "<message>"` — this script validates AND commits atomically, and **you** run it: never hand the user a `git commit` command to paste, and never end a turn with the message drafted and the commit waiting for a go-ahead. The one exception is a tree holding someone else's uncommitted work — then name your own files and ask before staging them.
    - If it prints the commit confirmation and commits → done.
    - If it prints `ERROR:` and exits non-zero → **do not commit manually**. Show the error to the user and ask for a corrected message. Repeat from step 3.
 

@@ -1,7 +1,7 @@
 ---
 name: o-domain
 description: Domain modeling as repo artifacts — start and sharpen a GLOSSARY.md of the project's terms, write decisions down as numbered ADRs (architecture decision records), stress-test definitions with edge-case scenarios, and check what people say the words mean against what the implementation does. Use when terms mean different things to different people, when the team argues about what to call something, when a decision needs recording, or when docs use two words for one concept.
-version: 1.0.1
+version: 1.0.2
 author: Community
 tags: [domain-modeling, glossary, adr, ubiquitous-language, terminology]
 user-invocable: true

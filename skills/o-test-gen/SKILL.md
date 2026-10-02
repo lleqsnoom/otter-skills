@@ -1,7 +1,7 @@
 ---
 name: o-test-gen
-description: Generate test stubs from implementation — analyzes source code and creates scaffolded tests with happy path, error cases, and edge case placeholders
-version: 1.0.1
+description: Generate test stubs from implementation — analyzes source code and creates scaffolded tests with happy path, error cases, and edge case placeholders. Use when asked to scaffold specs for untested functions.
+version: 1.0.2
 author: Community
 tags: [test-generation, tdd, scaffolding, unit-tests, jest, vitest, mocha]
 user-invocable: true
@@ -17,13 +17,13 @@ All scripts self-resolve via `__dirname` — run from any working directory:
 
 ```bash
 # Generate test stubs for a single file or all source in a directory
-node <path-to>/scripts/generate.mjs src/pricing.js [--output tests/unit/ --framework vitest]
+node <skill>/scripts/generate.mjs src/pricing.js [--output tests/unit/ --framework vitest]
 
 # Auto-detect framework from project config if not specified
-node <path-to>/scripts/generate.mjs src/ --all
+node <skill>/scripts/generate.mjs src/ --all
 ```
 
-**Auto-discovery**: Scripts resolve config and sibling scripts relative to `__dirname`, so they work whether installed globally (`~/.agents/skills/o-test-gen/scripts/`) or locally (`.agents/skills/<project>/o-test-gen/scripts/`).
+`<skill>` is this skill's folder; its scripts find their own files from there, so run them from any directory.
 
 ## Framework Detection
 

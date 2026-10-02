@@ -1,7 +1,7 @@
 ---
 name: o-arch
 description: Keep a codebase's architecture honest — where a unit lives, what it is called, what its one responsibility is, and which way its dependencies point; names banned (utils, helpers, common, tools, misc, other, shared), composition over inheritance, and the rule of three before extracting. Use when asked to fix a directory layout, a vague or role-shaped name, inheritance growth, where new code belongs, or a layer boundary; o-implement, o-decompose, o-review and o-fix run it as a pass.
-version: 1.1.1
+version: 1.1.2
 author: Community
 tags: [architecture, naming, boundaries, responsibilities, dependency-direction, composition, solid, placement]
 user-invocable: true

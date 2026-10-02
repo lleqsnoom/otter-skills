@@ -1,7 +1,7 @@
 ---
 name: o-rollback
-description: Automated git revert with multi-step confirmation — identifies target commits, analyzes impact, requires approval, creates properly formatted revert commits via o-commit integration
-version: 1.0.1
+description: Automated git revert with multi-step confirmation — identifies target commits, analyzes impact, requires approval, creates properly formatted revert commits via o-commit integration. Use when asked to roll back, revert or undo a commit or release.
+version: 1.0.2
 author: Community
 tags: [git-revert, rollback, safety, confirmation, version-control]
 user-invocable: true
@@ -17,16 +17,16 @@ All scripts self-resolve via `__dirname` — run from any working directory:
 
 ```bash
 # Revert a specific commit by SHA
-node <path-to>/scripts/revert.mjs --commit abc123def456
+node <skill>/scripts/revert.mjs --commit abc123def456
 
 # Revert last N commits
-node <path-to>/scripts/revert.mjs --last 1
+node <skill>/scripts/revert.mjs --last 1
 
 # Dry-run mode (show what would happen without reverting)
-node <path-to>/scripts/revert.mjs --commit abc123def456 --dry-run
+node <skill>/scripts/revert.mjs --commit abc123def456 --dry-run
 ```
 
-**Auto-discovery**: Scripts resolve config and sibling scripts relative to `__dirname`, so they work whether installed globally (`~/.agents/skills/o-rollback/scripts/`) or locally (`.agents/skills/<project>/o-rollback/scripts/`).
+`<skill>` is this skill's folder; its scripts find their own files from there, so run them from any directory.
 
 ## Safety Checks
 

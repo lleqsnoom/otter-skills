@@ -27,7 +27,7 @@ jobs:
       - run: node skills/o-skill-lint/scripts/lint.mjs
       # The guard's rules are fixtures; this proves they still describe what it claims to enforce.
       - run: node skills/o-floor/scripts/floor-guard.mjs --self-test
-      # The floor sits below the measured baseline (74.6% rank-1 over 67 should-trigger queries) so an
+      # The floor sits below the measured baseline (76.6% rank-1 over 145 should-trigger queries) so an
       # unrelated description edit does not turn this red. Raise it as routing improves; never lower it to make
       # a regression pass.
       - run: node skills/o-skill-lint/scripts/trigger-rate.mjs --min-rank1 70

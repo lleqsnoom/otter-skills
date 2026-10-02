@@ -1,9 +1,10 @@
 {
   "skill": "o-commit",
   "expected_behavior": [
-    "One line only — no description body, no blank lines inside the message. The only exception is the `BREAKING CHANGE:` footer described below.",
-    "No AI attribution — never mention tools, models, or assistants.",
-    "Breaking changes — signal with a `!` before the colon (`feat(api)!: ...`) or, when the impact needs a sentence of its own, a single `BREAKING CHANGE:` footer separated from the subject by one blank line. That footer is the *single allowed exception* to the one-line rule, used only for a breaking change whose impact the subject cannot carry."
+    "The commit message is a single line in the form type(scope): description, in imperative mood, with no body; the only allowed extra is a BREAKING CHANGE footer after one blank line.",
+    "The message never mentions an AI tool or model and carries no co-author or sign-off lines.",
+    "The commit is made by running commit.mjs, never by handing the user a git commit command; when the script rejects the message, the agent shows the error and asks for a corrected one.",
+    "A breaking change is marked with ! before the colon, or with the single footer when it needs a sentence."
   ],
   "source": [
     "Rules"

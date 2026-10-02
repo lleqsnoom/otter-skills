@@ -35,3 +35,32 @@ client, takes no arguments, and reads its roots from `otter-skills.config.json`,
 `$OTTER_SKILLS_ROOTS`, discovery, or the current directory. The bin is `scripts/mcp.mjs`, registered as `otter-skills-mcp` in
 `package.json`; `npm run install` writes the entry into each agent's config, and a global install of this checkout
 resolves to `{ "command": "otter-skills-mcp" }`.
+
+## Or: the Claude Code plugin
+
+```
+/plugin marketplace add lleqsnoom/otter-skills
+/plugin install otter-skills@otter-skills
+```
+
+The plugin installs the skills, the loop commands (`/otter-skills:o-plan` and the others) and the hooks in
+`hooks/hooks.json`. It does not install the MCP server, which needs `npm install` in a checkout. Use one route per
+machine, not both.
+
+## Hooks with `npm run install`
+
+`npm run install` does not touch your Claude Code settings. To get the hooks the plugin registers, add them to
+`~/.claude/settings.json` with this checkout's path in place of `<checkout>`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "node \"<checkout>/hooks/session-start-summary.mjs\"" }] }],
+    "PostToolUse": [{ "matcher": "Write|Edit|MultiEdit", "hooks": [{ "type": "command", "command": "node \"<checkout>/hooks/review-plan-gate.mjs\"" }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "node \"<checkout>/hooks/background-reflection.mjs\"", "timeout": 45 }] }]
+  }
+}
+```
+
+Each is optional: the review-plan gate only judges files named `*-review-plan.md`, and the background reflection
+only counts in a project that already keeps a `.o-skills/` tree.

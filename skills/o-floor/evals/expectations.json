@@ -1,9 +1,10 @@
 {
   "skill": "o-floor",
   "expected_behavior": [
-    "Code files only. Widening `codeExtensions` widens the net; leaving it narrow is what stops a README that",
-    "Only the diff. A tree that already sits below its own floor is not reported. The guard is a ratchet: it",
-    "`rules[].id` — stable, referenced by an exception. A rule without one cannot be compared across the diff."
+    "Each number in floor.json carries the reason it exists, and each rule carries a stable id so it can be compared across the diff.",
+    "The guard reports only what the current diff does to the bar; a tree already below its floor is not reported, so the floor works as a ratchet.",
+    "Every move that lowers the bar — a weakened threshold, a new suppression, a skipped or deleted test, a removed assertion, a stub — is reported with its rule, file and line, and the guard exits 1.",
+    "The guard never edits code, and a run that could not complete exits 2, which is reported as not a pass."
   ],
   "source": [
     "What it cannot check, and where it can be blind",

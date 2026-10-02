@@ -1,7 +1,7 @@
 ---
 name: o-unbloat
 description: Cut code to what the task needs — a YAGNI ladder that removes needless abstractions, wrappers, unused options and dead code, keeps behavior and protective code, and measures the result. Use when asked to unbloat, simplify, or remove over-engineering; o-implement, o-review and o-refactor run it as a pass.
-version: 1.8.1
+version: 1.8.2
 author: Community
 tags: [yagni, kiss, simplify, over-engineering, dead-code, refactoring, code-cleaning]
 user-invocable: true
@@ -11,6 +11,8 @@ user-invocable: true
 
 Every line must be read, tested and maintained. Before you add code, ask if it needs to exist. Before you keep
 code, ask if it still does.
+
+`<skills>` below is the folder that holds every o-* skill, this one included.
 
 ## Two Ways It Runs
 
@@ -55,8 +57,7 @@ I/O.
 
 The check row is a design change, not only a deletion. Where the state is reachable, narrow the representation
 so it cannot be built rather than keeping a branch for it: *Make the Bad State Impossible* in `o-implement`'s
-`SKILL.md` (`~/.agents/skills/o-implement/SKILL.md` for a global install, `.agents/skills/o-implement/SKILL.md`
-for a local one) sets out the order of the moves. The check stays where the input crosses a trust boundary.
+`SKILL.md` (`<skills>/o-implement/SKILL.md`) sets out the order of the moves. The check stays where the input crosses a trust boundary.
 
 ## Never Cut
 
@@ -72,13 +73,12 @@ callers, tests). Delete it only when the reason is gone.
 
 ## Steps
 
-Run the scripts from this skill's folder: `~/.agents/skills/o-unbloat/scripts/` for a global install, or
-`.agents/skills/o-unbloat/scripts/` for a local one. The commands below use the global path.
+`<skill>` below is this skill's folder; run the scripts from there.
 
 1. **Check the tree.** If it has changes that are not part of this task, stop and tell the user.
 2. **Start the record**:
    ```bash
-   node ~/.agents/skills/o-unbloat/scripts/verdicts.mjs new --slug my-topic
+   node <skill>/scripts/verdicts.mjs new --slug my-topic
    ```
    It saves the current commit as the base and prints the path of a new `Enn-unbloat.md` in the run folder.
    `RECORD` in the commands below means that path.
@@ -93,14 +93,14 @@ Run the scripts from this skill's folder: `~/.agents/skills/o-unbloat/scripts/` 
 7. **Cut one thing at a time.** Run the tests after each cut. If they fail, revert that cut.
 8. **Measure**:
    ```bash
-   node ~/.agents/skills/o-unbloat/scripts/measure.mjs --record RECORD
+   node <skill>/scripts/measure.mjs --record RECORD
    ```
    It reads the base from the record, counts lines added and removed, files touched, and dependencies added
    or removed, and writes the result into `## Measure`. Exit 1 means a dependency was added: say why.
    `netLines` includes the tests from step 6. Use the per-file list it prints to report the cut without them.
 9. **Check the record.** Fill in `## Left for the user`, or write `nothing`. Then run:
    ```bash
-   node ~/.agents/skills/o-unbloat/scripts/verdicts.mjs check --file RECORD
+   node <skill>/scripts/verdicts.mjs check --file RECORD
    ```
    It also fails a `cut` row when no line removed since the base names that unit, so name units the way the
    code does. Exit 0 means done. Exit 1 lists what is missing. Tell the user what you cut (with `netLines`), what you
@@ -113,6 +113,5 @@ Run the scripts from this skill's folder: `~/.agents/skills/o-unbloat/scripts/` 
 - On its own, commit the simplification by itself, apart from feature work.
 - If a cut removes a capability on purpose, say so.
 - This skill decides whether a unit should exist. Where it lives, what it is called, what its one responsibility
-  is and which way its dependencies point belong to `o-arch` (its pass card: `~/.agents/skills/o-arch/references/pass.md` for a
-  global install, `.agents/skills/o-arch/references/pass.md` for a local one). A finding both could claim is reported once, by
+  is and which way its dependencies point belong to `o-arch` (its pass card: `<skills>/o-arch/references/pass.md`). A finding both could claim is reported once, by
   whichever owns it: a one-implementation interface here as speculative abstraction, a misplaced module there.

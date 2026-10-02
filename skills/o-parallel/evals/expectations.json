@@ -1,10 +1,11 @@
 {
   "skill": "o-parallel",
   "expected_behavior": [
-    "write the task file to `<worktree>/TASK.md` (ignored via `.git/info/exclude`, never merged)",
-    "inherit your rights: copy each project config file (`.crushrc`, `crushrc`, `.crush.json`, `crush.json`) found between the repo root and your cwd into the worktree root, and exclude them from git so they never reach a commit",
-    "a task only counts as failed after all attempts are exhausted",
-    "The working tree must be clean before dispatch; the script refuses to run otherwise."
+    "Each task runs in its own git worktree with its task file written to TASK.md, which is excluded from git and never merged.",
+    "Workers copy the project's agent config into their worktree so they hold the user's rights, and that config never reaches a commit.",
+    "A task counts as failed only after every retry was used, and each retry starts from a clean worktree.",
+    "The script refuses to start when the working tree has uncommitted changes.",
+    "Every agent run is killed after the timeout; no worker runs unbounded."
   ],
   "source": [
     "How It Works",

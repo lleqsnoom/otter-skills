@@ -1,7 +1,7 @@
 ---
 name: o-refactor
-description: Automated refactoring suggestions (extract method, rename, replace conditional) — analyzes code against SOLID principles and outputs actionable before/after comparisons
-version: 1.1.1
+description: Automated refactoring suggestions (extract method, rename, replace conditional) — analyzes code against SOLID principles and outputs actionable before/after comparisons. Use when asked for refactoring suggestions without applying them.
+version: 1.1.2
 author: Community
 tags: [refactor, solid, extract-method, rename-variable, replace-conditional, polymorphism]
 user-invocable: true
@@ -23,14 +23,14 @@ All scripts self-resolve via `__dirname` — run from any working directory:
 
 ```bash
 # Analyze single file or directory for refactoring opportunities
-node <path-to>/scripts/analyzer.mjs <file-or-dir> [--thresholds 20,5,3]
+node <skill>/scripts/analyzer.mjs <file-or-dir> [--thresholds 20,5,3]
 
 # Output structured JSON to stdout
 # Exit code 0 = analysis complete (may find issues)
 # Exit code 1 = fatal error (file not found, parse failure)
 ```
 
-**Auto-discovery**: Scripts resolve config and sibling scripts relative to `__dirname`, so they work whether installed globally (`~/.agents/skills/o-refactor/scripts/`) or locally (`.agents/skills/<project>/o-refactor/scripts/`).
+`<skill>` is this skill's folder; its scripts find their own files from there, so run them from any directory.
 
 ## Refactoring Patterns Detected
 

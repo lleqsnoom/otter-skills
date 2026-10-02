@@ -398,11 +398,30 @@ function main() {
   const failed = runs.filter((run) => !run.ok);
   const header = generatePlanHeader(stats, branch, failed, scope);
 
-  fs.writeFileSync(fullPath, propertyBlock(dir, args.reviews) + header + "\n\n---\n\n## Issues (fill in during review)\n");
+  fs.writeFileSync(fullPath, propertyBlock(dir, args.reviews) + header + "\n\n---\n\n" + passSkeleton());
   console.log(fullPath);
 }
 
-export { generatePlanHeader };
+/**
+ * Every pass heading, written before the review starts: a plan is filled in one edit at a time, and a heading that
+ * appears only once its pass is written would read as missing to the review-plan gate after every earlier edit.
+ * A heading still holding its pending line is a pass that has not reported yet.
+ */
+const PASSES = [
+  ["[PRINCIPLE]", "pass 2"],
+  ["[Comments]", "pass 3"],
+  ["[Bloat]", "pass 4"],
+  ["[Architecture]", "pass 5"],
+  ["[Floor]", "pass 6"],
+  ["[Spec]", "pass 7"],
+];
+
+function passSkeleton() {
+  const sections = PASSES.map(([heading, pass]) => `## ${heading} — ${pass} of the review\n\n_pending — replace with this pass's findings, or \`none\`_\n`);
+  return `${sections.join("\n---\n\n")}\n---\n\n## Summary\n\n_pending_\n`;
+}
+
+export { generatePlanHeader, passSkeleton };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   main();

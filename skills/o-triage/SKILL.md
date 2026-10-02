@@ -1,7 +1,7 @@
 ---
 name: o-triage
-description: Structured intake conversation — ask targeted questions to classify a bug's platform, type, and evidence before touching any tools. Outputs <run folder>/E<nn>-triage.md.
-version: 1.0.1
+description: Structured intake conversation — ask targeted questions to classify a bug's platform, type, and evidence before touching any tools. Outputs <run folder>/E<nn>-triage.md. Use for intake of a new bug.
+version: 1.0.2
 author: Community
 tags: [triage, classification, debugging, intake, diagnostic]
 user-invocable: true
@@ -96,7 +96,7 @@ Use `scripts/route.mjs` to look up the reproduce template and investigate tools 
 ## Constraints (MANIFESTO)
 
 1. **Intake only** — No tool calls, no source reads, no shell commands. Only conversation and brief output.
-2. **No source reading** — Do not use `view`, `read_mcp_resource`, or any file-reading tool on project code during triage.
+2. **No source reading** — Do not use any file-reading tool or MCP resource on project code during triage.
 3. **One panel at a time** — Ask a panel, wait for response, then ask the next one.
 4. **Stop when sufficient** — If user provides all info upfront, write brief immediately without asking redundant questions.
 5. **Keep brief small** — Output must be consumable by a local model in one pass (compact markdown, no verbosity).

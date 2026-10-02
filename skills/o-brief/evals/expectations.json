@@ -1,7 +1,7 @@
 {
   "skill": "o-brief",
   "expected_behavior": [
-    "The conversation is compacted into a handoff brief of exactly the seven named sections \u2014 Do next, Where this stands, Settled, Open, Suggested skills, Sources \u2014 rather than a summary that leaves the next agent to re-derive state.",
+    "The conversation is compacted into a handoff brief of exactly the seven named sections — Do next, Where this stands, Settled, Open, Suggested skills, Sources — rather than a summary that leaves the next agent to re-derive state.",
     "Settled decisions each carry their one-line reason, so the next agent does not re-litigate them.",
     "The brief points at the artifacts that already hold detail (specs, plans, task files, ADRs, commits) instead of duplicating their content."
   ],

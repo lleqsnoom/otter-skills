@@ -4,14 +4,16 @@
  * Background reflection — a Stop hook that counts work and, when a session has done enough of it,
  * runs o-autoreflection's analyze stage in the background, report-only.
  *
- * The trigger is deterministic, not judgemental: it counts tool calls and fires when the count
- * crosses AUTOHARNESS_REFLECT_EVERY_N. The fired pass runs `improve.mjs <period> --no-plan`, which
+ * The trigger is deterministic, not judgemental: it counts one per Stop event (one per turn), or the
+ * tool calls a payload lists, and fires when the count crosses AUTOHARNESS_REFLECT_EVERY_N. It only
+ * counts in a project that already keeps a `.o-skills/` tree: a plugin hook runs in every project, and
+ * one that never opted in is left untouched. The fired pass runs `improve.mjs <period> --no-plan`, which
  * writes the report and stops before Propose — so the background never edits a skill, a detector,
  * or a gate; a human still runs the apply stage. Fail-open throughout: a hung or missing analyzer
  * can delay nothing, and a missed reflection never fails the turn.
  *
- * Usage: installed as a Stop hook. Reads the payload as a JSON stdin line, a positional file path,
- * or nothing (one turn's worth of one tool call). State lives in .o-skills/autoreflection/counter.json.
+ * Usage: installed as a Stop hook (hooks/hooks.json). Reads the payload as JSON on stdin, a positional
+ * file path, or nothing (one turn). State lives in .o-skills/autoreflection/counter.json.
  */
 
 import fs from "node:fs";
@@ -73,6 +75,19 @@ const readFileOrNull = (file) => {
   }
 };
 
+const parseOrNull = (text) => {
+  try {
+    return JSON.parse(text ?? "null");
+  } catch {
+    return null;
+  }
+};
+
+/** A project opts in by keeping a `.o-skills/` tree; the hook never creates one. */
+export function optedIn(cwd = process.cwd()) {
+  return fs.existsSync(path.resolve(cwd, ".o-skills"));
+}
+
 /** How many tool calls this Stop event represents. Unknown payloads still count one. */
 export function callsFrom(payload) {
   const uses = payload?.tool_input?.tool_uses ?? payload?.tool_uses ?? payload?.tool_calls;
@@ -111,10 +126,12 @@ async function main() {
   const threshold = Number(process.env.AUTOHARNESS_REFLECT_EVERY_N ?? DEFAULT_THRESHOLD) || DEFAULT_THRESHOLD;
   const period = process.env.AUTOHARNESS_REFLECT_PERIOD ?? DEFAULT_PERIOD;
 
+  if (!optedIn()) process.exit(0);
+
   const arg = process.argv[2];
   const payload = (() => {
-    if (arg && fs.existsSync(arg)) return JSON.parse(readFileOrNull(arg) ?? "null");
-    if (process.stdin.isTTY === false) return JSON.parse(readFileSync(0, "utf8") ?? "null");
+    if (arg && fs.existsSync(arg)) return parseOrNull(readFileOrNull(arg));
+    if (!process.stdin.isTTY) return parseOrNull(readFileOrNull(0));
     return null;
   })();
 

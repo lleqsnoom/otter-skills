@@ -1,9 +1,10 @@
 {
   "skill": "o-comments",
   "expected_behavior": [
-    "Where a magic value comes from or what invariant it must satisfy.",
-    "Never add a comment that can be replaced by a better name.",
-    "Removing comments must never change behavior; refactoring must preserve it. Run the project's tests after refactoring."
+    "A comment that only restates the code it sits on is deleted.",
+    "A comment that survives says why: a non-obvious choice, the source of a magic value, an invariant, or what breaks if the code changes.",
+    "A comment that a better name would make unnecessary is replaced by the better name.",
+    "A block that needs a paragraph of explanation is extracted into a named function, and the tests are run afterwards to show behaviour did not change."
   ],
   "source": [
     "What a Good Comment Explains",

@@ -1,7 +1,7 @@
 ---
 name: o-humanize
 description: Simplify text, an article, a commit or PR to a B2 reading level — measure sentence length and complexity, cut noise, rewrite, then verify no meaning was lost. Use when asked to humanize, simplify, make easy to read, or plain-language a piece of prose.
-version: 1.0.1
+version: 1.0.2
 author: Community
 tags: [writing, readability, simplification, plain-language, cefr, editing, prose]
 user-invocable: true
@@ -17,6 +17,8 @@ with the same measurement plus meaning-preservation checks.
 The number is the source of truth: a rewrite is never trusted until
 `verify.mjs` passes. This mirrors `o-roast` (pure scorer + report), for prose
 simplification instead of critique.
+
+`<skill>` below is this skill's folder.
 
 ## When to use
 

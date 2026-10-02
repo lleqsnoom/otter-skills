@@ -1,7 +1,7 @@
 ---
 name: o-analyze
-description: Interactive analysis skill — research the project and web first, ask short plain questions until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory.
-version: 1.1.1
+description: Interactive analysis — research the project and web first, ask short plain questions until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory. Use when asked to analyze a problem or weigh solutions with evidence.
+version: 1.1.2
 author: Community
 tags: [analysis, troubleshooting, diagnosis, problem-solving, investigation]
 user-invocable: true
@@ -10,6 +10,8 @@ user-invocable: true
 # O-Analyze — Interactive Problem Analysis & Solution Proposal
 
 Guide the user through understanding their problem, formulating a thesis with evidence, proposing solutions, and routing to the right action (fix or task creation). This is an interactive conversation skill — it asks questions, clarifies ambiguities, and only proceeds when confident.
+
+`<skill>` below is this skill's folder.
 
 ## When to use
 

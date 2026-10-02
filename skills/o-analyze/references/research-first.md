@@ -4,10 +4,11 @@ Never ask the user something you can find yourself. Spend the first pass of ever
 
 ## Order
 
-1. **The index.** Search every indexed repository at once with `o-search` (`~/.agents/skills/o-search/SKILL.md`
-   for a global install, `.agents/skills/o-search/SKILL.md` for a local one): by meaning when you know the
-   behaviour but not the file that owns it, by exact identifier when you already have the symbol. It is the
-   fastest way to find the file a question lives in, and it spans repositories a local grep cannot reach.
+1. **The index.** Search the repositories this machine reads with the otter-skills MCP tools, as
+   `<skills>/o-search/SKILL.md` describes (`<skills>` is the folder holding every o-* skill): `search_knowledge`
+   by meaning when you know the behaviour but not the file that owns it, `find_symbols` or `search_code` when
+   you already have the identifier. It is the fastest way to find the file a question lives in, and it spans
+   repositories a local grep cannot reach.
 2. **The project.** Read the files, symbols, tests, and git history that touch the problem. Cite the
    exact location (`path/to/file.js:42`).
 3. **The web.** Fetch official docs and prior art. Cite the URL. Prefer primary sources.
@@ -26,7 +27,7 @@ Record each with `--event option`, each with its trade-off. Then ask which one t
 If the host has no shell, no web, or no GitHub access, do not guess:
 
 - write a `memory.md` line saying which capability was missing (`not run (no web access)`),
-- when it is the index that is unreachable, say so and fall back to reading the project directly: `o-search`
-  is a faster way to the same answer, not the answer itself,
+- when the otter-skills tools are not registered, or answer that the index is unavailable, say so and fall back
+  to reading the project directly: the index is a faster way to the same answer, not the answer itself,
 - lower confidence and say so,
 - ask the user for the missing fact instead of inventing it.

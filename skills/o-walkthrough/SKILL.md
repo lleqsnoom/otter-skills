@@ -1,7 +1,7 @@
 ---
 name: o-walkthrough
 description: Generate an interactive bash script that walks a human through steps only they can perform — setting up credentials or API keys by hand in a vendor dashboard, provisioning a cloud resource, adding a CI secret, or running a one-off migration or cutover — stage by stage with hidden secret entry and confirmation gates. Use when the remaining steps need a human in a browser or console; never for what can be automated.
-version: 1.0.1
+version: 1.0.2
 author: Community
 tags: [walkthrough, human-steps, provisioning, credentials, migration]
 user-invocable: true

@@ -1,7 +1,7 @@
 ---
 name: o-autoreflection
-description: Turn sessions into approved skill fixes — run `o-autoreflection <period>` (24h, 7d, 2w) to traverse every session of that window across every CLI, write one skill-health report (JSON truth + markdown read) and a fix plan, then ask whether an auto-heal session is wanted and, on yes, propose each fix as one multi-select option carrying the original issue, the proposed edit and the rate it should move, applying only what is picked with a revert-on-failure ledger. Without a period it reflects on one session instead (this one or an earlier one), extracting friction signals and quality anchors, verifying each against the real skill files, and routing evidence-backed proposals to a fix, a spec, or tasks. Use for "reflect on this session", "what went wrong above", "retro", "analyze my last week of sessions", "what has been failing across my skills", "heal the skills from that report", "improve the skills based on what happened".
-version: 1.5.1
+description: Turn sessions into approved skill fixes — `o-autoreflection <period>` (24h, 7d, 2w) reads every session transcript of that window across every CLI, extracts the friction, writes one skill-health report and a fix plan, and proposes each fix as one multi-select option, applying only what is picked with a revert-on-failure ledger; without a period it reflects on the current one. Use for "reflect on this session", "what went wrong above", "retro", "analyze my last week of sessions", "what has been failing across my skills", "heal the skills from that report".
+version: 1.5.2
 author: Community
 tags: [reflection, retrospective, self-improvement, transcript, session, analysis, batch, healing, skills]
 user-invocable: true
@@ -31,6 +31,8 @@ command that was never going to finish (a dev server, a watcher), the wait came 
 the turn could only end when the user broke it ("you are stuck on one step for 20 minutes", "running the
 app with no time limit", "add some timeout"). `blocking-wait` is that wait; `user-stuck` is the user
 saying it. Neither needs the other, and either one is a finding that outranks a failed step.
+
+`<skill>` below is this skill's folder.
 
 ## When to use
 
@@ -170,9 +172,9 @@ node <skill>/scripts/heal.mjs --plan "<run folder>/E<nn>-heal.json" --apply F1,F
 
 Only the picked ids are applied, and only `auto` ones; each edit runs its check and **reverts** if the
 check fails, so a skill is never left broken. The ledger line lands in `heal-ledger.jsonl` beside the
-plan, and every skill-level line also lands in that skill's own `skills/<skill>/.heal-ledger.jsonl`, so a
+plan, and every skill-level line also lands in that skill's own `skills/<name>/.heal-ledger.jsonl`, so a
 skill's edit history is one append-only trail. A first applied edit also writes
-`skills/<skill>/.self-authored.json`, and the run's landed/rejected names are written to
+`skills/<name>/.self-authored.json`, and the run's landed/rejected names are written to
 `.o-skills/runs/last-heal-summary.json` for the next session to read. Portfolio `merge` records which
 skill absorbed which, and portfolio `delete` archives the directory to `skills/.archive/` rather than
 removing it, so a fold and a prune stay distinguishable and revivable. Report one line each for applied,

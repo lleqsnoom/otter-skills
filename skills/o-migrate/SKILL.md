@@ -1,47 +1,60 @@
 ---
 name: o-migrate
-description: Framework/dependency migration assistant — generates migration plans with breaking changes, upgrade paths, and automated fix candidates from source analysis
-version: 1.0.1
+description: Plan a framework or dependency upgrade — inventory declared and installed versions, read each crossed major's official upgrade guide, list every breaking change with its URL and where the project uses it, and order the steps one major at a time. Use when asked to upgrade, bump or migrate a package or framework (Express 4 → 5, React 18 → 19).
+version: 2.0.0
 author: Community
 tags: [migration, upgrade, dependency-management, framework-migration, version-upgrade]
 user-invocable: true
 ---
 
-# O-Migrate — Migration Planning Assistant
+# O-Migrate — Migration Planning
 
-Assists with version upgrades and framework migrations by analyzing project structure and generating comprehensive migration plans with breaking change detection and automated fix candidates.
+A migration plan is only as true as its sources. This skill carries no list of breaking changes of its own: every
+change in the plan comes from the official upgrade guide or changelog of the major version it belongs to, and
+names that page by URL. A change you cannot source is not in the plan — say it is unknown instead.
 
-## Scripts
+`<skill>` below is this skill's folder.
 
-All scripts self-resolve via `__dirname` — run from any working directory:
+## 1. Inventory — what the project actually runs
+
+From the project root (npm projects):
 
 ```bash
-# Analyze current project for migration opportunities
-node <path-to>/scripts/analyze.mjs --target express@5 [--source express@4]
-
-# Generate full migration plan document
-node <path-to>/scripts/analyze.mjs --target react@19 --output migration-plan.md
+node <skill>/scripts/analyze.mjs --target express@5 [--output <run folder>/E<nn>-migration-plan.md]
+node <skill>/scripts/analyze.mjs --all        # every declared dependency, with its installed version
 ```
 
-**Auto-discovery**: Scripts resolve config and sibling scripts relative to `__dirname`, so they work whether installed globally (`~/.agents/skills/o-migrate/scripts/`) or locally (`.agents/skills/<project>/o-migrate/scripts/`).
+The script reads `package.json`, `node_modules` and `package-lock.json`, and prints JSON:
+`inventory[]` (`package`, `declared`, `installed`, `from`, `target`, `majorsCrossed`) and `plan[]` — one step per
+major crossed, each with `source: null` and an empty `changes` list for you to fill. `problems[]` says what it
+could not decide: a target such as `latest` (run `npm view <package> version` and pass the number), or a package
+the project does not use. To see which packages are behind, run `npm outdated --json`.
 
-## Migration Categories
+For another ecosystem (pip, cargo, go modules, Maven), take the same inventory with its own tools: the declared
+constraint, the locked version, the target, the majors crossed.
 
-1. **Dependency upgrades** — parse manifest, check latest versions, flag breaking changes
-2. **Framework migrations** — Express 4→5, React class→hooks, etc.
-3. **TypeScript upgrades** — tsconfig target and compiler option updates
+## 2. Sources — one official guide per major crossed
+
+For each step, fetch the package's own upgrade guide or changelog for that major (its docs site, its
+`CHANGELOG.md`, its GitHub release notes) and record the URL as the step's source. Prefer the maintainers' page
+over a blog post. Two majors crossed means two guides: a guide for 5 does not cover the move from 3 to 4.
+
+## 3. Impact — where this project uses each change
+
+For every breaking change the guide lists, search the project for the API it touches and record each hit as
+`file:line`. A change with no hit is listed with `not used here`, so the reader can see it was checked. Note a
+codemod when the guide names one, and which changes it covers.
+
+## 4. Order — one major at a time
+
+Order the steps so each major lands on its own, with the full test suite green before the next: runtime and
+tooling requirements first (Node version, compiler), then codemods, then the hand edits, then deprecations that
+will break in the next major.
 
 ## Definition of Done
 
-A migration run is done when `analyze.mjs` produces all three of:
-
-- **Structured plan on stdout** — JSON `{ packagesAnalyzed, plan[] }`; every plan step carries `package`, `fromVersion`, `toVersion`, `change`, `severity`, `fix`, and `automated`.
-- **Human-readable plan on stderr** — grouped by package, each step showing its severity and fix; when `--output <file>` is passed, the same markdown is also written to that file.
-- **Exit 0** — including the legitimate case of an empty plan (no known breaking changes apply).
-
-Failure modes — each prints a message to stderr and exits 1:
-
-- Neither `--target <package@version>` nor `--all` supplied → usage error.
-- No readable `package.json` in the current directory → "No package.json found".
-
-Partial-data contract: an unknown package name, an unparseable `package.json`, or a version string that matches no breaking-change entry never aborts the run — the plan reports the gap (e.g. a single `manual review required` step, or a version marked `unknown`) instead of inventing changes. This lets the caller tell "nothing to do" apart from "could not determine".
+- The plan names, for every major crossed, the official source it was built from, by URL.
+- Every breaking change in it carries where this project uses it (`file:line`), or `not used here`.
+- Nothing in the plan is unsourced: a change you could not confirm is marked unknown, never filled in from memory.
+- `analyze.mjs` exits 0 with the inventory; it exits 1, with a message, on no `--target`/`--all` or no readable
+  `package.json`.

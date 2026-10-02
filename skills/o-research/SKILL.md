@@ -1,7 +1,7 @@
 ---
 name: o-research
 description: Research a topic or tune a metric — research the project and web first, propose three candidate changes, then iterate one atomic change at a time, evaluating it mechanically (a command, or agent-judged criteria coverage) and keeping only measured improvements until the target, a guard, or a hard cap stops the run; graph-driven with guards, a memory file, and a report. Use for "research X", "compile/summarise sources on Y until N criteria are covered", filling knowledge gaps, literature/topic research with coverage criteria, or optimizing a measurable value.
-version: 1.2.1
+version: 1.2.2
 author: Community
 tags: [research, experiment, optimization, metric, loop, iteration, evaluation, tuning, autonomous, literature, coverage]
 user-invocable: true
@@ -29,6 +29,8 @@ and no autonomy doctrine — repetition is owned by the host (see
 `references/running-unattended.md`), and the host's permission and approval gates
 **always win**. It never tells you to ignore a confirmation, never says "never
 stop", and never says "never ask".
+
+`<skill>` below is this skill's folder.
 
 ## Scenario
 
