@@ -24,6 +24,8 @@ Read this when x-implement's VERIFY step reviews one task. A review the user ask
    One row per judged unit (group, verdict, reason, `file:line`); copy the checker's `rated` and `unrated`.
 6. **Floor** under `[Floor]`: `node <skills>/x-floor/scripts/floor-guard.mjs --root .`. Copy `rated` and
    `unrated`. Exit 2 means it could not run, which is not clean.
+7. **Spec** under `[Spec]`: does the diff implement the originating spec or task? Resolve and judge per
+   `SKILL.md`'s Spec pass; on no source, write `no spec available`.
 
 `<skills>` is `~/.agents/skills` for a global install, `.agents/skills` for a local one.
 
@@ -54,5 +56,5 @@ which rows of x-implement's standing bar you could check and which you could not
 
 ## Full rules
 
-Open `SKILL.md` when a case is unclear: `## The Six Passes`, `## Severity`, `## Output Format`, and
+Open `SKILL.md` when a case is unclear: `## The Seven Passes`, `## Severity`, `## Output Format`, and
 `references/principles.md` for the extract tests.
