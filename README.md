@@ -555,6 +555,11 @@ checkout's copy, and can ask this checkout's board a question.
 
 Nothing in the app imports them, and `files` keeps them out of the tarball.
 
+The same set installs as a Claude Code plugin: `.claude-plugin/marketplace.json` at the repo root lists
+every skill directory under one plugin, so an agent that reads Claude marketplaces can install the suite
+with `/plugin marketplace add lleqsnoom/otter-pm` without the local linking step. The marketplace test
+(`test/marketplace.test.cjs`) fails when a skill directory is missing from the listing.
+
 A skill's scripts are `.mjs`: this repository's `package.json` says `"type": "module"`, and an installed skill is
 a symlink into this tree, so a `.js` script that calls `require` or writes `module.exports` throws the moment
 anyone runs it, installed or not. `x-skill-lint` fails on that (`commonjs-script`), and the fix is the extension
