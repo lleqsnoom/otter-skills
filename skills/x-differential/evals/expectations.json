@@ -1,0 +1,11 @@
+{
+  "skill": "x-differential",
+  "expected_behavior": [
+    "The pass reads the diff hunk by hunk and pairs each with the behavior it replaced and the callers it puts at stake, rather than re-reviewing the module.",
+    "Every hunk gets one risk row rated silent, guarded, or breaking, with a one-line reason; a hunk whose replaced behavior cannot be named is reported as an unmapped hunk before any risk is rated.",
+    "A caller is listed with file:line or not listed at all; a changed region with no caller is its own dead-code finding.",
+    "Silent risk is the top severity: a change whose failure no test or caller would notice is reported ahead of a breaking one that fails loudly.",
+    "The result lands as E<nn>-differential.md in the run folder, and silent or unmapped rows route to x-fix while a table of only guarded rows unblocks ship."
+  ],
+  "source": ["SKILL.md: The risk table", "SKILL.md: Rules", "SKILL.md: Procedure"]
+}
