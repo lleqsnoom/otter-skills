@@ -20,6 +20,8 @@ These files must exist from prior steps in the debugging pipeline:
 
 If either file is missing, stop and offer to run them with a `confirm` panel (yes/no). Do not proceed without them.
 
+The loop comes before the hypotheses: the repro must be a **tight** pass/fail signal that goes red on this bug — one command, already run. If it is slow, loosely asserted, or flaky, tighten it first (faster, sharper assertion, more deterministic; for a flaky bug raise the reproduction rate until it is debuggable) using `x-debug`'s `references/feedback-loops.md`. No hypothesis is tested without a loop.
+
 ## Workflow (5 Steps)
 
 ### 0. Read Input Context
