@@ -1,3 +1,5 @@
+<img src="docs/brand/svg/otter-skills-banner.svg" alt="Otter Skills" width="640">
+
 # Otter Skills
 
 A suite of skills (`o-*`) for planning, building, reviewing and improving code, each one a
