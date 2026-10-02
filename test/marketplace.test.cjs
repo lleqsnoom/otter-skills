@@ -53,12 +53,14 @@ describe("plugin marketplace", () => {
   it("declares the four loop commands as files that name their skill", () => {
     const marketplace = JSON.parse(fs.readFileSync(MARKETPLACE, "utf8"));
     const [plugin] = marketplace.plugins;
-    const commands = plugin.commands ?? {};
     const loop = ["x-fix", "x-implement", "x-plan", "x-review"];
-    assert.deepEqual(Object.keys(commands).sort(), loop, "the plugin must declare the four loop commands");
+    assert.equal(typeof plugin.commands, "string", "the plugin must declare its commands directory");
+    const commandsDir = path.join(ROOT, plugin.commands);
+    assert.equal(fs.existsSync(commandsDir), true, `commands directory ${plugin.commands} does not exist`);
+    const declared = fs.readdirSync(commandsDir).filter((file) => file.endsWith(".md")).map((file) => file.replace(/\.md$/, ""));
+    assert.deepEqual(declared.sort(), loop, "the plugin must declare exactly the four loop commands");
     for (const name of loop) {
-      const file = path.join(ROOT, plugin.source ?? plugin.skills, commands[name].source);
-      assert.equal(fs.existsSync(file), true, `command ${name} names ${commands[name].source}, which does not exist`);
+      const file = path.join(commandsDir, `${name}.md`);
       assert.ok(fs.readFileSync(file, "utf8").includes(name), `command ${name} must name its skill`);
     }
   });

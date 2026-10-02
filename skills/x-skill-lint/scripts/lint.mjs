@@ -302,24 +302,6 @@ export function readmeSkills(readmeText) {
   return set;
 }
 
-export function marketplaceComponentDirs(root, skillsDir) {
-  const manifest = path.join(root, ".claude-plugin", "marketplace.json");
-  if (!fs.existsSync(manifest)) return new Set();
-  const marketplace = JSON.parse(fs.readFileSync(manifest, "utf8"));
-  const dirs = new Set();
-  for (const plugin of marketplace.plugins ?? []) {
-    const pluginRoot = path.resolve(root, plugin.source ?? plugin.skills ?? "");
-    for (const command of Object.values(plugin.commands ?? {})) {
-      const source = typeof command === "object" ? command.source : command;
-      const resolved = typeof source === "string" ? path.resolve(pluginRoot, source) : "";
-      if (resolved.startsWith(`${skillsDir}${path.sep}`)) {
-        dirs.add(path.relative(skillsDir, resolved).split(path.sep)[0]);
-      }
-    }
-  }
-  return dirs;
-}
-
 export function lintRepo(root = REPO_ROOT) {
   const skillsDir = path.join(root, "skills");
   const violations = [];
@@ -328,13 +310,11 @@ export function lintRepo(root = REPO_ROOT) {
   }
   const readmePath = path.join(root, "README.md");
   const inReadme = fs.existsSync(readmePath) ? readmeSkills(fs.readFileSync(readmePath, "utf8")) : new Set();
-  const componentDirs = marketplaceComponentDirs(root, skillsDir);
   const names = fs
     .readdirSync(skillsDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
-    .sort()
-    .filter((name) => !componentDirs.has(name));
+    .sort();
 
   for (const name of names) {
     const dir = path.join(skillsDir, name);

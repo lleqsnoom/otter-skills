@@ -16,7 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { parseFrontmatter, REPO_ROOT, marketplaceComponentDirs } from "./lint.mjs";
+import { parseFrontmatter, REPO_ROOT } from "./lint.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -84,13 +84,11 @@ export function rank(query, skills, vectors) {
 
 export function measure(root = REPO_ROOT) {
   const skillsDir = path.join(root, "skills");
-  const componentDirs = marketplaceComponentDirs(root, skillsDir);
   const names = fs
     .readdirSync(skillsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .sort()
-    .filter((name) => !componentDirs.has(name));
+    .sort();
 
   const descriptions = new Map();
   for (const name of names) {
