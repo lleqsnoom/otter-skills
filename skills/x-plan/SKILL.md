@@ -87,7 +87,7 @@ Completion: `verify` exits 0, or the run moved to `abandon`.
 
 1. **Research first** — search the project, the web, and (for code) GitHub before asking anything. See `references/research-first.md`.
    **Completion:** at least one `research` event is recorded, or the step is recorded `--status not-run --reason "<why>"`.
-2. **Clarify** — ask short plain questions as panels (`single` / `multi` / `open` / `confirm`) until the open list is empty. See `references/questions.md`.
+2. **Clarify** — ask short plain questions as panels (`single` / `multi` / `open` / `confirm`) in frontier rounds until the open list is empty. See `references/questions.md`.
    **Completion:** every `question` event has an `answer`, and `guard --gate no_open_questions` exits 0. Run `scripts/check-questions.mjs --dir <dir>` before asking — it exits 1 on a question that is too long, two ideas, or missing its panel.
 3. **Propose three approaches** — record each with a trade-off; let the user pick.
    **Completion:** three distinct `option` events, one `decide` event, and `guard --gate three_options` exits 0.

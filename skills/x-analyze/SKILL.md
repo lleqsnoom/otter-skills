@@ -86,9 +86,9 @@ still going, use `guard --gate <name>`: it exits 0 or 1 on that gate alone.
 | `decision_made` | the user picked a route |
 | `route_chosen` | the route is recorded |
 
-Research before the first question (`references/research-first.md`), ask every question as a panel
-(`references/questions.md`), then let `scripts/check-questions.mjs` check your questions before you ask
-them. Completion: `verify` exits 0 at a route stop, which also requires the route to be recorded and the
+Research before the first question (`references/research-first.md`), ask every question as a panel in
+frontier rounds (`references/questions.md`), then let `scripts/check-questions.mjs` check your questions
+before you ask them. Completion: `verify` exits 0 at a route stop, which also requires the route to be recorded and the
 analysis file to be non-empty. A mid-run `verify` exits 1 even when every guard passes — it answers only
 whether the run is finished, and mid-run it is not. That is the normal state, not a failure, and
 `guard --gate <name>` is the check that answers mid-run.

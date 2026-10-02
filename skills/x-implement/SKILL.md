@@ -124,6 +124,8 @@ cannot name them, run the full suite and say why.
 0. **START** — record that the task began: `node <skill>/scripts/status.mjs <run folder> --start <task file>`. It stamps
    `started` in the task's property block once; a second call keeps the first stamp.
 1. **RED** — Write the minimal failing test for the task's acceptance criterion. It must fail for the *right reason*.
+   **Seams are pre-agreed:** before the first test of a task, name the seams under test and confirm them with
+   the user; tests observe behavior at public seams, never internals.
 2. **GREEN** — Write the minimum implementation to pass that test. Nothing more. Walk the x-unbloat ladder before writing.
 3. **REFACTOR** — Evaluate against SOLID/clean code, the comment rules, the x-unbloat pass (ladder, table, one cut at a time), the x-arch pass (placement, naming, responsibility, direction, inheritance), and the functional style above. Strip comments that restate code; extract explained blocks into named functions; push side effects to the edges and prefer pure, immutable functions. State what you assessed and what (if anything) improved — or why no changes were needed.
    - **One-sentence test:** every function you wrote must be describable in one sentence; if not, split it.
@@ -204,7 +206,6 @@ Each of these is an excuse to skip a step, and each is wrong. Spotting one is th
 
 | Excuse | Reality |
 |--------|---------|
-| "I'll write the test after — it's faster." | A test written after the code tests what you built, not what the task asked for. RED first is the only thing that proves the test can fail. |
 | "This change is too small to commit separately." | Small commits are free; one large commit hides which change broke the suite. |
 | "I'll clean up the comments and the abstractions at the end." | Deferred cleanup is the cleanup that never happens. REFACTOR is a step in this workflow, not an intention. |
 | "The task is nearly done — I'll skip x-review this once." | The one task you skip review on is the one that lands the defect every later layer builds on. |

@@ -191,6 +191,28 @@ The full procedure — how to pick a session, what the scan reports, how to judg
 reflection format — is in `references/session-reflection.md`. Read it before reflecting; the gates below
 are the summary, not the method.
 
+### The environment, not only the skills
+
+A session that went sideways is often the agent's environment, not a skill file. Scan for those candidates
+too, beside the skill signals, across seven categories:
+
+- **Navigation** — the agent took long to find a file; a navigation pointer would have cut the detour.
+- **Automated checks** — a mistake a lint, typecheck, test or filesystem linter could have caught; an existing
+  check that sits unwired or silently broken is itself the finding, and a repo with no guardrail is a standing
+  missed opportunity.
+- **Coding standards** — a mistake the reviewer should enforce. Classify it first: a **mechanical** violation
+  (fixed syntactic pattern, banned API, import shape, file location) becomes a deterministic check — a lint
+  rule, a pre-commit hook, a CI job, whichever is cheapest; a **judgment** call becomes a written standard.
+  Default to building the check over writing the rule.
+- **Steering files** — instructions that no longer modify behavior are no-ops; prune them, and move standards
+  out of oversized steering files into the standards doc they belong in.
+- **Tool economy** — an expensive tool call that custom tooling or an MCP would make cheap.
+- **Information access** — a decision made blind because a log, an endpoint or a read-only view was not
+  available; tee it.
+
+Environment findings route like any other proposal (fix, spec, or tasks), and carry the same evidence bar: a
+`file:line`, a command, or a message index.
+
 ## Gates
 
 | Gate | Passes when | Checked by |

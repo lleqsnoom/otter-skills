@@ -41,6 +41,11 @@ rule is on you.
   when only free text fits, `confirm` for a yes/no.
 - **Record it.** Every question and answer goes into `memory.md`; recheck the open list after each
   answer and stop when the list is empty or the user says "you decide".
+- **Work the frontier in rounds.** The frontier is every question whose prerequisites are already settled; ask
+  the whole frontier in one round (each question still its own panel, each carrying its recommended answer), and
+  recompute it after the answers — a question that depends on one still open in this round waits for a later
+  round. Facts are never a question: a frontier question the filesystem, the repo, or the web could answer goes
+  to a sub-agent first, and only decisions ride on the user.
 
 ## How a turn ends
 

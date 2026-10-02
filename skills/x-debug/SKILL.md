@@ -47,6 +47,8 @@ Execute `analyze.mjs` with the bug description. This is mandatory and must compl
 ### 1. Reproduce Locally
 `analyze.mjs` generates `repro-*.js` for known error patterns. Run it to confirm the error triggers locally. If auto-reproduction fails, write one manually — never proceed without it.
 
+**The loop is the skill.** A tight pass/fail signal that goes red on *this* bug is what every later step consumes, so treat the repro as a product: tighten it (faster, sharper assertion, more deterministic), and for a flaky bug raise the reproduction rate until it is debuggable instead of chasing a clean repro. Name one command that you have already run and that goes red, before Step 2. Pick the construction and the tightening moves from `references/feedback-loops.md`; when no loop can be built, stop and ask for artifacts or instrumentation — never hypothesise without one.
+
 ### 2. Hypothesize & Test
 The script lists hypotheses ranked by likelihood. For each, run the proposed test and mark `[ ]` → `[x] Confirmed` or `[ ] Rejected` in the run's `E<nn>-debug.md`. Eliminate until one cause remains.
 
@@ -68,6 +70,7 @@ Run the run folder's `E<nn>-verify.js` after applying the fix. Issue is NOT reso
 ## Definition of Done
 
 - [ ] Reproduction script triggers the same error locally
+- [ ] The repro loop is tight and red-capable: one named command, already run, that goes red on this bug
 - [ ] Root cause identified through hypothesis elimination
 - [ ] Fix applied (not silenced)
 - [ ] Verification script passes (exit 0)
