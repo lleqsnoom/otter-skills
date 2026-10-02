@@ -1,0 +1,19 @@
+{
+  "skill": "x-sketch",
+  "queries": [
+    { "query": "does this checkout state model hold up? show me", "should_trigger": true },
+    { "query": "prototype the wizard flow so I can click through it", "should_trigger": true },
+    { "query": "give me three different layouts for this dashboard to compare", "should_trigger": true },
+    { "query": "I can't tell if this logic feels right on paper", "should_trigger": true },
+    { "query": "mock up what this screen could look like", "should_trigger": true },
+    { "query": "build a quick throwaway demo of the retry behaviour", "should_trigger": true },
+    { "query": "let me play with the state machine before we commit", "should_trigger": true },
+    { "query": "show the state changes visually as I click", "should_trigger": true },
+    { "query": "implement the dashboard", "should_trigger": false },
+    { "query": "write the tests for this module", "should_trigger": false },
+    { "query": "review my changes", "should_trigger": false },
+    { "query": "why does this fail in production", "should_trigger": false },
+    { "query": "plan the checkout feature", "should_trigger": false },
+    { "query": "simplify this function", "should_trigger": false }
+  ]
+}
