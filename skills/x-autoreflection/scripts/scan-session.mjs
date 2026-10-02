@@ -506,7 +506,9 @@ function scanWaits(messages) {
       if (!call) continue;
       const content = String(part.content ?? "");
       if (BACKGROUND_NOTICE_RE.test(content)) parked.set(part.id, commandOf(call.input) || call.name || "?");
-      const waits = WAIT_TOOL_RE.test(call.name ?? "") || /"wait"\s*:\s*true/.test(String(call.input ?? ""));
+      // A look at a running job that asked not to wait comes back "running" by design, and the agent moves on.
+      const input = String(call.input ?? "");
+      const waits = (WAIT_TOOL_RE.test(call.name ?? "") && !/"wait"\s*:\s*false/.test(input)) || /"wait"\s*:\s*true/.test(input);
       if (!waits || !STILL_RUNNING_RE.test(content)) continue;
       blocked.push({
         message: message.index,
