@@ -561,10 +561,16 @@ with `/plugin marketplace add lleqsnoom/otter-pm` without the local linking step
 (`test/marketplace.test.cjs`) fails when a skill directory is missing from the listing.
 
 Four of those skills are also reachable as slash commands: `/x-plan`, `/x-implement`, `/x-review` and
-`/x-fix`, one per step of the plan-implement-review-fix loop. Each is a markdown file under
-`skills/commands/` whose body names its skill and the one thing the user must provide, and the
-marketplace declares them under the plugin's `commands`, where the same test fails when a declared
-command file is missing or does not name its skill.
+`/x-fix`, one per step of the plan-implement-review-fix loop. Each is a markdown file under `commands/`
+whose body names its skill and the one thing the user must provide, and the marketplace declares them
+under the plugin's `commands`, where the same test fails when a declared command file is missing or
+does not name its skill.
+The plugin also declares one hook, `hooks/review-plan-gate.mjs`: the review-plan gate. It reads the plan
+text x-review writes — as raw stdin, a file path argument, or the JSON payload the host's hook contract
+hands over — and exits 1, printing one actionable line per missing heading, when any of `[Comments]`,
+`[Bloat]`, `[Architecture]` or `[Floor]` is absent from the plan. A plan missing a pass heading is
+incomplete, not clean, and the gate refuses it mechanically instead of leaving that to x-review's prose;
+a complete plan passes silently with exit 0.
 
 A skill's scripts are `.mjs`: this repository's `package.json` says `"type": "module"`, and an installed skill is
 a symlink into this tree, so a `.js` script that calls `require` or writes `module.exports` throws the moment

@@ -7,13 +7,9 @@
     {
       "name": "otter-pm-skills",
       "source": "./skills",
-      "description": "The x-* skill suite: plan, implement, review, fix, research and project management over .x-skills runs.",
-      "commands": {
-        "x-plan": { "source": "./commands/x-plan.md" },
-        "x-implement": { "source": "./commands/x-implement.md" },
-        "x-review": { "source": "./commands/x-review.md" },
-        "x-fix": { "source": "./commands/x-fix.md" }
-      }
+      "commands": "./commands",
+      "hooks": "./hooks",
+      "description": "The x-* skill suite: plan, implement, review, fix, research and project management over .x-skills runs." 
     }
   ]
 }
