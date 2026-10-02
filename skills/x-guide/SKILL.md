@@ -58,6 +58,7 @@ A starting situation that generates work, then merges onto the main flow:
 - **x-parallel** — run independent tasks in isolated worktrees.
 - **x-migrate** — a framework or dependency migration.
 - **x-test-gen** — scaffold tests from code.
+- **x-verify** — attack a fixed change with property and mutation passes, gate on survivors.
 - **x-unbloat** — cut code to what the task needs.
 - **x-refactor** — refactoring suggestions.
 - **x-comments** — comment hygiene.

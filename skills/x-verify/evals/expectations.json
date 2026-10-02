@@ -1,0 +1,7 @@
+{
+  "skill": "x-verify",
+  "expected_behavior": [
+    "A repo with no test runner for a language it changed gets a report that says so and nothing else — no invented runner, no pass faked green."
+  ],
+  "source": ["L3-T1 error-path spec"]
+}

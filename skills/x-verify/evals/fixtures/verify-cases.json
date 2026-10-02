@@ -1,0 +1,91 @@
+[
+  {
+    "kind": "stryker",
+    "name": "a survived and an uncovered mutant both count as survivors",
+    "input": {
+      "files": {
+        "src/a.js": {
+          "source": "export const sum = (a, b) => a + b;",
+          "mutants": [
+            { "id": "1", "mutatorName": "Block", "status": "Survived", "location": { "start": { "line": 2, "column": 1 }, "end": { "line": 2, "column": 30 } } },
+            { "id": "2", "mutatorName": "ArithmeticOperator", "status": "Killed", "location": { "start": { "line": 3, "column": 1 }, "end": { "line": 3, "column": 30 } } },
+            { "id": "3", "mutatorName": "ConditionalExpression", "status": "NoCoverage", "location": { "start": { "line": 7, "column": 1 }, "end": { "line": 7, "column": 20 } } }
+          ]
+        }
+      }
+    },
+    "survivors": [
+      { "file": "src/a.js", "line": 2, "mutator": "Block", "status": "Survived" },
+      { "file": "src/a.js", "line": 7, "mutator": "ConditionalExpression", "status": "NoCoverage" }
+    ]
+  },
+  {
+    "kind": "mutmut",
+    "name": "the results text names each survivor as path:line",
+    "input": "src/a.py\n1. survived  src/a.py:12\n2. killed  src/a.py:14\n3. survived  src/a.py:20\n",
+    "survivors": [
+      { "file": "src/a.py", "line": 12, "mutator": null, "status": "Survived" },
+      { "file": "src/a.py", "line": 20, "mutator": null, "status": "Survived" }
+    ]
+  },
+  {
+    "kind": "cargo-mutants",
+    "name": "an outcome no run killed, caught, timed out or called unviable is a survivor",
+    "input": {
+      "outcomes": [
+        { "mutant": { "file": "src/lib.rs", "line": 8, "mutation_type": "BinaryOperator" }, "killed": { "TestFailure": "..." } },
+        { "mutant": { "file": "src/lib.rs", "line": 15, "mutation_type": "UnaryOperator" }, "killed": null },
+        { "mutant": { "file": "src/lib.rs", "line": 21, "mutation_type": "BinaryOperator" }, "killed": null, "timeout": true },
+        { "mutant": { "file": "src/lib.rs", "line": 27, "mutation_type": "ReturnValue" }, "killed": null, "unviable": true }
+      ]
+    },
+    "survivors": [{ "file": "src/lib.rs", "line": 15, "mutator": "UnaryOperator", "status": "Survived" }]
+  },
+  {
+    "kind": "gate",
+    "name": "a survivor with a matching explanation, owner and reason is explained",
+    "survivors": [{ "file": "src/a.js", "line": 2, "mutator": "Block", "status": "Survived" }],
+    "config": { "explained": [{ "file": "src/a.js", "line": 2, "owner": "tkwiatek", "reason": "defensive clamp, a mutant there cannot change behavior" }] },
+    "unexplained": []
+  },
+  {
+    "kind": "gate",
+    "name": "a survivor with no explanation is unexplained",
+    "survivors": [{ "file": "src/a.js", "line": 2, "mutator": "Block", "status": "Survived" }],
+    "config": { "explained": [] },
+    "unexplained": [{ "file": "src/a.js", "line": 2, "mutator": "Block", "status": "Survived" }]
+  },
+  {
+    "kind": "gate",
+    "name": "an explanation naming another line does not cover a different survivor",
+    "survivors": [{ "file": "src/a.js", "line": 9, "mutator": "Block", "status": "Survived" }],
+    "config": { "explained": [{ "file": "src/a.js", "line": 2, "owner": "tkwiatek", "reason": "defensive clamp" }] },
+    "unexplained": [{ "file": "src/a.js", "line": 9, "mutator": "Block", "status": "Survived" }]
+  },
+  {
+    "kind": "gate",
+    "name": "an explanation whose expiry has passed explains nothing",
+    "at": "2026-10-01",
+    "survivors": [{ "file": "src/a.js", "line": 2, "mutator": "Block", "status": "Survived" }],
+    "config": { "explained": [{ "file": "src/a.js", "line": 2, "owner": "tkwiatek", "reason": "defensive clamp", "expires": "2026-09-30" }] },
+    "unexplained": [{ "file": "src/a.js", "line": 2, "mutator": "Block", "status": "Survived" }]
+  },
+  {
+    "kind": "gate",
+    "name": "an explanation without an owner or a reason is not an explanation",
+    "survivors": [
+      { "file": "src/a.js", "line": 2, "mutator": "Block", "status": "Survived" },
+      { "file": "src/b.js", "line": 4, "mutator": "Block", "status": "Survived" }
+    ],
+    "config": {
+      "explained": [
+        { "file": "src/a.js", "line": 2, "reason": "no owner named" },
+        { "file": "src/b.js", "line": 4, "owner": "tkwiatek" }
+      ]
+    },
+    "unexplained": [
+      { "file": "src/a.js", "line": 2, "mutator": "Block", "status": "Survived" },
+      { "file": "src/b.js", "line": 4, "mutator": "Block", "status": "Survived" }
+    ]
+  }
+]
