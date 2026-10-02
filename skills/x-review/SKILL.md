@@ -1,7 +1,7 @@
 ---
 name: x-review
 description: Review code against engineering principles — small functions, SOLID, KISS, DRY — and against the originating spec, with automated AST-based complexity analysis across 30+ languages including Python, C, C++, Java, JavaScript, TypeScript, Go, Rust, Ruby, PHP, Swift, Kotlin, and more. Runs the comments (x-comments), bloat (x-unbloat), architecture (x-arch + x-arch-lint) and quality-floor (x-floor) passes as part of every review. Also checks every change against the standing Definition of Done.
-version: 2.2.0
+version: 2.3.0
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
 user-invocable: true
@@ -95,6 +95,9 @@ analyze-patterns.mjs     { results, totalFiles, message }
 A count in the plan is a measurement, and an unmeasured count is not a zero. When an analysis script fails, `save-plan.mjs` writes `unknown — <script> failed, so this was not measured` and an "Analysis incomplete" note naming the reason. Carry that into the review: never report a failed analysis as a clean result.
 
 For engineering principles definitions and violation patterns, see `references/principles.md`.
+For language-specific review criteria, see `references/lang-typescript.md` (TypeScript) and
+`references/lang-python.md` (Python) — when the change is one of those languages, read its pack and
+apply it under `[PRINCIPLE]`; for a language with no pack, say so rather than inventing criteria.
 
 **After running the scripts:** The plan file path is printed by `save-plan.mjs`. Open that file with `view` or `edit`, then write your review content directly into it using the format below. **Do not use MCP resources to read/write plan files — they don't exist.**
 
