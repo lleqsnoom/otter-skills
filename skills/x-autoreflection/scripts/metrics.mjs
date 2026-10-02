@@ -110,6 +110,18 @@ export function tallySessions(sessions = []) {
   return [...rows.values()];
 }
 
+/**
+ * A skill the window observed (named) but never actually loaded is a candidate to archive: the layer
+ * is paying recall surface for a skill no session followed. This is a signal only — nothing is
+ * archived here, and a skill no session mentioned at all is not observed, so it is absent rather than
+ * flagged. `named` is loaded ∪ used, so "never loaded" among the observed is `loaded === 0`.
+ */
+export function neverLoaded(rows = []) {
+  return rows
+    .filter((tally) => (tally.loaded ?? 0) === 0 && (tally.named ?? 0) > 0)
+    .map((tally) => ({ skill: tally.name, loaded: 0, sessions: tally.sessions ?? 0 }));
+}
+
 /** The five rates for one skill's tally. Each is `null` when its denominator is zero. */
 export function dimensionsOf(tally) {
   const { checks, graphs } = tally;
