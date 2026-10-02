@@ -581,8 +581,10 @@ The suite gates on the same checks: `npm test` starts with `npm run validate:ski
 (`scripts/validate-skills.mjs`), which runs x-skill-lint's checks over `skills/` — parseable
 frontmatter whose name matches the folder, every referenced `scripts/*` and `references/*` existing,
 evals files that parse, every skill in the README table — and adds trail of bits' zero-items rule:
-a checker that inspects zero items must fail, not pass. A broken skill fails the suite before it
-can ship, and the failure names the file.
+a checker that inspects zero items must fail, not pass. It also enforces the version rules: every
+SKILL.md carries a `version` field, and a skill whose files changed against git HEAD without a
+version increase fails (`version-bump`) — the version is what makes an edit deliberate. A broken
+skill fails the suite before it can ship, and the failure names the file.
 
 Skills that run inside other skills — `x-arch`, `x-unbloat`, `x-comments`, and `x-review` for a task review — ship
 a pass card, `references/pass.md`: the per-host steps and the short form of the rules, at most 600 words. A host
