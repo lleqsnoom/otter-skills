@@ -546,7 +546,7 @@ highlighter.
 
 ## Skills
 
-`skills/` is where the skills live: 31 of them, each a `SKILL.md` with its `scripts/`, `references/` and
+`skills/` is where the skills live: 39 of them, each a `SKILL.md` with its `scripts/`, `references/` and
 `assets/`. They write the `.x-skills` trees this board reads, so both halves of the loop sit in one checkout.
 They run from wherever they are installed, so this repository is the source of truth: edit a skill here, then
 `npm run install` links the whole set into `~/.agents/skills/`, mirrors each one in `~/.claude/skills/`, and
