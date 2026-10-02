@@ -77,6 +77,26 @@ describe("save-plan scope", () => {
     assert.match(text, /\*\*Functions longer than 20 lines:\*\* 1\b/);
   });
 
+  it("counts duplicated blocks in the change only, and every file with --all", () => {
+    const repeated = (name) => {
+      const block = Array.from({ length: 5 }, (_, i) => `  total += ${name}[${i}] * ${i + 2};`).join("\n");
+      return `export function ${name}One(total) {\n${block}\n  return total;\n}\n\nexport function ${name}Two(total) {\n${block}\n  return total;\n}\n`;
+    };
+    write("old.mjs", repeated("old"));
+    git("commit", "-qam", "old repeats");
+    git("switch", "-q", "main");
+    git("merge", "-q", "feat");
+    git("switch", "-q", "feat");
+    write("dup.mjs", repeated("dup"));
+
+    const blocks = (text) => Number(text.match(/\*\*Duplicated blocks found:\*\* (\d+)/)[1]);
+    const scoped = blocks(plan());
+    assert.ok(scoped > 0, "the repeat inside the changed file is found");
+    assert.equal(scoped, blocks(plan("--files", "dup.mjs")), "and nothing outside the change is counted");
+    // --all reads git's tracked files, so it measures the unchanged old.mjs and not the untracked dup.mjs.
+    assert.equal(blocks(plan("--all")), blocks(plan("--files", "old.mjs")), "--all counts the unchanged file's repeat");
+  });
+
   it("says not measured, never zero, when the change holds no source files", () => {
     const text = plan();
 

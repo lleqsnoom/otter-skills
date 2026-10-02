@@ -279,7 +279,7 @@ function generatePlanHeader(stats, branch, failed = [], scope = { kind: "all" })
   lines.push("");
   lines.push(`**Date:** ${getTimestamp()}`);
   lines.push(`**Branch:** ${branch}`);
-  lines.push(scopeLine(scope) + (isWholeTree(scope) ? "" : " · duplication: whole repository"));
+  lines.push(scopeLine(scope));
   lines.push(`**Total files analyzed:** ${totalFiles}`);
   lines.push(metric("Functions with complexity > 5", stats.functionsHighComplexity, "analyze-complexity.mjs"));
   lines.push(metric("Functions longer than 20 lines", stats.functionsLong, "analyze-complexity.mjs"));
@@ -359,12 +359,12 @@ function propertyBlock(runDir, reviewed) {
   ].join("\n");
 }
 
-/** Complexity and patterns measure the scope; duplication scans the whole repository. */
+/** Every analyzer measures the same files: the scope's, or the whole tree as `--all`. */
 function analyze(files) {
   console.error("[x-review] Running complexity analysis...");
   const complexity = runAnalysis("analyze-complexity.mjs", files);
   console.error("[x-review] Running duplication check...");
-  const duplication = runAnalysis("check-duplication.mjs", ["--all"]);
+  const duplication = runAnalysis("check-duplication.mjs", files);
   console.error("[x-review] Running refactor pattern detection...");
   const patterns = runAnalysis("analyze-patterns.mjs", files);
   return [complexity, duplication, patterns];
