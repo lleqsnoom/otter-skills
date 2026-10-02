@@ -1,13 +1,13 @@
 ---
 name: o-floor
-description: Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .x-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a rule dropped, a new or extended exception, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work (a stub, a TODO with no tracker reference, an empty catch), a test made easier (it.skip, pytest.mark.skip), a deleted test, or an assertion removed from a test that still exists. Detection only, never writes code, exit 1 on a violation. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard; o-implement runs it before each commit and o-review on every review.
-version: 1.0.0
+description: Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .o-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a rule dropped, a new or extended exception, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work (a stub, a TODO with no tracker reference, an empty catch), a test made easier (it.skip, pytest.mark.skip), a deleted test, or an assertion removed from a test that still exists. Detection only, never writes code, exit 1 on a violation. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard; o-implement runs it before each commit and o-review on every review.
+version: 1.0.1
 author: Community
 tags: [quality, floor, constraints, guard, thresholds, suppression, coverage, enforcement, ratchet]
 user-invocable: true
 ---
 
-# X-Floor — The Bar, Written Down and Checked
+# O-Floor — The Bar, Written Down and Checked
 
 An agent under pressure makes the test pass. It adds `@ts-ignore`, skips the failing case, deletes the assertion,
 lowers the threshold, or files an exception with no owner. Every one of those is the same move: **lower the bar
@@ -42,7 +42,7 @@ node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --self-test
 A local install is `.agents/skills/o-floor/scripts/floor-guard.mjs`. `--root` and the paths under it resolve from
 the working directory, so a relative path works from anywhere the script can be reached. The base defaults to the
 first of `origin/main`, `origin/master`, `main`, `master` that resolves; the floor file defaults to
-`.x-skills/config/floor.json`, read from the working tree and from the merge base.
+`.o-skills/config/floor.json`, read from the working tree and from the merge base.
 
 | Exit | Means |
 |------|-------|
@@ -60,7 +60,7 @@ Output is JSON:
   "root": "/abs/path",
   "base": "origin/main",
   "mergeBase": "4f01080",
-  "config": "/abs/path/.x-skills/config/floor.json",
+  "config": "/abs/path/.o-skills/config/floor.json",
   "ignore": ["skills/o-floor/**"],
   "filesTouched": 3,
   "rated": ["silenced-checker", "unfinished-work", "..."],
@@ -130,7 +130,7 @@ floor is a much weaker statement than a green run over a declared one.
 
 ## Declare the floor
 
-`.x-skills/config/floor.json`. Only `rules` and `exceptions` matter to the guard; everything else is for the
+`.o-skills/config/floor.json`. Only `rules` and `exceptions` matter to the guard; everything else is for the
 reader. State the number and the reason together — a threshold without a rationale is deleted by the next person
 who trips over it.
 
@@ -185,8 +185,8 @@ is a number, not a floor.
 | Dependency vulnerabilities (`max`) | 0 at high or above | Below that is mostly noise |
 | Exception lifetime (`max`) | 90 days | Long enough to plan the fix, short enough to remember |
 
-**A declaration under `.x-skills/` can be invisible to a clone.** A repo whose git config ignores that tree
-commits nothing, so the floor ships to nobody: `git check-ignore -v .x-skills/config/floor.json` prints the rule
+**A declaration under `.o-skills/` can be invisible to a clone.** A repo whose git config ignores that tree
+commits nothing, so the floor ships to nobody: `git check-ignore -v .o-skills/config/floor.json` prints the rule
 that did it, and the answer is `git add -f`, or keeping the file where the repo already tracks configuration.
 
 ## Completion

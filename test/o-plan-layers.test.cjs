@@ -119,7 +119,7 @@ describe("o-plan's layer roadmap gate", async () => {
   });
 
   it("answers the gate through the CLI", () => {
-    const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "xskills-layers-")), ".x-skills", "runs", "2026-01-01-0900-R01-fixture");
+    const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "oskills-layers-")), ".o-skills", "runs", "2026-01-01-0900-R01-fixture");
     fs.mkdirSync(run, { recursive: true });
     fs.writeFileSync(path.join(run, "E00-plan.md"), COMPLETE);
     fs.writeFileSync(path.join(run, "state.json"), JSON.stringify({ ...state(), created: true }, null, 2));
@@ -136,7 +136,7 @@ describe("o-plan's layer roadmap gate", async () => {
 
 describe("the plan skeleton o-plan writes", () => {
   it("carries a layer block that already passes the gate", () => {
-    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-spec-"));
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-spec-"));
     const written = spawnSync(process.execPath, [path.join(ROOT, "skills", "o-plan", "scripts", "save-spec.mjs"), "--topic", "fixture"], {
       cwd,
       encoding: "utf8",

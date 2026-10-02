@@ -1,13 +1,13 @@
 ---
 name: o-triage
 description: Structured intake conversation — ask targeted questions to classify a bug's platform, type, and evidence before touching any tools. Outputs <run folder>/E<nn>-triage.md.
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [triage, classification, debugging, intake, diagnostic]
 user-invocable: true
 ---
 
-# X-Triage — Structured Intake & Classification
+# O-Triage — Structured Intake & Classification
 
 Conduct a brief conversation to classify the bug before any investigation begins. **No tool calls, no source file reads, no commands.** Only produce conversation and write the triage brief.
 

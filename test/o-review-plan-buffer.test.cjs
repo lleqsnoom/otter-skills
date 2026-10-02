@@ -65,7 +65,7 @@ let root;
 let entry;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-review-plan-"));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-review-plan-"));
   const scripts = path.join(root, "scripts");
   fs.mkdirSync(scripts, { recursive: true });
   for (const sibling of ["save-plan.mjs", "change-scope.mjs", "file-discovery.mjs"]) {
@@ -125,7 +125,7 @@ describe("save-plan reads an analyzer document larger than a default capture", (
 
 describe("save-plan starts the plan with its property block", () => {
   it("names the plan a review, its run hub, and the task it reviews", () => {
-    const run = path.join(root, ".x-skills", "runs", "2026-01-01-0900-R01-demo");
+    const run = path.join(root, ".o-skills", "runs", "2026-01-01-0900-R01-demo");
     const task = path.join(run, "E02-tasks", "L0-T1-a.md");
     fs.mkdirSync(path.dirname(task), { recursive: true });
     fs.writeFileSync(task, "# Task: a\n");
@@ -140,7 +140,7 @@ describe("save-plan starts the plan with its property block", () => {
     );
   });
 
-  it("writes only the type when the plan is outside a .x-skills tree and reviews nothing named", () => {
+  it("writes only the type when the plan is outside a .o-skills tree and reviews nothing named", () => {
     const out = path.join(root, "plan");
     const result = spawnSync(process.execPath, [entry, "--output", out], { cwd: root, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
@@ -150,7 +150,7 @@ describe("save-plan starts the plan with its property block", () => {
 
 describe("save-plan copies the reviewed task's topics", () => {
   it("lists the same topics as the task it reviews, and none when the task has none", () => {
-    const run = path.join(root, ".x-skills", "runs", "2026-01-01-0900-R01-demo");
+    const run = path.join(root, ".o-skills", "runs", "2026-01-01-0900-R01-demo");
     const task = path.join(run, "E02-tasks", "L0-T1-a.md");
     fs.mkdirSync(path.dirname(task), { recursive: true });
     fs.writeFileSync(task, '---\ntype: task\ntopics:\n  - "[[tags/domain/tags]]"\n  - "[[tags/area/server]]"\nsize: S\n---\n# Task: a\n');

@@ -170,7 +170,7 @@ describe("o-roast save-report — pure helpers", async () => {
   });
 
   it("reportPath numbers the critique artifact in the run folder", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-roast-path-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-roast-path-"));
     try {
       assert.equal(mod.reportPath(dir), path.join(dir, "E00-critique.md"));
       fs.writeFileSync(path.join(dir, "E00-critique.md"), "");
@@ -191,7 +191,7 @@ describe("o-roast save-report — filesystem", async () => {
   const mod = await import(SAVE);
 
   it("createReport appends a new numbered report each time", async () => {
-    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "xskills-roast-"));
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "oskills-roast-"));
     try {
       const date = new Date(2026, 0, 5, 9, 7);
       const first = mod.createReport({ dir, slug: "Doc One", type: "analysis", date });
@@ -239,7 +239,7 @@ describe("o-roast CLI", async () => {
   });
 
   it("reads { profile, scores } from --input", async () => {
-    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "xskills-roast-cli-"));
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "oskills-roast-cli-"));
     try {
       const file = path.join(dir, "scores.json");
       await fsp.writeFile(file, JSON.stringify({ profile: "epic", scores: { accuracy: 5, logic: 5 } }));
@@ -352,7 +352,7 @@ describe("o-roast CLI", async () => {
   });
 
   it("save-report writes a file and prints its path", async () => {
-    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "xskills-roast-save-"));
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "oskills-roast-save-"));
     try {
       const res = await run(SAVE, ["--slug", "CLI Doc", "--type", "research", "--output", dir]);
       assert.equal(res.code, 0);

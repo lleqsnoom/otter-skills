@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "./read-session.mjs";
 
-export const DEFAULT_OUTPUT = ".x-skills/runs/";
+export const DEFAULT_OUTPUT = ".o-skills/runs/";
 
 export function slugify(name) {
   return (
@@ -27,7 +27,7 @@ export function timestamp(date = new Date()) {
 
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {
@@ -166,7 +166,7 @@ function usage() {
     "Flags:",
     "  --slug <name>     Slug of the run being reflected on (default: derived from --session)",
     "  --session <t>     Session title, for the header (required)",
-    "  --output <dir>    Output directory (default: the run folder under .x-skills/runs/)",
+    "  --output <dir>    Output directory (default: the run folder under .o-skills/runs/)",
     "  --new-run         Start a second run instead of joining an existing one",
     "  --run <nn>        Join run R<nn> when the slug has more than one",
     "  --help            Show this help",

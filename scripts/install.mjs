@@ -38,8 +38,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = join(ROOT, 'skills');
-const TOOL = 'otter-pm install';
-const SERVER = 'otter-pm';
+const TOOL = 'otter-skills install';
+const SERVER = 'otter-skills';
 const MCP_SCRIPT = join(ROOT, 'scripts', 'mcp.mjs');
 
 /**
@@ -53,7 +53,7 @@ const AGENTS = [
 ];
 
 const USAGE = [
-  "otter-pm install — link this checkout's skills, and its MCP server, where the agents look for them.",
+  "otter-skills install — link this checkout's skills, and its MCP server, where the agents look for them.",
   '',
   'Usage:',
   '  npm run install [-- --dry-run] [-- --target <dir>]',
@@ -63,7 +63,7 @@ const USAGE = [
   '  --target <dir>  Where to link the skills (default $HOME/.agents/skills)',
   '  --help, -h      Show this help',
   '',
-  'An agent whose MCP config already exists is given an `otter-pm` server entry; one without a config is left alone.',
+  'An agent whose MCP config already exists is given an `otter-skills` server entry; one without a config is left alone.',
   '',
 ].join('\n');
 
@@ -136,7 +136,7 @@ const canonical = (entry) => JSON.stringify(Object.fromEntries(Object.entries(en
 
 /** One rename, so a kill mid-write cannot leave an agent holding a half-written config. */
 function writeJson(file, document) {
-  const temporary = `${file}.otter-pm-install`;
+  const temporary = `${file}.otter-skills-install`;
   writeFileSync(temporary, `${JSON.stringify(document, null, 2)}\n`);
   renameSync(temporary, file);
 }

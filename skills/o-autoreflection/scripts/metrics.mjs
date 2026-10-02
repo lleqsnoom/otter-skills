@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * denominator it never had.
  */
 
-const DAILY_ROOT = path.join(".x-skills", "daily");
+const DAILY_ROOT = path.join(".o-skills", "daily");
 
 /** The published weights. A pack names the version it was scored with, so old packs still render. */
 export const WEIGHTS_V1 = {
@@ -482,12 +482,12 @@ function usage() {
     "o-autoreflection metrics — score each skill over a window of collected packs.",
     "",
     "Usage:",
-    "  node metrics.mjs --days 7 [--root .x-skills/daily] [--out <path>]",
+    "  node metrics.mjs --days 7 [--root .o-skills/daily] [--out <path>]",
     "  node metrics.mjs --summary <summary.json> [--summary <summary.json> ...]",
     "",
     "Flags:",
     "  --days <n>         Read the newest n daily packs under --root (default 7)",
-    "  --root <dir>       Where the daily packs live (default .x-skills/daily)",
+    "  --root <dir>       Where the daily packs live (default .o-skills/daily)",
     "  --summary <path>   One pack explicitly; repeatable, and it replaces --days",
     "  --previous <path>  An earlier pack for the delta; with --days the delta comes",
     "                     from the n packs before the window",

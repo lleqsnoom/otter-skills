@@ -1,13 +1,13 @@
 ---
 name: o-roast
 description: Roast any non-code artifact — articles, analyses, specs, epics, tasks, research, or another skill — where the reviewer fact-checks the claims, attacks the reasoning, proposes better angles, and scores it on a weighted, anchored rubric computed by a script. Use for "roast this", "poke holes in", "review this spec/skill/analysis", or any request for a checked number and reason; the report names its reviewer (self or independent). For source code use o-review instead.
-version: 1.5.0
+version: 1.5.1
 author: Community
 tags: [review, critique, roast, research, article, analysis, epic, task, evaluation, scoring, fact-check]
 user-invocable: true
 ---
 
-# X-Roast — Adversarial Review of Articles, Analyses, Specs, Epics, Tasks, Research, and Skills
+# O-Roast — Adversarial Review of Articles, Analyses, Specs, Epics, Tasks, Research, and Skills
 
 Roast a document the way a hostile-but-fair expert reviewer would: verify the facts, attack the
 reasoning, find the missing angle, then hand back concrete fixes. The score is a **weighted,

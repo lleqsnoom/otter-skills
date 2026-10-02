@@ -10,7 +10,7 @@ import { isTextPath, readRepoFile, repoFiles } from './repo.mjs';
 import { tasksOf } from './work.mjs';
 
 /**
- * One project's own database: `<repo>/.x-skills/knowledge.lance/`.
+ * One project's own database: `<repo>/.o-skills/knowledge.lance/`.
  *
  * It lives inside the project, beside `board.json`, so it travels with the checkout and a second machine rebuilds
  * only its own copy. It is *derived* — every row is a reading of a file — which is what makes it safe to delete and
@@ -108,7 +108,7 @@ function docRows(project) {
 function taskRows(project) {
   const rows = [];
   for (const task of tasksOf(project)) {
-    const relPath = `.x-skills/${task.item.relPath}`;
+    const relPath = `.o-skills/${task.item.relPath}`;
     const read = readRepoFile(project.repoPath, relPath);
     if (read.status !== 200) continue;
     rows.push(

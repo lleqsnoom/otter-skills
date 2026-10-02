@@ -19,5 +19,5 @@ Decide where a unit lives before writing it. What matters is ownership, not the 
 If the task spec or the plan defines an architecture section, follow it. If not, match the codebase's existing
 conventions before inventing new ones. Read `o-arch`'s pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install,
 `.agents/skills/o-arch/references/pass.md` for a local one) before the first new directory; when the repo has a
-`.x-skills/config/arch.json`, that file declares the boundaries it has agreed on and
+`.o-skills/config/arch.json`, that file declares the boundaries it has agreed on and
 `o-arch-lint/scripts/arch-check.mjs` is the check that enforces them.

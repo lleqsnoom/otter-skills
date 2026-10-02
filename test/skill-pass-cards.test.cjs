@@ -84,7 +84,7 @@ describe("pass cards", () => {
   }
 
   it("the o-arch card keeps naming as the only enforced group when no arch.json exists", () => {
-    assert.match(readSkillFile("o-arch/references/pass.md"), /no `?\.x-skills\/config\/arch\.json`?[^.]*naming/i);
+    assert.match(readSkillFile("o-arch/references/pass.md"), /no `?\.o-skills\/config\/arch\.json`?[^.]*naming/i);
   });
 
   it("the real tree has no card over budget and no caller naming a carded body", () => {

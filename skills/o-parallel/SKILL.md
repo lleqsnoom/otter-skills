@@ -1,13 +1,13 @@
 ---
 name: o-parallel
 description: Run multiple coding tasks in parallel — each task gets an isolated git worktree and its own background agent process with full tools and the parent's project rights, then committed results merge back into your branch
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [parallel, agents, background, worktree, concurrency, dispatch]
 user-invocable: true
 ---
 
-# X-Parallel — Parallel Background Coding Agents
+# O-Parallel — Parallel Background Coding Agents
 
 Runs independent coding tasks concurrently. Each task is executed in an isolated git worktree by a full `crush run` agent process (read + edit + bash tools, not the read-only in-session agent tool), holding the same project rights as you. Committed results are merged back into your current branch. Use it to parallelize o-decompose output, batch fixes, or multi-file refactors.
 
@@ -42,10 +42,10 @@ node <path-to>/scripts/parallel.mjs --tasks <task-dir> [options]
 3. **Waves** — a task enters a wave when all its dependencies are in earlier waves. Tasks sharing a declared file are not scheduled into the same wave (serialized to avoid conflicts).
 4. **Run each wave** — for every task up to `--parallel`, with retries:
    - attempt the task (worktree + agent run). If it fails, retry up to `--retries` more times, each retry starting from a clean worktree and branch, with escalating backoff
-   - `git worktree add <repo>/.x-skills/worktrees/<slug> -b xp/<slug>`
+   - `git worktree add <repo>/.o-skills/worktrees/<slug> -b xp/<slug>`
    - write the task file to `<worktree>/TASK.md` (ignored via `.git/info/exclude`, never merged)
    - inherit your rights: copy each project config file (`.crushrc`, `crushrc`, `.crush.json`, `crush.json`) found between the repo root and your cwd into the worktree root, and exclude them from git so they never reach a commit
-   - spawn `<agent> run` with `cwd = <worktree>`, prompt as the CLI argument, stdout to `.x-skills/parallel-logs/<slug>.log`
+   - spawn `<agent> run` with `cwd = <worktree>`, prompt as the CLI argument, stdout to `.o-skills/parallel-logs/<slug>.log`
    - success = exit code 0 AND `git status --porcelain` empty in the worktree (uncommitted leftovers are auto-committed as `feat: <slug> (auto)`)
    - a task only counts as failed after all attempts are exhausted
 5. **Merge successes** — after each wave, merge every successful branch into your branch: `git merge --no-ff xp/<slug> -m "xp: <slug>"`. On conflict: `git merge --abort`, mark the task conflicted for manual resolution, continue.

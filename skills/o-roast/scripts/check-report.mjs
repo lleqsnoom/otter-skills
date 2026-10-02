@@ -488,7 +488,7 @@ function newestReport(dir, suffix = ".md") {
   return files.length ? path.join(dir, files[0].file) : null;
 }
 
-function newestAcrossRuns(root = ".x-skills/runs") {
+function newestAcrossRuns(root = ".o-skills/runs") {
   if (!fs.existsSync(root)) return null;
   const found = fs
     .readdirSync(root)

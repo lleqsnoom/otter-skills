@@ -1,13 +1,13 @@
 ---
 name: o-arch
 description: Keep a codebase's architecture honest — where a unit lives, what it is called, what its one responsibility is, and which way its dependencies point; names banned (utils, helpers, common, tools, misc, other, shared), composition over inheritance, and the rule of three before extracting. Use when asked to fix a directory layout, a vague or role-shaped name, inheritance growth, where new code belongs, or a layer boundary; o-implement, o-decompose, o-review and o-fix run it as a pass.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [architecture, naming, boundaries, responsibilities, dependency-direction, composition, solid, placement]
 user-invocable: true
 ---
 
-# X-Arch — Where Code Lives and What It Is Called
+# O-Arch — Where Code Lives and What It Is Called
 
 Architecture is not a folder list. It is five decisions a reader can check: where a unit lives, what it is
 called, what its one responsibility is, which way its dependencies point, and what it grows from. Get those
@@ -109,7 +109,7 @@ quoted with its source in the dependency-cruiser rules reference:
   next to the policy and let the edge implement it.
 - **Third-party types belong at the edge.** The vendor's client, its error class and its pagination cursor do
   not reach the core; map them at the boundary.
-- **A declared boundary is checkable.** If the repo has `.x-skills/config/arch.json`, the allowed directions
+- **A declared boundary is checkable.** If the repo has `.o-skills/config/arch.json`, the allowed directions
   are written there and `o-arch-lint` enforces them. Read the declaration before advising; do not invent a
   layering the repo never agreed to.
 
@@ -191,10 +191,10 @@ Every step ends on a criterion you can check, so a half-finished run is visible 
 2. **Take the scope.** What the user pointed at, or `git diff --name-only main...HEAD` (use `master` if that is
    the default).
    **Completion:** the scope is a list of files and every one of them has been read, with its callers.
-3. **Read the declaration, if there is one.** `.x-skills/config/arch.json` decides which directions are allowed
+3. **Read the declaration, if there is one.** `.o-skills/config/arch.json` decides which directions are allowed
    and which names are banned here. Where it says nothing, the group is unrated rather than judged. A repo with
    no declaration runs `o-arch-lint`'s scaffold to have one proposed from the tree, ratifies it by hand, and
-   commits it, checking that the commit takes: `.x-skills/` is ignored in some repos, and a declaration no clone
+   commits it, checking that the commit takes: `.o-skills/` is ignored in some repos, and a declaration no clone
    receives enforces nothing. Until there is one, the naming group is the whole of what this skill may enforce.
    **Completion:** the declaration has been read, or the run is recorded as naming-only.
 4. **Judge each unit** against its group. Stop at the first question that fits: one responsibility? named for a
@@ -253,7 +253,7 @@ a record is for.
 # Architecture pass — 2026-09-27
 
 **Scope:** src/
-**Declaration:** .x-skills/config/arch.json
+**Declaration:** .o-skills/config/arch.json
 
 | Unit | Group | Verdict | Reason | Evidence |
 |------|-------|---------|--------|----------|

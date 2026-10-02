@@ -1,4 +1,4 @@
-name: otter-pm
+name: otter-skills
 
 # The skills and MCP server are the repository, and nothing else checks them: this runs the tests and the
 # skill-corpus checks, and stops there.

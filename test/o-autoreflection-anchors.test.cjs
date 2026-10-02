@@ -173,7 +173,7 @@ describe("o-autoreflection anchors — which sessions a reflection reads", async
 
 describe("o-autoreflection anchors — the command line the analysis skill calls", () => {
   it("reads scans and prints the retries, the reading order and the audit", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-anchors-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-anchors-"));
     try {
       const scanOf = (id, host, created, extra = {}) => ({
         source: { host, id, uuid: id, model: "m" },

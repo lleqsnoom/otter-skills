@@ -28,7 +28,7 @@ function run(script, args = [], options = {}) {
 }
 
 async function withTmpDir(prefix, fn) {
-  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `xskills-${prefix}-`));
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `oskills-${prefix}-`));
   try {
     await fn(dir);
   } finally {
@@ -299,7 +299,7 @@ describe("o-autoreflection scan-session", async () => {
           { role: "user", parts: [text("improve the reflection")] },
           { role: "assistant", parts: [text("looking around"), call("c1", "bash", { command: "ls skills/" })] },
           { role: "tool", parts: [result("c1", "bash", "o-analyze\no-plan\no-review\n<cwd>/repo</cwd>")] },
-          { role: "user", parts: [text("Base directory for this skill: /home/u/.claude/skills/o-analyze\n\n# X-Anal\nroute to o-fix or o-plan")] },
+          { role: "user", parts: [text("Base directory for this skill: /home/u/.claude/skills/o-analyze\n\n# O-Anal\nroute to o-fix or o-plan")] },
           { role: "assistant", parts: [text("using o-analyze now"), call("c2", "bash", { command: "node skills/o-analyze/scripts/scenario.mjs start" })] },
         ],
         [{ name: "o-analyze", loaded_at: "t0" }, { name: "o-review", loaded_at: "t0" }]
@@ -317,7 +317,7 @@ describe("o-autoreflection scan-session", async () => {
         [
           { role: "user", parts: [text("I am not happy, do a deep research with online sources in multiple loops")] },
           { role: "assistant", model: "deepseek-v4-pro", parts: [text("loading"), call("c1", "view", { file_path: "/home/u/.claude/skills/o-research/SKILL.md" })] },
-          { role: "tool", parts: [result("c1", "view", "# X-Research")] },
+          { role: "tool", parts: [result("c1", "view", "# O-Research")] },
           { role: "assistant", model: "deepseek-v4-pro", parts: [call("c2", "bash", { command: "node /home/u/.claude/skills/o-research/scripts/state.mjs start --slug a" })] },
           { role: "tool", parts: [result("c2", "bash", "\n<cwd>/repo</cwd>")] },
           { role: "assistant", model: "deepseek-v4-pro", parts: [call("c3", "bash", { command: "node /home/u/.claude/skills/o-research/scripts/state.mjs start --slug b" })] },
@@ -350,7 +350,7 @@ describe("o-autoreflection scan-session", async () => {
         { role: "user", parts: [text("do an analysis of the source file, the prompt is attached")] },
         { role: "assistant", parts: [call("c1", "Skill", { skill: "o-analyze" })] },
         { role: "user", parts: [result("c1", "Skill", "Launching skill: o-analyze")] },
-        { role: "user", parts: [text("Base directory for this skill: /home/u/.claude/skills/o-analyze\n\n# X-Anal")] },
+        { role: "user", parts: [text("Base directory for this skill: /home/u/.claude/skills/o-analyze\n\n# O-Anal")] },
         { role: "assistant", parts: [call("c2", "AskUserQuestion", { questions: [] })] },
         { role: "user", parts: [result("c2", "AskUserQuestion", "The user doesn't want to proceed with this tool use. The tool use was rejected.")] },
         { role: "user", parts: [text("[Request interrupted by user for tool use]")] },
@@ -372,7 +372,7 @@ describe("o-autoreflection scan-session", async () => {
       transcript([
         { role: "user", parts: [text("write the plan for the reflection skills please, in markdown")] },
         { role: "assistant", parts: [call("c1", "view", { file_path: "/home/u/.claude/skills/o-plan/SKILL.md" })] },
-        { role: "tool", parts: [result("c1", "view", "# X-Plan")] },
+        { role: "tool", parts: [result("c1", "view", "# O-Plan")] },
         { role: "assistant", parts: [call("c2", "write", { file_path: "/repo/E01-plan.md", content: "edit skills/o-autoreflection/scripts/scan-session.mjs" })] },
         { role: "tool", parts: [result("c2", "write", "written")] },
         { role: "user", parts: [text("make it as LLM prompt so i can pass it to another agent")] },
@@ -605,8 +605,8 @@ describe("o-autoreflection scan-session", async () => {
         {
           role: "assistant",
           parts: [
-            text("Writing into .x-skills/runs/2026-01-01-0900-R01-my-topic/"),
-            call("c1", "bash", { command: "ls .x-skills/runs/2026-01-01-0900-R01-my-topic/" }),
+            text("Writing into .o-skills/runs/2026-01-01-0900-R01-my-topic/"),
+            call("c1", "bash", { command: "ls .o-skills/runs/2026-01-01-0900-R01-my-topic/" }),
           ],
         },
         { role: "tool", parts: [result("c1", "bash", "E00-plan.md\nE01-epic.md\nstate.json\n<cwd>/repo</cwd>")] },

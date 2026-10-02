@@ -15,9 +15,9 @@ No record of its own, and uncommitted work is the task, not a reason to stop. Th
   declared boundary is triaged as a run of its own, not one task's step.
 - **o-fix** (edits): the groups named in each `[Architecture]` finding of the review plan.
 
-When the repo has `.x-skills/config/arch.json`, it declares the allowed directions and banned names; a group it
+When the repo has `.o-skills/config/arch.json`, it declares the allowed directions and banned names; a group it
 says nothing about is `unrated`, not `ok`. `o-arch-lint/scripts/arch-check.mjs --root .` checks the declaration.
-With no `.x-skills/config/arch.json`, naming is the only group enforced: the other four are `unrated`, and a
+With no `.o-skills/config/arch.json`, naming is the only group enforced: the other four are `unrated`, and a
 suspected boundary or direction problem is reported as unrated, never as a violation.
 
 ## Rules

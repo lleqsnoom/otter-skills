@@ -1,13 +1,13 @@
 ---
 name: o-differential
 description: Review a change the narrow way — read the diff hunk by hunk, pair each with the behavior it replaced, and rate regression risk for every caller the change puts at stake, so a review focuses on what actually moved instead of re-reading the whole module. Use when a change is risky to reason about end to end, when it touches a shared function, or when a wide o-review needs a narrow second pass over the diff.
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [review, diff, regression, risk, callers, verification]
 user-invocable: true
 ---
 
-# X-Differential — Review the Change, Not the Module
+# O-Differential — Review the Change, Not the Module
 
 A wide review reads the module; the change is the module's delta, and the delta is what ships.
 This pass reads only the delta, hunk by hunk, and asks of each what it replaced and who now

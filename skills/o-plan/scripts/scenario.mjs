@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { formatStamp, resolveRunDir, resolveArtifact } from "./run-folder.mjs";
 
 export const SKILL = "o-plan";
-export const REPORT_ROOT = ".x-skills/runs";
+export const REPORT_ROOT = ".o-skills/runs";
 export const START_NODE = "intake";
 export const STOPS = ["handoff", "abandon"];
 
@@ -230,10 +230,10 @@ function writeMemory(dir, state, fromIndex) {
   if (lines) fs.appendFileSync(file, `${lines}\n`);
 }
 
-/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+/** A path inside a `.o-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
-  const at = parts.lastIndexOf(".x-skills");
+  const at = parts.lastIndexOf(".o-skills");
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 
@@ -302,7 +302,7 @@ const tagNote = (topic) => {
 /** Each tag note the topics need, and the shared base, created in the run's vault when missing; never rewritten. */
 function ensureTagNotes(runDir, topics) {
   const parts = path.resolve(runDir).split(path.sep);
-  const at = parts.lastIndexOf(".x-skills");
+  const at = parts.lastIndexOf(".o-skills");
   if (at === -1 || !topics.length) return;
   const vault = parts.slice(0, at + 1).join(path.sep);
   const files = [["tag.base", TAG_BASE], ...topics.map((topic) => [`tags/${topic}.md`, tagNote(topic)])];

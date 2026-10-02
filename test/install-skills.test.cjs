@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * The skills are the other half of the loop the board reads: they write the `.x-skills` trees, and this checkout is
+ * The skills are the other half of the loop the board reads: they write the `.o-skills` trees, and this checkout is
  * where they are edited. `npm run install` is how an edit reaches the agents that run them, so what is asserted here
  * is that every skill ends up pointed at this tree rather than copied out of it, that an older copy under a skill's
  * name is replaced by that link, that a run npm starts on its own does nothing, and that the `~/.claude/skills`
@@ -22,7 +22,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const SCRIPT = path.join(ROOT, 'scripts', 'install.mjs');
 const SOURCE = path.join(ROOT, 'skills');
-const SERVER = 'otter-pm';
+const SERVER = 'otter-skills';
 
 /** The entry the installer is expected to write, as each client holds it. */
 const launch = { command: 'node', args: [path.join(ROOT, 'scripts', 'mcp.mjs')] };
@@ -39,7 +39,7 @@ const skillNames = () =>
     .sort();
 
 function scratchHome(withClaude = false) {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-install-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-skills-install-'));
   if (withClaude) fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
   return home;
 }
@@ -175,7 +175,7 @@ test('a second run finds the MCP entry already right and does not rewrite the fi
   const again = run(home);
 
   assert.equal(again.status, 0, again.stderr);
-  assert.match(again.stdout, /kept\s+otter-pm mcp/, 'the entry is reported as already right');
+  assert.match(again.stdout, /kept\s+otter-skills mcp/, 'the entry is reported as already right');
   assert.equal(fs.readFileSync(claudeConfig(home), 'utf8'), before, 'and the file is byte for byte what it was');
 });
 
@@ -187,7 +187,7 @@ test('an agent with no config gets no entry, and no file is created for it', () 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.existsSync(claudeConfig(home)), false, 'no config is written for an agent that has none');
   assert.equal(fs.existsSync(crushConfig(home)), false);
-  assert.match(result.stdout, /registered otter-pm mcp with 0 of 2 agents/);
+  assert.match(result.stdout, /registered otter-skills mcp with 0 of 2 agents/);
 });
 
 test('a config it cannot read is reported and left exactly as it was', () => {
@@ -217,6 +217,6 @@ test('a dry run registers no MCP entry', () => {
   const result = run(home, ['--dry-run']);
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /would register otter-pm mcp with 1 of 2 agents/);
+  assert.match(result.stdout, /would register otter-skills mcp with 1 of 2 agents/);
   assert.equal(fs.readFileSync(claudeConfig(home), 'utf8'), before, 'nothing is written');
 });

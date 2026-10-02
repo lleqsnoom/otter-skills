@@ -1,13 +1,13 @@
 ---
 name: o-investigate
 description: Hypothesis-driven root cause analysis — generate ranked hypotheses from evidence, test systematically with platform tools and git history, eliminate candidates until one root cause remains, output fix plan for o-fix
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [debugging, root-cause, hypothesis-testing, git-bisect, triage]
 user-invocable: true
 ---
 
-# X-Investigate — Hypothesis-Driven Root Cause Analysis
+# O-Investigate — Hypothesis-Driven Root Cause Analysis
 
 Generate hypotheses, test them with platform tools and git history, and eliminate until one root cause remains.
 

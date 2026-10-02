@@ -1,4 +1,4 @@
-# X-Essay Loop — state machine, gates, and ordering
+# O-Essay Loop — state machine, gates, and ordering
 
 The loop is owned by `scripts/state.mjs`, which persists one `state.json` per
 article and answers a single question each turn: **what next, and do we stop?**

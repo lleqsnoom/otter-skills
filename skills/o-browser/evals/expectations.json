@@ -2,7 +2,7 @@
   "skill": "o-browser",
   "expected_behavior": [
     "refuses to double-launch if CDP is already answering on the port;",
-    "uses a dedicated profile at `~/.x-skills/chrome-profile` (never your default Chrome profile, so a running Chrome does not block debugging);",
+    "uses a dedicated profile at `~/.o-skills/chrome-profile` (never your default Chrome profile, so a running Chrome does not block debugging);",
     "Never point `--profile-dir` at the user's real Chrome profile.",
     "Never kill the user's existing browser processes."
   ],

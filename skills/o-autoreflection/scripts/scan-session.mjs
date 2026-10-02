@@ -23,7 +23,7 @@ const CONTEXT_WINDOW = 3;
 const MAX_EVIDENCE = 3;
 
 const ARTIFACT_RE = /\bE(\d{2})-(?!\d)([a-z0-9][a-z0-9-]*)/g;
-const RUN_FOLDER_RE = /\.x-skills\/runs\/([A-Za-z0-9:._-]+)/g;
+const RUN_FOLDER_RE = /\.o-skills\/runs\/([A-Za-z0-9:._-]+)/g;
 
 /** Tool names that write a file; everything else that names a path only reads it. */
 const WRITE_TOOL_RE = /edit|write/i;

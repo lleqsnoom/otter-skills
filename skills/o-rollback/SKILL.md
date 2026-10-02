@@ -1,13 +1,13 @@
 ---
 name: o-rollback
 description: Automated git revert with multi-step confirmation — identifies target commits, analyzes impact, requires approval, creates properly formatted revert commits via o-commit integration
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [git-revert, rollback, safety, confirmation, version-control]
 user-invocable: true
 ---
 
-# X-Rollback — Automated Git Revert with Safety Checks
+# O-Rollback — Automated Git Revert with Safety Checks
 
 Automates safe git reverts with multi-step confirmation to prevent accidental rollbacks. Integrates with o-commit for proper revert commit formatting.
 

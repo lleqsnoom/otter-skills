@@ -1,13 +1,13 @@
 ---
 name: o-test-gen
 description: Generate test stubs from implementation — analyzes source code and creates scaffolded tests with happy path, error cases, and edge case placeholders
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [test-generation, tdd, scaffolding, unit-tests, jest, vitest, mocha]
 user-invocable: true
 ---
 
-# X-Test-Gen — Test Stub Generator
+# O-Test-Gen — Test Stub Generator
 
 Analyzes source code and generates test stub files with happy path and error case scaffolding. Useful for bootstrapping test coverage on existing code or generating initial test structure before writing assertions.
 

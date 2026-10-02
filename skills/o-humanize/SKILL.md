@@ -1,13 +1,13 @@
 ---
 name: o-humanize
 description: Simplify text, an article, a commit or PR to a B2 reading level — measure sentence length and complexity, cut noise, rewrite, then verify no meaning was lost. Use when asked to humanize, simplify, make easy to read, or plain-language a piece of prose.
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [writing, readability, simplification, plain-language, cefr, editing, prose]
 user-invocable: true
 ---
 
-# X-Humanize — Rewrite Prose to a B2 Reading Level, Verified
+# O-Humanize — Rewrite Prose to a B2 Reading Level, Verified
 
 Take any prose — an article, a doc, a commit or PR description — measure it
 objectively (sentence length, sentence complexity, vocabulary difficulty),

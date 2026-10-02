@@ -1,4 +1,4 @@
-# Installing Otter PM
+# Installing Otter Skills
 
 The skills and the MCP server are installed by one command, which links them into the agents on this machine.
 
@@ -12,8 +12,8 @@ The skills and the MCP server are installed by one command, which links them int
 ## 1. Get the code
 
 ```bash
-git clone https://github.com/lleqsnoom/otter-pm.git
-cd otter-pm
+git clone https://github.com/lleqsnoom/otter-skills.git
+cd otter-skills
 ```
 
 ## 2. Install
@@ -30,8 +30,8 @@ has to be installed again.
 
 ## The MCP server
 
-`otter-pm-mcp` exposes a project's `.x-skills` tasks, documents and code over stdio. It is started and stopped by the
-client, takes no arguments, and reads its roots from `otter-pm.config.json`, Orca's project list, `--root` flags,
-`$OTTER_PM_ROOTS`, discovery, or the current directory. The bin is `scripts/mcp.mjs`, registered as `otter-pm-mcp` in
+`otter-skills-mcp` exposes a project's `.o-skills` tasks, documents and code over stdio. It is started and stopped by the
+client, takes no arguments, and reads its roots from `otter-skills.config.json`, Orca's project list, `--root` flags,
+`$OTTER_SKILLS_ROOTS`, discovery, or the current directory. The bin is `scripts/mcp.mjs`, registered as `otter-skills-mcp` in
 `package.json`; `npm run install` writes the entry into each agent's config, and a global install of this checkout
-resolves to `{ "command": "otter-pm-mcp" }`.
+resolves to `{ "command": "otter-skills-mcp" }`.

@@ -18,7 +18,7 @@ const DEFAULT_PROJECT_LOOKBACK_HOURS = 72;
  * directory it runs in as a project, so without this the classifier's own runs — prompts full of other
  * sessions' user turns — would be scanned the next morning as if a person had typed them.
  */
-export const TURN_CLASSIFIER_DIR = path.join(".x-skills", "turn-classifier");
+export const TURN_CLASSIFIER_DIR = path.join(".o-skills", "turn-classifier");
 
 export function isTurnClassifierDir(dir) {
   return path.normalize(String(dir ?? "")).endsWith(path.sep + TURN_CLASSIFIER_DIR);

@@ -98,7 +98,7 @@ function start() {
     const answered = await request('initialize', {
       protocolVersion: PROTOCOL_VERSION,
       capabilities: {},
-      clientInfo: { name: 'otter-pm-test', version: '1' },
+      clientInfo: { name: 'otter-skills-test', version: '1' },
     });
     send({ jsonrpc: '2.0', method: 'notifications/initialized' });
     return answered;
@@ -122,7 +122,7 @@ test('the bin starts and answers initialize with its own name', async () => {
     const initialized = await server.initialize();
 
     assert.equal(initialized.error, undefined, `initialize errored: ${JSON.stringify(initialized.error)}`);
-    assert.equal(initialized.result.serverInfo.name, 'otter-pm');
+    assert.equal(initialized.result.serverInfo.name, 'otter-skills');
     assert.equal(typeof initialized.result.protocolVersion, 'string');
   } finally {
     server.stop();
@@ -187,7 +187,7 @@ test('a request before initialize leaves the server serving', async () => {
     await server.request('tools/list');
 
     const initialized = await server.initialize();
-    assert.equal(initialized.result.serverInfo.name, 'otter-pm', 'the connection still initializes');
+    assert.equal(initialized.result.serverInfo.name, 'otter-skills', 'the connection still initializes');
   } finally {
     server.stop();
   }

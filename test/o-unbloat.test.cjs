@@ -107,7 +107,7 @@ describe("o-unbloat verdicts.mjs", () => {
     assert.equal(created.code, 0);
     assert.equal(created.json.base, head);
     assert.match(fs.readFileSync(created.json.path, "utf8"), new RegExp(`^\\*\\*Base:\\*\\* ${head}$`, "m"));
-    assert.match(created.json.path, /\.x-skills\/runs\/[^/]+-R01-tidy-services\/E00-unbloat\.md$/);
+    assert.match(created.json.path, /\.o-skills\/runs\/[^/]+-R01-tidy-services\/E00-unbloat\.md$/);
     const checked = verdicts(dir, "check", "--file", created.json.path);
     assert.equal(checked.code, 1);
     assert.ok(checked.json.violations.some((v) => v.startsWith("no verdict rows")));

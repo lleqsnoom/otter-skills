@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const DEFAULT_OUTPUT = ".x-skills/runs/";
+export const DEFAULT_OUTPUT = ".o-skills/runs/";
 
 export function slugify(name) {
   return (
@@ -26,7 +26,7 @@ export function timestamp(date = new Date()) {
 
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {
@@ -157,7 +157,7 @@ function usage() {
     "Flags:",
     "  --slug <name>    Document name (required)",
     "  --level <lvl>    Target reader level (default: B2)",
-    "  --output <dir>   Output directory (default: the run folder under .x-skills/runs/)",
+    "  --output <dir>   Output directory (default: the run folder under .o-skills/runs/)",
     "  --new-run        Start a second run for this document",
     "  --run <nn>       Join run R<nn> when the document has more than one",
     "  --help           Show this help",

@@ -1,13 +1,13 @@
 ---
 name: o-verify
-description: After o-fix or an implementation, attack the change instead of trusting it — property-based tests over the changed functions with a per-language tool (fast-check, hypothesis, proptest) and a mutation pass over the diff (Stryker, mutmut, cargo-mutants), then gate on survivors-equals-zero-or-explained — every mutant no test killed ships only with an owner and a reason in .x-skills/config/verify.json. Reports a missing test runner and stops rather than inventing one. Use when asked to verify a fix beyond its tests, run a mutation pass, catch silent regressions before ship, or prove a change cannot break quietly; o-fix hands off to it.
-version: 1.1.0
+description: After o-fix or an implementation, attack the change instead of trusting it — property-based tests over the changed functions with a per-language tool (fast-check, hypothesis, proptest) and a mutation pass over the diff (Stryker, mutmut, cargo-mutants), then gate on survivors-equals-zero-or-explained — every mutant no test killed ships only with an owner and a reason in .o-skills/config/verify.json. Reports a missing test runner and stops rather than inventing one. Use when asked to verify a fix beyond its tests, run a mutation pass, catch silent regressions before ship, or prove a change cannot break quietly; o-fix hands off to it.
+version: 1.1.1
 author: Community
 tags: [verification, property-based-testing, mutation-testing, survivors, gate, quality]
 user-invocable: true
 ---
 
-# X-Verify — Trust the Change, Then Attack It
+# O-Verify — Trust the Change, Then Attack It
 
 A fix and its tests were written by the same mind in the same hour, so a test that passes tells you
 the code satisfies the test — not that it satisfies the change. Two checks break that circle. A
@@ -93,7 +93,7 @@ Output is JSON:
 
 ## The gate: survivors equal zero or explained
 
-`.x-skills/config/verify.json`. Each entry matches a survivor's file — and its line, when the entry
+`.o-skills/config/verify.json`. Each entry matches a survivor's file — and its line, when the entry
 names one — and must carry an owner and a reason; an entry whose expiry has passed explains nothing.
 
 ```json

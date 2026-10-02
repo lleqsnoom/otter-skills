@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * o-arch-lint scaffold — propose `.x-skills/config/arch.json` from the tree as it is.
+ * o-arch-lint scaffold — propose `.o-skills/config/arch.json` from the tree as it is.
  *
  * A declaration should say what the code does before it says what the code should do, so this reads the
  * tree, works out which directories are layers, and records the directions the imports already take. The
@@ -75,7 +75,7 @@ export function proposeDeclaration({ root, exclude = [] }) {
     allowed[layer] = [...new Set(byLayer.get(layer).flatMap((rel) => outgoingLayers(rootAbs, rel)))].sort();
   }
   return {
-    note: "Proposed from the tree as it is: these directions are the ones a static relative import already takes. An import built at run time (path.join with __dirname), an absolute specifier and a re-export are all invisible here, so an empty list means nothing was observed rather than nothing is imported: widen each entry to what the layer may do before ratifying, and treat a later change to this file as a decision rather than an edit. Once it is ratified, check that the commit takes: `.x-skills/` is ignored in some repos, and `git check-ignore -v .x-skills/config/arch.json` names the rule that does it, so force-add the file or keep the declaration where the repo already tracks its configuration.",
+    note: "Proposed from the tree as it is: these directions are the ones a static relative import already takes. An import built at run time (path.join with __dirname), an absolute specifier and a re-export are all invisible here, so an empty list means nothing was observed rather than nothing is imported: widen each entry to what the layer may do before ratifying, and treat a later change to this file as a decision rather than an edit. Once it is ratified, check that the commit takes: `.o-skills/` is ignored in some repos, and `git check-ignore -v .o-skills/config/arch.json` names the rule that does it, so force-add the file or keep the declaration where the repo already tracks its configuration.",
     layers,
     allowed_dependencies: allowed,
   };

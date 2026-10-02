@@ -56,7 +56,7 @@ function timestamp(date = new Date()) {
 
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {
@@ -281,7 +281,7 @@ export function summaryLine(results, at = new Date()) {
 
 export function writeSummary(results, { cwd = process.cwd(), dryRun = false, at = new Date() } = {}) {
   if (dryRun) return;
-  const summaryPath = path.resolve(cwd, ".x-skills", "runs", "last-heal-summary.json");
+  const summaryPath = path.resolve(cwd, ".o-skills", "runs", "last-heal-summary.json");
   fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
   fs.writeFileSync(summaryPath, `${JSON.stringify(summaryLine(results, at))}\n`);
 }
@@ -426,7 +426,7 @@ function main() {
       const analysis = JSON.parse(fs.readFileSync(analysisPath, "utf8"));
       const plan = mintPlan(analysis, { analysisPath: args.mint });
       const out = args.out ? path.resolve(args.out) : null;
-      const runDir = out ? path.dirname(out) : path.resolve(cwd, ".x-skills/runs");
+      const runDir = out ? path.dirname(out) : path.resolve(cwd, ".o-skills/runs");
       fs.mkdirSync(runDir, { recursive: true });
       const planPath = out ?? path.join(runDir, `${nextE(runDir)}-heal.json`);
       fs.writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
@@ -434,7 +434,7 @@ function main() {
       return;
     }
 
-    const planPath = typeof args.plan === "string" ? path.resolve(args.plan) : newestPlan(path.resolve(cwd, ".x-skills/runs"));
+    const planPath = typeof args.plan === "string" ? path.resolve(args.plan) : newestPlan(path.resolve(cwd, ".o-skills/runs"));
     if (!planPath || !fs.existsSync(planPath)) {
       process.stderr.write(`${JSON.stringify({ error: `no heal plan found${planPath ? `: ${planPath}` : ""}` })}\n`);
       process.exit(2);

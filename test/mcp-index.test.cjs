@@ -204,7 +204,7 @@ test('a search answers ranked rows with the freshness it was served from', async
 
 test('an index that cannot be built says why instead of throwing', async () => {
   const { syncProject, indexState } = await load();
-  const project = { id: 'elsewhere', root: '/no/such/project/.x-skills', repoPath: '/no/such/project', categories: [] };
+  const project = { id: 'elsewhere', root: '/no/such/project/.o-skills', repoPath: '/no/such/project', categories: [] };
 
   const result = await syncProject(project);
   const state = await indexState(project);

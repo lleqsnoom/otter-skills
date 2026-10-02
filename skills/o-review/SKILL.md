@@ -1,7 +1,7 @@
 ---
 name: o-review
 description: Review code against engineering principles — small functions, SOLID, KISS, DRY — and against the originating spec, with automated AST-based complexity analysis across 30+ languages including Python, C, C++, Java, JavaScript, TypeScript, Go, Rust, Ruby, PHP, Swift, Kotlin, and more. Runs the comments (o-comments), bloat (o-unbloat), architecture (o-arch + o-arch-lint) and quality-floor (o-floor) passes as part of every review. Also checks every change against the standing Definition of Done.
-version: 2.4.0
+version: 2.4.1
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
 user-invocable: true
@@ -12,7 +12,7 @@ auto-trigger:
     - file-size-above: 5242880  # Skip files > 5MB
 ---
 
-# X-Review — Code Review Against Engineering Principles
+# O-Review — Code Review Against Engineering Principles
 
 A review is seven passes over the same scope, and all seven write their findings into one plan file. Passes 3–6
 are child skills run **inside** this review — they are not follow-ups to recommend afterwards.
@@ -70,7 +70,7 @@ into the one plan file. Do not ask the user what to do, and do not stop after th
 3. **Comments pass (part of the review, using o-comments)** — apply the rules in o-comments' pass card (`~/.agents/skills/o-comments/references/pass.md` for a global install, `.agents/skills/o-comments/references/pass.md` for a local one) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Report only — `o-fix` makes the edits.
 4. **Bloat pass (part of the review, using o-unbloat)** — apply the ladder and table in o-unbloat's pass card (`~/.agents/skills/o-unbloat/references/pass.md` for a global install, `.agents/skills/o-unbloat/references/pass.md` for a local one) to every reviewed file, in the card's o-review mode. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. A branch for a state the types or the internal callers rule out is reported here too, with the narrower representation named as the fix (o-unbloat's *Bloat, Unless…* row; the rule is *Make the Bad State Impossible* in o-implement's `SKILL.md`) — MAJOR when a caller must handle a failure the type could have excluded, MINOR when the check is only redundant, and never flagged where the input crosses a trust boundary. Never flag what o-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are o-fix's job.
 5. **Architecture pass (part of the review, using o-arch and o-arch-lint)** — apply the rules in o-arch's pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one) to every reviewed file, in the card's o-review mode: all five groups, report only. Then run `node ~/.agents/skills/o-arch-lint/scripts/arch-check.mjs --root .` (`.agents/skills/o-arch-lint/scripts/arch-check.mjs` for a local install). Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are o-fix's job.
-6. **Floor pass (part of the review, using o-floor)** — run `node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/o-floor/scripts/floor-guard.mjs` for a local install). It compares the quality floor declared at the merge base with the one on disk and reports the moves that lower the bar — a weakened threshold, a dropped rule, a new or extended exception, a silenced checker, unfinished work, a test made easier, a deleted test, or an assertion removed from a test that still exists. Report each under a `[Floor]` heading with its `rule`, `file` and `line`, and copy the guard's `rated` and `unrated` lists in verbatim: a repo with no `.x-skills/config/floor.json` is reported as unrated rather than as clean. Exit 2 is **not** a clean result — say the guard could not run and why. Report only: the fixes are o-fix's job.
+6. **Floor pass (part of the review, using o-floor)** — run `node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/o-floor/scripts/floor-guard.mjs` for a local install). It compares the quality floor declared at the merge base with the one on disk and reports the moves that lower the bar — a weakened threshold, a dropped rule, a new or extended exception, a silenced checker, unfinished work, a test made easier, a deleted test, or an assertion removed from a test that still exists. Report each under a `[Floor]` heading with its `rule`, `file` and `line`, and copy the guard's `rated` and `unrated` lists in verbatim: a repo with no `.o-skills/config/floor.json` is reported as unrated rather than as clean. Exit 2 is **not** a clean result — say the guard could not run and why. Report only: the fixes are o-fix's job.
 7. **Spec pass** — ask one question of the whole change: does the diff faithfully implement the originating spec,
    ticket, or task? Resolve the spec source in this order: (1) task or issue references in the commit messages;
    (2) a path the user passed to the review; (3) a plan or task artifact in the run folder (`E00-plan.md`, a task
@@ -115,7 +115,7 @@ pass (the paths are in the steps above); this skill never restates their rules.
   *Keep it if* and *Never Cut* rules.
 - **o-arch** with **o-arch-lint** — Run as pass 5 of every review (report only, in the o-review mode of o-arch's
   pass card: all five groups). o-arch judges where a unit lives, what it is called, what its one responsibility is and which
-  way its dependencies point; o-arch-lint checks the same tree against `.x-skills/config/arch.json` and reports
+  way its dependencies point; o-arch-lint checks the same tree against `.o-skills/config/arch.json` and reports
   `file:line` violations. Findings go under `[Architecture]`; `o-fix` applies them.
 - **o-floor** — Run as pass 6 of every review. `floor-guard.mjs` reports the moves that lower the declared quality
   floor, and the `rated`/`unrated` lists that say which half of the bar was actually checked. Findings go under

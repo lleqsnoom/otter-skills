@@ -1,8 +1,8 @@
-# Otter PM
+# Otter Skills
 
 A suite of skills (`o-*`) for planning, building, reviewing and improving code, each one a
-`SKILL.md` with its scripts, references and evals — plus an MCP server (`otter-pm-mcp`) that
-exposes a project's `.x-skills` tasks, documents and code over stdio.
+`SKILL.md` with its scripts, references and evals — plus an MCP server (`otter-skills-mcp`) that
+exposes a project's `.o-skills` tasks, documents and code over stdio.
 
 ## Install
 
@@ -15,7 +15,7 @@ npm run install
 Or install the suite as a Claude Code plugin (no local linking):
 
 ```
-/plugin marketplace add lleqsnoom/otter-pm
+/plugin marketplace add lleqsnoom/otter-skills
 ```
 
 ## Skills
@@ -91,17 +91,17 @@ A background pass can run stage 1 on a cadence (`hooks/background-reflection.mjs
 
 ## The MCP server
 
-`otter-pm-mcp` exposes a project's tasks, documents and code over stdio, so an agent can ask what
+`otter-skills-mcp` exposes a project's tasks, documents and code over stdio, so an agent can ask what
 it says. `npm run install` writes the entry into each agent's config; installed globally from this
-checkout, the whole entry is `{ "command": "otter-pm-mcp" }`.
+checkout, the whole entry is `{ "command": "otter-skills-mcp" }`.
 
 ```json
-{ "mcpServers": { "otter-pm": { "command": "otter-pm-mcp" } } }
+{ "mcpServers": { "otter-skills": { "command": "otter-skills-mcp" } } }
 ```
 
 It takes no arguments and there is nothing to keep running — the client starts and stops it over
-stdio. Roots come from `otter-pm.config.json`, Orca's project list, `--root` flags,
-`$OTTER_PM_ROOTS`, discovery, or the current directory, and decide what it can see.
+stdio. Roots come from `otter-skills.config.json`, Orca's project list, `--root` flags,
+`$OTTER_SKILLS_ROOTS`, discovery, or the current directory, and decide what it can see.
 
 | Tool | Answers |
 |------|---------|
@@ -118,6 +118,6 @@ stdio. Roots come from `otter-pm.config.json`, Orca's project list, `--root` fla
 | `search_knowledge` | tasks, documents and code by meaning |
 | `find_related` | what is nearest a path |
 
-Each project keeps its own database at `<repo>/.x-skills/knowledge.lance/`, derived and rebuildable:
+Each project keeps its own database at `<repo>/.o-skills/knowledge.lance/`, derived and rebuildable:
 deleting it costs the next fuzzy call a rebuild and nothing else. The server writes only its own
 database, never a repository file.

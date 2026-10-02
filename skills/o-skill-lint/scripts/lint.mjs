@@ -82,7 +82,7 @@ function strayRunFolders(dir, prefix = "") {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (entry.name === ".x-skills") out.push(rel);
+    if (entry.name === ".o-skills") out.push(rel);
     else out.push(...strayRunFolders(path.join(dir, entry.name), rel));
   }
   return out;

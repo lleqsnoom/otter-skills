@@ -12,7 +12,7 @@ export const DEFAULT_CAP = 10;
 export const DEFAULT_MIN_DELTA = 0;
 export const DEFAULT_NOISE_RUNS = 1;
 export const DEFAULT_TIMEOUT_MS = 60000;
-export const DEFAULT_ROOT = ".x-skills/runs";
+export const DEFAULT_ROOT = ".o-skills/runs";
 
 export const GRAPH = {
   nodes: ["baseline", "iterate", "done", "escalate"],
@@ -414,7 +414,7 @@ function stamp(now = new Date()) {
 
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {
@@ -526,10 +526,10 @@ export function renderMemoryLine(entry) {
   return `- [${entry.ts}] ${parts.join(": ")}`;
 }
 
-/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+/** A path inside a `.o-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
-  const at = parts.lastIndexOf(".x-skills");
+  const at = parts.lastIndexOf(".o-skills");
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 

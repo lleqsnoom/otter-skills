@@ -1,13 +1,13 @@
 ---
 name: o-api-draft
 description: Draft API design from requirements — clarify scope, analyze endpoints and data models, produce a human-reviewable API design in markdown
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [api-design, draft, endpoints, data-models, openapi, swagger]
 user-invocable: true
 ---
 
-# X-API-Draft — API Design from Requirements
+# O-API-Draft — API Design from Requirements
 
 Produce a clean, human-reviewable API design document before implementation begins. No code yet — just scope, contracts, and structure.
 

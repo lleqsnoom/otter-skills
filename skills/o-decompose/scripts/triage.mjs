@@ -30,7 +30,7 @@ export const OWN_PLAN_VERDICTS = ["plan", "analyze"];
 export const TASK_ID = /^L\d+-T\d+$/;
 export const TASK_FILE = /^L(\d+)-T(\d+)-.+\.md$/;
 export const CHILD_ARTIFACT = /^E\d{2}-.+\.md$/;
-export const RUNS_ROOT = ".x-skills/runs";
+export const RUNS_ROOT = ".o-skills/runs";
 export const MAX_E = 99;
 
 // Mirrors the shared helper the sibling skills ship, kept local so this script

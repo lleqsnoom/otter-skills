@@ -12,7 +12,7 @@ const HEAL = path.join(SKILL, "scripts", "heal.mjs");
 const CHECK = path.join(SKILL, "scripts", "check-heal.mjs");
 
 async function withTmpDir(prefix, fn) {
-  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `xskills-${prefix}-`));
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `oskills-${prefix}-`));
   try {
     await fn(dir);
   } finally {

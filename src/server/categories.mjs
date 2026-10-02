@@ -1,5 +1,5 @@
 /**
- * The category registry. Adding a category to Otter PM is one entry here: label, order, and optionally which
+ * The category registry. Adding a category to Otter Skills is one entry here: label, order, and optionally which
  * other directory names are the same category. Anything the registry does not know still shows up, labelled from
  * its directory name.
  *

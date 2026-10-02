@@ -1,13 +1,13 @@
 ---
 name: o-reproduce
 description: Generates minimal platform-aware reproducible test cases from triage briefs — exits 1 when bug is present, exits 0 after fix applied
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [debugging, reproduction, testing, platform-specific]
 user-invocable: true
 ---
 
-# X-Reproduce — Platform-Aware Reproduction
+# O-Reproduce — Platform-Aware Reproduction
 
 **Read `<run folder>/E<nn>-triage.md` to determine platform and generate minimal reproducible test case.**
 

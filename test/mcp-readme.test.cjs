@@ -38,15 +38,15 @@ test('every registered tool is named in the README, and the README names no othe
 test('the README shows the config that reaches this package own bin', () => {
   const readme = fs.readFileSync(README, 'utf8');
 
-  assert.match(readme, /"command": "otter-pm-mcp"/, 'the config names the bin this package ships');
+  assert.match(readme, /"command": "otter-skills-mcp"/, 'the config names the bin this package ships');
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  assert.ok(manifest.bin['otter-pm-mcp'], 'and package.json has that bin');
+  assert.ok(manifest.bin['otter-skills-mcp'], 'and package.json has that bin');
 });
 
 test('the README says where the database lives, that it is safe to delete, and what is never written', () => {
   const readme = fs.readFileSync(README, 'utf8');
 
-  assert.match(readme, /\.x-skills\/knowledge\.lance\//, 'the database path is named');
+  assert.match(readme, /\.o-skills\/knowledge\.lance\//, 'the database path is named');
   assert.match(readme, /deleting it costs the next fuzzy call a rebuild/, 'that it is derived is said');
   assert.match(readme, /never a repository file/, 'and that only its own database is written');
 });
@@ -55,7 +55,7 @@ test('the guide explains the server too, so an install path is not left without 
   const guide = fs.readFileSync(GUIDE, 'utf8');
 
   assert.match(guide, /## The MCP server/, 'the guide has a section');
-  assert.match(guide, /otter-pm-mcp/, 'and names the bin');
+  assert.match(guide, /otter-skills-mcp/, 'and names the bin');
   assert.match(guide, /scripts\/mcp\.mjs/, 'and points at where it comes from, by path');
 });
 

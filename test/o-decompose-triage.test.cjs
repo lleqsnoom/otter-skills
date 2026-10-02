@@ -22,8 +22,8 @@ let run;
 let rel;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-triage-"));
-  run = path.join(root, ".x-skills", "runs", "2026-01-01-0900-R01-platform-game");
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-triage-"));
+  run = path.join(root, ".o-skills", "runs", "2026-01-01-0900-R01-platform-game");
   fs.mkdirSync(run, { recursive: true });
   fs.writeFileSync(path.join(run, "E01-epic.md"), "# Epic\n\n### L0 - Walking skeleton\n");
   rel = path.relative(root, run);
@@ -79,7 +79,7 @@ function verify(...extra) {
 }
 
 function childRun(slug, artifact = "E00-plan.md") {
-  const dir = path.join(root, ".x-skills", "runs", `2026-01-01-0901-R01-${slug}`);
+  const dir = path.join(root, ".o-skills", "runs", `2026-01-01-0901-R01-${slug}`);
   fs.mkdirSync(dir, { recursive: true });
   if (artifact) fs.writeFileSync(path.join(dir, artifact), "# Artifact\n");
   return dir;
@@ -292,7 +292,7 @@ describe("o-decompose triage verify", () => {
     decide([
       "--task", "L2-T1", "--verdict", "plan", "--why", "own contract", "--evidence", "src/game/loop.js:1", "--child", "platform-physics", "--layer", "2",
     ]);
-    fs.rmSync(path.join(root, ".x-skills", "runs", "2026-01-01-0901-R01-platform-physics"), { recursive: true, force: true });
+    fs.rmSync(path.join(root, ".o-skills", "runs", "2026-01-01-0901-R01-platform-physics"), { recursive: true, force: true });
     tasksDir();
     const result = verify();
     assert.equal(result.code, 1);

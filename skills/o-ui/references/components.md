@@ -1,4 +1,4 @@
-# X-UI Component Patterns
+# O-UI Component Patterns
 
 Reference implementations. Plain HTML/CSS, no dependencies. Adjust tokens to the app's foundation (spacing/type scale, accent color) but keep the structure.
 

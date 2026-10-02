@@ -1,13 +1,13 @@
 ---
 name: o-implement
 description: Implement or fix with TDD — parallelize independent tasks with o-parallel, apply o-ui for frontend work, o-arch for placement and naming, and o-unbloat to every change, red-green-refactor per task, verify with o-review + o-fix, gate on plan completion
-version: 1.5.0
+version: 1.5.1
 author: Community
 tags: [tdd, implementation, test-driven, red-green-refactor, production-code, parallel, ui]
 user-invocable: true
 ---
 
-# X-Implement — Test-Driven Implementation
+# O-Implement — Test-Driven Implementation
 **No production code without a failing test first.** Wrote code before the test? Delete it. Rewrite from the test. Exception — confirm with a `confirm` panel (yes/no) first: prototypes, generated code, throwaway scripts.
 
 ## Before the first task: read the ledger a decomposition left
@@ -45,7 +45,7 @@ Write the least code that works. Follow o-unbloat's pass card (`~/.agents/skills
 
 ## Architecture
 
-Before GREEN, read `o-arch`'s pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.x-skills/config/arch.json`, `o-arch-lint` is the check that proves the task did not cross a declared boundary.
+Before GREEN, read `o-arch`'s pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.o-skills/config/arch.json`, `o-arch-lint` is the check that proves the task did not cross a declared boundary.
 
 ## Functional Style
 
@@ -105,7 +105,7 @@ Implement tasks in dependency order. When two or more tasks can run independentl
 4. Tasks that depend on one another stay in the inline TDD loop below, in dependency order.
 5. After an o-parallel batch merges, run the full test suite, then VERIFY (step 4) on the merged changes before the status update in step 7.
 
-## Frontend Work Uses X-UI
+## Frontend Work Uses O-UI
 
 When a task's scope includes UI (HTML/CSS, templates, components, or styles in any framework), apply the o-ui skill to everything you produce:
 

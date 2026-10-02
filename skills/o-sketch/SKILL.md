@@ -1,13 +1,13 @@
 ---
 name: o-sketch
 description: Build a throwaway prototype to answer a design question — a clickable single-file HTML demo you can play with to test a state machine or a piece of logic, or several UI variants (layouts, flows) to compare side by side; throw it away and keep the verdict. Use when asked to prototype, demo, or mock something up, when the user wants to click through a flow before it is built, or when a question needs a runnable answer rather than more words about it.
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [prototype, sketch, design-question, ui-variants, throwaway]
 user-invocable: true
 ---
 
-# X-Sketch — A Throwaway Prototype Answers the Question
+# O-Sketch — A Throwaway Prototype Answers the Question
 
 Some questions cannot be settled in conversation: whether a state model holds up, whether a screen reads.
 Debating them spends hours and settles nothing; a throwaway prototype answers them in one. Build the smallest

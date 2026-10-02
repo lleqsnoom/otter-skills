@@ -1,13 +1,13 @@
 ---
 name: o-migrate
 description: Framework/dependency migration assistant — generates migration plans with breaking changes, upgrade paths, and automated fix candidates from source analysis
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [migration, upgrade, dependency-management, framework-migration, version-upgrade]
 user-invocable: true
 ---
 
-# X-Migrate — Migration Planning Assistant
+# O-Migrate — Migration Planning Assistant
 
 Assists with version upgrades and framework migrations by analyzing project structure and generating comprehensive migration plans with breaking change detection and automated fix candidates.
 

@@ -109,7 +109,7 @@ export function measure({ base = "HEAD", cwd = process.cwd() } = {}) {
   const untracked = git(["ls-files", "--others", "--exclude-standard"], cwd).split("\n").filter(Boolean)
     .map((file) => ({ file, added: countLines(readNow(file, cwd)), removed: 0, binary: false }));
   // The skills' own records are not part of the change being measured.
-  const files = [...tracked, ...untracked].filter((f) => !f.file.startsWith(".x-skills/"));
+  const files = [...tracked, ...untracked].filter((f) => !f.file.startsWith(".o-skills/"));
 
   const deltas = files.map((f) => f.file)
     .filter((file) => MANIFESTS[path.basename(file)])

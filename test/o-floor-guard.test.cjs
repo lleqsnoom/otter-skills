@@ -98,28 +98,28 @@ describe("o-floor floor-guard", () => {
 
   it("reports a loosened threshold, and stays quiet when it is tightened", () => {
     const floor = (value) => JSON.stringify({ rules: [{ id: "coverage", direction: "min", value }] }, null, 2);
-    write(repo, ".x-skills/config/floor.json", floor(80));
+    write(repo, ".o-skills/config/floor.json", floor(80));
     commitAll(repo, "declare the floor");
 
-    write(repo, ".x-skills/config/floor.json", floor(70));
+    write(repo, ".o-skills/config/floor.json", floor(70));
     const loosened = guard(repo);
     assert.equal(loosened.code, 1);
     assert.deepEqual(rules(loosened.json), ["threshold-loosened"]);
     assert.equal(loosened.json.violations[0].detail, "coverage: 80 → 70");
 
-    write(repo, ".x-skills/config/floor.json", floor(90));
+    write(repo, ".o-skills/config/floor.json", floor(90));
     const tightened = guard(repo);
     assert.equal(tightened.code, 0);
     assert.deepEqual(tightened.json.violations, []);
   });
 
   it("reports a rule dropped and an exception added, and rates the declaration checks", () => {
-    write(repo, ".x-skills/config/floor.json", JSON.stringify({ rules: [{ id: "coverage", direction: "min", value: 80 }], exceptions: [] }));
+    write(repo, ".o-skills/config/floor.json", JSON.stringify({ rules: [{ id: "coverage", direction: "min", value: 80 }], exceptions: [] }));
     commitAll(repo, "declare the floor");
 
     write(
       repo,
-      ".x-skills/config/floor.json",
+      ".o-skills/config/floor.json",
       JSON.stringify({ rules: [], exceptions: [{ rule: "coverage", owner: "t", expires: "2026-12-31" }] }),
     );
     const { code, json } = guard(repo);

@@ -1,4 +1,4 @@
-# X-Roast Rubric
+# O-Roast Rubric
 
 Anchored, consistent scoring for critiques of **articles, analyses, specs, epics, tasks, research, and skills**.
 Every dimension is scored with a **whole number 1–5**. Each level has a concrete anchor so two

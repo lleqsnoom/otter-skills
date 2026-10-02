@@ -12,7 +12,7 @@ const ANALYZE = path.join(SKILL, "scripts", "analyze.mjs");
 const CHECK = path.join(SKILL, "scripts", "check-analysis.mjs");
 
 async function withTmpDir(prefix, fn) {
-  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `xskills-${prefix}-`));
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `oskills-${prefix}-`));
   try {
     await fn(dir);
   } finally {

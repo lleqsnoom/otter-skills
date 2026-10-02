@@ -183,7 +183,7 @@ function stamp(now = new Date()) {
 
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {

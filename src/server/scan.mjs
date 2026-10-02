@@ -78,13 +78,13 @@ function readText(path, stat) {
 /**
  * A path an artifact named, as a path this root holds — or `null` when it leads nowhere.
  *
- * The value arrives as the document spelled it: `.x-skills/runs/<stamp>-R<nn>-<slug>/E00-analysis.md` is how one
+ * The value arrives as the document spelled it: `.o-skills/runs/<stamp>-R<nn>-<slug>/E00-analysis.md` is how one
  * skill addresses another's output, and `<run folder>/E00-plan.md` is a placeholder in a skeleton that has not
  * been filled in yet. So both readings are tried — from the root, then from the folder the naming artifact sits
  * in — and only a path that exists becomes a link. A dead link is worse than no link: it reads as a promise.
  */
 function resolveLink(root, from, value) {
-  const bare = value.replace(/^\.x-skills[/\\]/, '').replace(/^[/\\]+/, '');
+  const bare = value.replace(/^\.o-skills[/\\]/, '').replace(/^[/\\]+/, '');
   if (!bare) return null;
   for (const candidate of [join(root, bare), join(dirname(from), bare)]) {
     const stat = safeStat(candidate);

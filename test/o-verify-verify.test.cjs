@@ -197,7 +197,7 @@ describe("o-verify end to end", () => {
     const dry = (survivors) => {
       write(
         repo,
-        ".x-skills/config/verify.json",
+        ".o-skills/config/verify.json",
         JSON.stringify({ explained: [{ file: "src/clamp.js", owner: "tkwiatek", reason: "defensive clamp" }] }),
       );
       if (survivors) {

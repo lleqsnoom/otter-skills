@@ -11,7 +11,7 @@ const HEAL = path.join(SKILL, "scripts", "heal.mjs");
 const METRICS = path.join(SKILL, "scripts", "metrics.mjs");
 
 function withTmpDir(prefix, fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `xskills-${prefix}-`));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `oskills-${prefix}-`));
   try {
     return fn(dir);
   } finally {
@@ -54,7 +54,7 @@ describe("o-autoreflection lifecycle — summary and marker", async () => {
         ],
         { cwd: dir, at: new Date("2026-01-01T00:00:00Z") },
       );
-      const summary = JSON.parse(fs.readFileSync(path.join(dir, ".x-skills", "runs", "last-heal-summary.json"), "utf8"));
+      const summary = JSON.parse(fs.readFileSync(path.join(dir, ".o-skills", "runs", "last-heal-summary.json"), "utf8"));
       assert.deepEqual(summary.landed, ["F1"]);
       assert.deepEqual(summary.rejected, ["F2"]);
     });

@@ -1,13 +1,13 @@
 ---
 name: o-api-swagger
 description: Convert an API design draft to OpenAPI YAML — generate a valid spec from markdown drafts with endpoints, schemas, and auth definitions
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [openapi, swagger, api-design, yaml, openapi-3]
 user-invocable: true
 ---
 
-# X-API-Swagger — API Design to OpenAPI YAML
+# O-API-Swagger — API Design to OpenAPI YAML
 
 Convert a markdown API design draft produced by `o-api-draft` into a valid OpenAPI 3.0.x YAML specification ready for tooling (Swagger UI, code generation, validation).
 

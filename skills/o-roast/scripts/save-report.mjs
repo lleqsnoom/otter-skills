@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { calibrationCases } from "./score.mjs";
 
-export const DEFAULT_OUTPUT = ".x-skills/runs/";
+export const DEFAULT_OUTPUT = ".o-skills/runs/";
 
 export function slugify(name) {
   return String(name || "")
@@ -25,7 +25,7 @@ export function timestamp(date = new Date()) {
 
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {
@@ -176,10 +176,10 @@ function topicsOf(file) {
   return stop === -1 ? rest : rest.slice(0, stop);
 }
 
-/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+/** A path inside a `.o-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
-  const at = parts.lastIndexOf(".x-skills");
+  const at = parts.lastIndexOf(".o-skills");
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 
@@ -289,7 +289,7 @@ function usage() {
     "  --reviewer <who>  self (a model of your family wrote, edited or is judging it, a fresh agent included) or independent (another model family, or a human)",
     "  --model <id>      The model that judges (your own id, or the independent one's; human for a person)",
     "  --author <id>     The model (or human) that wrote the artifact, when known; the gate refuses an independent reviewer of its family",
-    "  --output <dir>    Output directory (default: the run folder under .x-skills/runs/)",
+    "  --output <dir>    Output directory (default: the run folder under .o-skills/runs/)",
     "  --new-run         Start a second run for this artifact",
     "  --run <nn>        Join run R<nn> when the artifact has more than one",
     "  --help            Show this help",

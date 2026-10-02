@@ -367,7 +367,7 @@ function runBuild(args) {
       if (warnings.length < 20) warnings.push({ session: `${session.host}:${session.id}`, reason: String(err.message).slice(0, 120) });
     }
   }
-  const dir = path.resolve(args.out ?? path.join(".x-skills", "runs"));
+  const dir = path.resolve(args.out ?? path.join(".o-skills", "runs"));
   fs.mkdirSync(dir, { recursive: true });
   const base = path.join(dir, "E00-issues-prompt");
   const files = chunk(digests).map((group, i) => writeIfRoom(base, i + 1, buildPrompt(group)));
@@ -431,7 +431,7 @@ function usage() {
     "  --hours <n>      Window to assemble (default: 240)",
     "  --max <n>        Sessions to read (default: 60)",
     "  --dir <dir>      Run folder holding the index (default: .)",
-    "  --out <dir>      Where --build writes (default: .x-skills/runs)",
+    "  --out <dir>      Where --build writes (default: .o-skills/runs)",
     "  --help           Show this help",
     "",
   ].join("\n");

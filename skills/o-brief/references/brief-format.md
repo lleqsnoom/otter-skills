@@ -12,7 +12,7 @@ Worked shape. Copy the shape, not the content.
 
 ## Where this stands
 Goal: the board renders saved views without refetching. Branch `fix/board-render`, 3 of 4 tasks
-ticked in `.x-skills/runs/2026-09-30-0900-R02-board-render/E02-tasks/`. Last green: commit <sha>.
+ticked in `.o-skills/runs/2026-09-30-0900-R02-board-render/E02-tasks/`. Last green: commit <sha>.
 
 ## Settled
 - The cache key must include the locale — sorting is locale-dependent (decided after the first
@@ -26,8 +26,8 @@ ticked in `.x-skills/runs/2026-09-30-0900-R02-board-render/E02-tasks/`. Last gre
 - o-implement for the fix task; o-review + o-fix before landing.
 
 ## Sources
-- Spec: `.x-skills/runs/2026-09-30-0900-R02-board-render/E00-plan.md`
-- Task list: `.x-skills/runs/2026-09-30-0900-R02-board-render/E02-tasks/`
+- Spec: `.o-skills/runs/2026-09-30-0900-R02-board-render/E00-plan.md`
+- Task list: `.o-skills/runs/2026-09-30-0900-R02-board-render/E02-tasks/`
 - The flake report: issue #412
 ```
 

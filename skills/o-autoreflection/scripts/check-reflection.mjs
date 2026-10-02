@@ -246,7 +246,7 @@ export function newestReflection(dir) {
   return files.length ? path.join(dir, files[0].file) : null;
 }
 
-export function newestAcrossRuns(root = ".x-skills/runs") {
+export function newestAcrossRuns(root = ".o-skills/runs") {
   if (!fs.existsSync(root)) return null;
   const found = fs
     .readdirSync(root)

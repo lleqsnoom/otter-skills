@@ -24,7 +24,7 @@ import { boldFields, parseWikilink, splitProperties } from '../src/server/parse.
  * `scripts/vault/`, in the form Obsidian saves them. Neither is ever overwritten.
  *
  * Usage:
- *   node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--domains <run-to-domains.json>] [--dry-run]
+ *   node scripts/backfill-properties.mjs --root <repository or its .o-skills folder> [--domains <run-to-domains.json>] [--dry-run]
  */
 
 const TOP_LEVEL_TYPES = [
@@ -105,8 +105,8 @@ const PATH_ENTRY = /^[\w@][\w.@/-]*$/;
 
 /**
  * The source paths a task's `**Files:**` line names. Annotations come off before the line is split, because one can
- * hold a list of its own (`(new: a.md, b.md)`); what is left must be a single path token, so prose ("otter-pm's
- * .x-skills/…") and hidden folders name nothing; tests are left out.
+ * hold a list of its own (`(new: a.md, b.md)`); what is left must be a single path token, so prose ("otter-skills's
+ * .o-skills/…") and hidden folders name nothing; tests are left out.
  */
 function sourcePaths(files) {
   return [files ?? []]
@@ -140,12 +140,12 @@ function areaTopics(files) {
   return areas.length ? areas.map((area) => `\n  - "[[tags/area/${area}]]"`).join('') : null;
 }
 
-/** A value a bold-label field names, as a note in this `.x-skills` tree — or `null` when it leads nowhere there. */
+/** A value a bold-label field names, as a note in this `.o-skills` tree — or `null` when it leads nowhere there. */
 function noteIn(root, value) {
   const bare = String(value ?? '')
     .replace(/[`'"]/g, '')
     .trim()
-    .replace(/^\.x-skills\//, '');
+    .replace(/^\.o-skills\//, '');
   return bare && existsSync(join(root, bare)) ? bare.replace(/\.md$/, '') : null;
 }
 
@@ -299,12 +299,12 @@ function apply(root, edits, dryRun) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.root) {
-    process.stderr.write('Usage: node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> [--domains <run-to-domains.json>] [--dry-run]\n');
+    process.stderr.write('Usage: node scripts/backfill-properties.mjs --root <repository or its .o-skills folder> [--domains <run-to-domains.json>] [--dry-run]\n');
     process.exit(2);
   }
-  const root = basename(args.root) === '.x-skills' ? args.root : join(args.root, '.x-skills');
+  const root = basename(args.root) === '.o-skills' ? args.root : join(args.root, '.o-skills');
   if (!existsSync(join(root, 'runs'))) {
-    process.stderr.write(`There is no .x-skills/runs at ${dirname(join(root, 'runs'))} — nothing to backfill.\n`);
+    process.stderr.write(`There is no .o-skills/runs at ${dirname(join(root, 'runs'))} — nothing to backfill.\n`);
     process.exit(1);
   }
   const files = readdirSync(join(root, 'runs'), { recursive: true })

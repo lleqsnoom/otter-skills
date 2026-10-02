@@ -23,7 +23,7 @@ const REPO_ROOT = path.join(__dirname, "..");
 let root;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-validate-"));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-validate-"));
 });
 
 afterEach(() => {

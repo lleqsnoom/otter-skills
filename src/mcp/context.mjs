@@ -6,7 +6,7 @@ import { scanRoot } from '../server/scan.mjs';
  * The roots and the projects read from them, resolved once per call.
  *
  * This is the one place the MCP server decides what exists, and it decides it by calling the board's own resolver:
- * `resolveRoots` reads `--root`, the config file, `$OTTER_PM_ROOTS`, discovery and the Orca list in that order. The
+ * `resolveRoots` reads `--root`, the config file, `$OTTER_SKILLS_ROOTS`, discovery and the Orca list in that order. The
  * alternative — a second resolution that agrees today — is how an agent ends up asking about a repository the board
  * has stopped reading.
  */

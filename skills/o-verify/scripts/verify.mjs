@@ -5,7 +5,7 @@
  * Attacks the change instead of trusting it: property-based tests over the changed functions, a
  * mutation pass over the diff, and a gate that reports every surviving mutant as `file:line` —
  * a mutant the tests did not kill is behavior nothing checks. The gate is survivors-equals-zero-or-
- * explained: a survivor ships only when `.x-skills/config/verify.json` explains it with an owner
+ * explained: a survivor ships only when `.o-skills/config/verify.json` explains it with an owner
  * and a reason.
  *
  * This is a driver, not a framework: per language it picks one property tool and one mutation tool
@@ -25,7 +25,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(__dirname, "..", "evals", "fixtures", "verify-cases.json");
 
-export const DEFAULT_CONFIG = ".x-skills/config/verify.json";
+export const DEFAULT_CONFIG = ".o-skills/config/verify.json";
 const BASE_CANDIDATES = ["origin/main", "origin/master", "main", "master"];
 
 /**

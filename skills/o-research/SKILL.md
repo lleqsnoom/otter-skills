@@ -1,13 +1,13 @@
 ---
 name: o-research
 description: Research a topic or tune a metric — research the project and web first, propose three candidate changes, then iterate one atomic change at a time, evaluating it mechanically (a command, or agent-judged criteria coverage) and keeping only measured improvements until the target, a guard, or a hard cap stops the run; graph-driven with guards, a memory file, and a report. Use for "research X", "compile/summarise sources on Y until N criteria are covered", filling knowledge gaps, literature/topic research with coverage criteria, or optimizing a measurable value.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [research, experiment, optimization, metric, loop, iteration, evaluation, tuning, autonomous, literature, coverage]
 user-invocable: true
 ---
 
-# X-Research — Metric-Driven Iteration Loop
+# O-Research — Metric-Driven Iteration Loop
 
 Drive a bounded search toward a **number** instead of a feeling. You name one
 metric, a direction, and a target; the loop then makes **one atomic change per
@@ -255,7 +255,7 @@ host, its permission and approval gates still apply on every iteration.
 ## Output format
 
 ```markdown
-# X-Research — <slug>
+# O-Research — <slug>
 
 **Metric:** <metric> (<direction> → target <target>) · policy <policy>
 **Evaluator:** <command | agent (coverage of N criteria)>

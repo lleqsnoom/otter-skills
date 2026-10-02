@@ -10,7 +10,7 @@ const HOOK = path.join(__dirname, "..", "hooks", "background-reflection.mjs");
 const START = path.join(__dirname, "..", "hooks", "session-start-summary.mjs");
 
 function withTmpDir(prefix, fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `xskills-${prefix}-`));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `oskills-${prefix}-`));
   try {
     return fn(dir);
   } finally {
@@ -52,9 +52,9 @@ describe("o-autoreflection session-start summary", async () => {
 
   it("renders one line naming landed, rejected and the report path", () => {
     withTmpDir("start", (dir) => {
-      fs.mkdirSync(path.join(dir, ".x-skills", "runs"), { recursive: true });
-      fs.writeFileSync(path.join(dir, ".x-skills", "runs", "last-heal-summary.json"), JSON.stringify({ landed: ["F1"], rejected: ["F2"] }));
-      fs.writeFileSync(path.join(dir, ".x-skills", "runs", "last-background-report.json"), JSON.stringify({ report: "runs/R2/report.md" }));
+      fs.mkdirSync(path.join(dir, ".o-skills", "runs"), { recursive: true });
+      fs.writeFileSync(path.join(dir, ".o-skills", "runs", "last-heal-summary.json"), JSON.stringify({ landed: ["F1"], rejected: ["F2"] }));
+      fs.writeFileSync(path.join(dir, ".o-skills", "runs", "last-background-report.json"), JSON.stringify({ report: "runs/R2/report.md" }));
       const line = renderLine({ summary: readSummary(dir), report: readReportPointer(dir) });
       assert.ok(line.includes("landed 1"));
       assert.ok(line.includes("rejected 1"));

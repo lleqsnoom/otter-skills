@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Create .x-skills/runs/<stamp>-R<nn>-<topic>/E00-plan.md with a header skeleton.
+ * Create .o-skills/runs/<stamp>-R<nn>-<topic>/E00-plan.md with a header skeleton.
  * Usage: node save-spec.mjs --topic <slug> [--branch <name>] [--run <nn>|--new-run]
  * Output (stdout): path to the created spec file.
  */

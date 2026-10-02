@@ -1,13 +1,13 @@
 ---
 name: o-second-opinion
 description: An independent re-review of a change from a fresh context — a reviewer who never saw the session critiques the diff against its spec, and must either name a substantive objection or say clean in so many words. Use before shipping a change that a same-context review already passed, when the change touches an invariant or a contract, or whenever the feeling of "looks good" is the only evidence nothing is wrong.
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [review, verification, independence, shipping, critique]
 user-invocable: true
 ---
 
-# X-Second-Opinion — The Reviewer Who Wasn't There
+# O-Second-Opinion — The Reviewer Who Wasn't There
 
 The reviewer who wrote the code and the reviewer who shares its context are the same reviewer.
 This pass removes the context: a fresh reviewer sees the change and its spec, nothing else, and

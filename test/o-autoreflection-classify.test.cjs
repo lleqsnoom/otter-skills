@@ -24,7 +24,7 @@ const CASE = session([
   { role: "user", parts: [text("I am not happy with the reflection skills, do a deep research with online sources")] },
   { role: "assistant", parts: [text("Done. Deep research complete in 5 loops, with a verified trail.")] },
   { role: "user", parts: [text("Do another full round for that analysis, read internet sources, again check the article")] },
-  { role: "user", parts: [text("Base directory for this skill: /home/u/.claude/skills/o-plan\n\n# X-Plan")] },
+  { role: "user", parts: [text("Base directory for this skill: /home/u/.claude/skills/o-plan\n\n# O-Plan")] },
   { role: "assistant", parts: [text("Round two: the plan is written.")] },
   { role: "user", parts: [text("go on")] },
   { role: "user", parts: [text("make it as LLM prompt so i can pass it to another agent")] },
@@ -60,7 +60,7 @@ describe("o-autoreflection classify-turns", async () => {
   });
 
   it("prints the prompt and writes the turns file from the command line", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-classify-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-classify-"));
     try {
       const input = path.join(dir, "session.json");
       fs.writeFileSync(input, JSON.stringify(CASE));

@@ -11,7 +11,7 @@ const SCRIPTS = path.join(__dirname, "..", "skills", "o-autoreflection", "script
 const IMPROVE = path.join(SCRIPTS, "improve.mjs");
 
 async function withTmpDir(prefix, fn) {
-  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `xskills-${prefix}-`));
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `oskills-${prefix}-`));
   try {
     await fn(dir);
   } finally {

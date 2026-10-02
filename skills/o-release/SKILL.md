@@ -1,13 +1,13 @@
 ---
 name: o-release
 description: Write the PR body — the pull request description that shows the change, the evidence, and the danger in one screen: a summary as the smallest visual that makes this branch clear, before and after evidence that it works, and a merge-danger call naming one-way or two-way door and blast radius. Use when writing a PR description, opening a pull request, or asked what to put in the body.
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [pull-request, pr-body, review, risk, evidence]
 user-invocable: true
 ---
 
-# X-Release — The PR Body
+# O-Release — The PR Body
 
 A reviewer spends their attention on your diff; the body decides whether they spend it well. Write the smallest
 body that makes the change clear, proves it works, and says what it endangers. Skip every preamble.

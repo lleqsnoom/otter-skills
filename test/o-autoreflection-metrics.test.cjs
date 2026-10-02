@@ -9,7 +9,7 @@ const path = require("node:path");
 const METRICS = path.join(__dirname, "..", "skills", "o-autoreflection", "scripts", "metrics.mjs");
 
 function withTmpDir(prefix, fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `xskills-${prefix}-`));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `oskills-${prefix}-`));
   try {
     return fn(dir);
   } finally {

@@ -1,19 +1,19 @@
 ---
 name: o-fix
 description: Resolve issues from fix plans — read, edit, verify, mark complete
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [code-quality, debugging, refactoring]
 user-invocable: true
 ---
 
-# X-Fix — Resolve Issues Iteratively
+# O-Fix — Resolve Issues Iteratively
 
-**Prerequisites:** A fix plan in the run folder under `.x-skills/runs/<stamp>-R<nn>-<slug>/`, from o-debug (`E<nn>-fix-plan.md`), o-review (`E<nn>-review-plan.md`), or manual creation.
+**Prerequisites:** A fix plan in the run folder under `.o-skills/runs/<stamp>-R<nn>-<slug>/`, from o-debug (`E<nn>-fix-plan.md`), o-review (`E<nn>-review-plan.md`), or manual creation.
 
 ## Workflow
 
-1. Read the most recent `E<nn>-fix-plan.md` or `E<nn>-review-plan.md` in the run folder (`.x-skills/runs/<stamp>-R<nn>-<slug>/`). o-debug writes the first kind; o-review writes the second.
+1. Read the most recent `E<nn>-fix-plan.md` or `E<nn>-review-plan.md` in the run folder (`.o-skills/runs/<stamp>-R<nn>-<slug>/`). o-debug writes the first kind; o-review writes the second.
 2. Find next unchecked `[ ]` issue (CRITICAL → MAJOR → MINOR).
 3. For each issue:
    - **Reset**: `git checkout -- <file>` for clean baseline
@@ -34,7 +34,7 @@ user-invocable: true
 - **Minimal changes** — only modify what's needed to resolve the specific issue
 - **`[Comments]` issues follow o-comments' pass card** (`~/.agents/skills/o-comments/references/pass.md` for a global install, `.agents/skills/o-comments/references/pass.md` for a local one): delete a comment that restates code, and extract a block that needs a paragraph of explanation into a named function instead of documenting it; removing comments must never change behavior, so run the tests after any refactor
 - **`[Bloat]` issues follow o-unbloat's pass card** (`~/.agents/skills/o-unbloat/references/pass.md` for a global install, `.agents/skills/o-unbloat/references/pass.md` for a local one): check every call site before inlining or deleting, and keep what its *Keep it if* column or *Never Cut* list protects
-- **`[Architecture]` issues follow o-arch's pass card** (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one): one change per finding — a move, a split, a rename or a repointed dependency, never two at once — check every call site before moving or deleting, and keep what its *Never Cut* list protects. When the repo declares `.x-skills/config/arch.json`, finish with `o-arch-lint`'s `arch-check.mjs --root .` to confirm the fix did not cross another boundary
+- **`[Architecture]` issues follow o-arch's pass card** (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one): one change per finding — a move, a split, a rename or a repointed dependency, never two at once — check every call site before moving or deleting, and keep what its *Never Cut* list protects. When the repo declares `.o-skills/config/arch.json`, finish with `o-arch-lint`'s `arch-check.mjs --root .` to confirm the fix did not cross another boundary
 - **If ambiguous**, make smallest reasonable fix and note uncertainty
 
 ## Definition of Done

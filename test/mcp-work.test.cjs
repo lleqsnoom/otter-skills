@@ -26,7 +26,7 @@ const handlerOf = async (name) => {
 const parse = (answered) => JSON.parse(answered.text);
 
 /**
- * The project's own board file, written the way the board writes it: bare `.x-skills`-relative paths, because a
+ * The project's own board file, written the way the board writes it: bare `.o-skills`-relative paths, because a
  * decision belongs to the repository it is about and the project id is added when the board is read.
  */
 function writeBoard(fixture, moves = {}, deleted = {}) {
@@ -42,7 +42,7 @@ function writeBoard(fixture, moves = {}, deleted = {}) {
   fs.writeFileSync(path.join(fixture.root, 'board.json'), `${JSON.stringify(body, null, 2)}\n`);
 }
 
-const firstTaskPath = '.x-skills/tasks/2026-01-01-1000-R01-first.md';
+const firstTaskPath = '.o-skills/tasks/2026-01-01-1000-R01-first.md';
 
 test('list_tasks answers with the task, its state and its progress', async () => {
   const fixture = makeRepo();
@@ -124,7 +124,7 @@ test('list_epics answers the plan with the tasks under it', async () => {
       const body = parse(await (await handlerOf('list_epics'))({ project: fixture.id }));
 
       assert.equal(body.epics.length, 1);
-      assert.equal(body.epics[0].path, '.x-skills/plan/E00-plan.md');
+      assert.equal(body.epics[0].path, '.o-skills/plan/E00-plan.md');
       assert.match(body.epics[0].title, /fixture/i);
     });
   } finally {
@@ -140,7 +140,7 @@ test('list_docs answers the README and the tree documents, each at one repositor
       const paths = body.documents.map((document) => document.relPath);
 
       assert.ok(paths.includes('README.md'), `README is listed; saw ${paths.join(', ')}`);
-      assert.ok(paths.includes('.x-skills/docs/roadmap.md'), `the tree's own document is listed; saw ${paths.join(', ')}`);
+      assert.ok(paths.includes('.o-skills/docs/roadmap.md'), `the tree's own document is listed; saw ${paths.join(', ')}`);
       assert.equal(new Set(paths).size, paths.length, 'a document appears once');
       assert.equal(body.mode, 'tracked');
     });

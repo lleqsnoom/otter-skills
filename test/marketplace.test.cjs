@@ -2,7 +2,7 @@
 
 /**
  * The marketplace is a file contract: `.claude-plugin/marketplace.json` must name every skill the
- * repo ships, so `/plugin marketplace add lleqsnoom/otter-pm` can install the set. A skill missing
+ * repo ships, so `/plugin marketplace add lleqsnoom/otter-skills` can install the set. A skill missing
  * from the listing is a skill nobody can install, so the test names it instead of counting. The
  * plugin's declared commands are held to the same contract: each must exist as a file and name the
  * skill it runs.

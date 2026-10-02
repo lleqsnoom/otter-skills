@@ -19,7 +19,7 @@ const SAVE_TASKS = path.join(__dirname, "..", "skills", "o-decompose", "scripts"
 let root;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-save-tasks-"));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-save-tasks-"));
 });
 
 afterEach(() => {
@@ -27,7 +27,7 @@ afterEach(() => {
 });
 
 function runFolder(slug, run = "01") {
-  const dir = path.join(root, ".x-skills", "runs", `2026-01-01-0900-R${run}-${slug}`);
+  const dir = path.join(root, ".o-skills", "runs", `2026-01-01-0900-R${run}-${slug}`);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }

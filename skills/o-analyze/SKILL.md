@@ -1,7 +1,7 @@
 ---
 name: o-analyze
 description: Interactive analysis skill — research the project and web first, ask short plain questions until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [analysis, troubleshooting, diagnosis, problem-solving, investigation]
 user-invocable: true
@@ -42,7 +42,7 @@ graph LR
 ```
 
 ```bash
-node <skill>/scripts/scenario.mjs start --slug <slug> [--topics domain/<x>,area/<y>]   # reuse existing tags in .x-skills/tags/ where one fits
+node <skill>/scripts/scenario.mjs start --slug <slug> [--topics domain/<x>,area/<y>]   # reuse existing tags in .o-skills/tags/ where one fits
 node <skill>/scripts/scenario.mjs record --dir <dir> --event research --data "<finding>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --event evidence --data "<claim>" --target "<file:line|url>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --to <node>

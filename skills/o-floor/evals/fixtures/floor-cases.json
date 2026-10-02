@@ -85,7 +85,7 @@
       "base": { "rules": [{ "id": "coverage", "direction": "min", "value": 80 }] },
       "current": { "rules": [{ "id": "coverage", "direction": "min", "value": 70 }] }
     },
-    "expect": [{ "rule": "threshold-loosened", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage: 80 → 70" }]
+    "expect": [{ "rule": "threshold-loosened", "file": ".o-skills/config/floor.json", "line": null, "detail": "coverage: 80 → 70" }]
   },
   {
     "name": "raising a maximum threshold is loosening",
@@ -94,7 +94,7 @@
       "base": { "rules": [{ "id": "file-lines", "direction": "max", "value": 800 }] },
       "current": { "rules": [{ "id": "file-lines", "direction": "max", "value": 1200 }] }
     },
-    "expect": [{ "rule": "threshold-loosened", "file": ".x-skills/config/floor.json", "line": null, "detail": "file-lines: 800 → 1200" }]
+    "expect": [{ "rule": "threshold-loosened", "file": ".o-skills/config/floor.json", "line": null, "detail": "file-lines: 800 → 1200" }]
   },
   {
     "name": "tightening is silent",
@@ -112,7 +112,7 @@
       "base": { "rules": [{ "id": "bundle", "value": 120 }] },
       "current": { "rules": [{ "id": "bundle", "value": 140 }] }
     },
-    "expect": [{ "rule": "threshold-changed", "file": ".x-skills/config/floor.json", "line": null, "detail": "bundle: 120 → 140" }]
+    "expect": [{ "rule": "threshold-changed", "file": ".o-skills/config/floor.json", "line": null, "detail": "bundle: 120 → 140" }]
   },
   {
     "name": "a threshold that disappears is reported",
@@ -121,7 +121,7 @@
       "base": { "rules": [{ "id": "coverage", "direction": "min", "value": 80 }] },
       "current": { "rules": [{ "id": "coverage", "direction": "min" }] }
     },
-    "expect": [{ "rule": "threshold-removed", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage" }]
+    "expect": [{ "rule": "threshold-removed", "file": ".o-skills/config/floor.json", "line": null, "detail": "coverage" }]
   },
   {
     "name": "a rule that disappears is reported",
@@ -130,7 +130,7 @@
       "base": { "rules": [{ "id": "coverage", "direction": "min", "value": 80 }] },
       "current": { "rules": [] }
     },
-    "expect": [{ "rule": "rule-removed", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage" }]
+    "expect": [{ "rule": "rule-removed", "file": ".o-skills/config/floor.json", "line": null, "detail": "coverage" }]
   },
   {
     "name": "an added exception is reported",
@@ -139,7 +139,7 @@
       "base": { "rules": [], "exceptions": [] },
       "current": { "rules": [], "exceptions": [{ "rule": "coverage", "owner": "t", "expires": "2026-12-31" }] }
     },
-    "expect": [{ "rule": "new-exception", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage" }]
+    "expect": [{ "rule": "new-exception", "file": ".o-skills/config/floor.json", "line": null, "detail": "coverage" }]
   },
   {
     "name": "extending an exception expiry is reported",
@@ -148,7 +148,7 @@
       "base": { "rules": [], "exceptions": [{ "rule": "coverage", "owner": "t", "expires": "2026-01-31" }] },
       "current": { "rules": [], "exceptions": [{ "rule": "coverage", "owner": "t", "expires": "2026-12-31" }] }
     },
-    "expect": [{ "rule": "exception-extended", "file": ".x-skills/config/floor.json", "line": null, "detail": "coverage: 2026-01-31 → 2026-12-31" }]
+    "expect": [{ "rule": "exception-extended", "file": ".o-skills/config/floor.json", "line": null, "detail": "coverage: 2026-01-31 → 2026-12-31" }]
   },
   {
     "name": "removing an exception is tightening, so it is silent",

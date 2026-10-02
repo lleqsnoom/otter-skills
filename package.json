@@ -1,11 +1,11 @@
 {
-  "name": "@lleqsnoom/otter-pm",
+  "name": "@lleqsnoom/otter-skills",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A suite of o-* skills and an MCP server over .x-skills project trees.",
+  "description": "A suite of o-* skills and an MCP server over .o-skills project trees.",
   "bin": {
-    "otter-pm-mcp": "./scripts/mcp.mjs"
+    "otter-skills-mcp": "./scripts/mcp.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -13,7 +13,7 @@
   "files": [
     "src/",
     "scripts/",
-    "otter-pm.config.json",
+    "otter-skills.config.json",
     "README.md"
   ],
   "scripts": {
@@ -30,10 +30,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lleqsnoom/otter-pm.git"
+    "url": "git+https://github.com/lleqsnoom/otter-skills.git"
   },
-  "homepage": "https://github.com/lleqsnoom/otter-pm#readme",
+  "homepage": "https://github.com/lleqsnoom/otter-skills#readme",
   "bugs": {
-    "url": "https://github.com/lleqsnoom/otter-pm/issues"
+    "url": "https://github.com/lleqsnoom/otter-skills/issues"
   }
 }

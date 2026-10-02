@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const DEFAULT_OUTPUT = ".x-skills/runs/";
+export const DEFAULT_OUTPUT = ".o-skills/runs/";
 const VERDICTS = new Set(["keep", "cut"]);
 
 export function slugify(name) {
@@ -26,7 +26,7 @@ export function slugify(name) {
 
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {

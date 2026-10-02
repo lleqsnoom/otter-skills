@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Create .x-skills/runs/<stamp>-R<nn>-<topic>/E<nn>-tasks/ staging directory.
+ * Create .o-skills/runs/<stamp>-R<nn>-<topic>/E<nn>-tasks/ staging directory.
  * Auto-finds the plan the tasks come from, by topic slug, for logging.
  * Usage: node save-tasks.mjs --epic <slug> [--run <nn>]
  * Output (stdout): path to the created tasks directory.

@@ -11,7 +11,7 @@
  * can delay nothing, and a missed reflection never fails the turn.
  *
  * Usage: installed as a Stop hook. Reads the payload as a JSON stdin line, a positional file path,
- * or nothing (one turn's worth of one tool call). State lives in .x-skills/autoreflection/counter.json.
+ * or nothing (one turn's worth of one tool call). State lives in .o-skills/autoreflection/counter.json.
  */
 
 import fs from "node:fs";
@@ -39,7 +39,7 @@ export function advance(state, calls, threshold) {
 }
 
 export function statePath(cwd = process.cwd()) {
-  return path.resolve(cwd, ".x-skills", "autoreflection", "counter.json");
+  return path.resolve(cwd, ".o-skills", "autoreflection", "counter.json");
 }
 
 export function readState(cwd = process.cwd()) {
@@ -59,7 +59,7 @@ export function writeState(state, cwd = process.cwd()) {
 
 /** Where the background run recorded its report, for the next session to read back. */
 export function writeReportPointer(report, { cwd = process.cwd(), at = new Date() } = {}) {
-  const file = path.resolve(cwd, ".x-skills", "runs", "last-background-report.json");
+  const file = path.resolve(cwd, ".o-skills", "runs", "last-background-report.json");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify({ at: at.toISOString(), report: report.report ?? report, analysis: report.analysis ?? null })}\n`);
   return file;

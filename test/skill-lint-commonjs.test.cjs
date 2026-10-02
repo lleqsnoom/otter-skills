@@ -20,7 +20,7 @@ const LINT = path.join(__dirname, "..", "skills", "o-skill-lint", "scripts", "li
 let root;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-commonjs-"));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-commonjs-"));
 });
 
 afterEach(() => {
@@ -45,7 +45,7 @@ function fixtureModuleRoot() {
   write("README.md", "| Skill | Description |\n|-------|-------------|\n| `o-probe` | probe |\n");
   write(
     "skills/o-probe/SKILL.md",
-    "---\nname: o-probe\ndescription: probe fixture\ntags: [fixture]\n---\n\n# X-Probe\n\nA fixture skill.\n",
+    "---\nname: o-probe\ndescription: probe fixture\ntags: [fixture]\n---\n\n# O-Probe\n\nA fixture skill.\n",
   );
 }
 

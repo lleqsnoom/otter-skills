@@ -2,7 +2,7 @@
 
 /**
  * `list_projects` and `get_project` are how an agent finds out what it may ask about, so they answer from the same
- * resolution the board uses — `resolveRoots` over the config, `$OTTER_PM_ROOTS`, discovery and the Orca list. The
+ * resolution the board uses — `resolveRoots` over the config, `$OTTER_SKILLS_ROOTS`, discovery and the Orca list. The
  * point of asserting it here is that the board and the server cannot disagree about which repositories exist: one
  * resolver, one answer.
  */
@@ -98,7 +98,7 @@ test('a path that is not a root is reported as rejected, and the roots that exis
   }
 });
 
-test('a folder with no .x-skills is not a root', async () => {
+test('a folder with no .o-skills is not a root', async () => {
   const fixture = makeRepo();
   const bare = path.join(fixture.parent, 'bare-folder');
   const fs = require('node:fs');

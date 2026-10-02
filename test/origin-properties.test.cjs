@@ -20,13 +20,13 @@ function cli(cwd, script, ...args) {
   return JSON.parse(result.stdout);
 }
 
-const repo = () => fs.mkdtempSync(path.join(os.tmpdir(), "xskills-origin-"));
+const repo = () => fs.mkdtempSync(path.join(os.tmpdir(), "oskills-origin-"));
 const runOf = (dir) => `runs/${path.basename(dir)}`;
 
 describe("origin artifacts start with their property block", () => {
   it("a plan names its type, its run, and the analysis it came from", () => {
     const cwd = repo();
-    const analysis = path.join(".x-skills", "runs", "2026-01-01-0800-R01-key", "E00-analysis.md");
+    const analysis = path.join(".o-skills", "runs", "2026-01-01-0800-R01-key", "E00-analysis.md");
     fs.mkdirSync(path.join(cwd, path.dirname(analysis)), { recursive: true });
     fs.writeFileSync(path.join(cwd, analysis), "# Analysis — key\n");
     const { dir, state } = cli(cwd, "o-plan/scripts/scenario.mjs", "start", "--slug", "kms", "--input", analysis);
@@ -68,15 +68,15 @@ const raw = (cwd, script, ...args) => spawnSync(process.execPath, [path.join(SKI
 describe("o-plan tags a run with --topics", () => {
   it("writes the topics into the plan and creates the tag notes and the shared base it lacks", () => {
     const cwd = repo();
-    fs.mkdirSync(path.join(cwd, ".x-skills", "tags", "domain"), { recursive: true });
-    fs.writeFileSync(path.join(cwd, ".x-skills", "tags", "domain", "payments.md"), "mine\n");
+    fs.mkdirSync(path.join(cwd, ".o-skills", "tags", "domain"), { recursive: true });
+    fs.writeFileSync(path.join(cwd, ".o-skills", "tags", "domain", "payments.md"), "mine\n");
     const { dir, state } = cli(cwd, "o-plan/scripts/scenario.mjs", "start", "--slug", "kms", "--topics", "domain/payments,area/board");
     const plan = fs.readFileSync(path.join(cwd, dir, state.report), "utf8");
     assert.match(plan, /^topics:\n {2}- "\[\[tags\/domain\/payments\]\]"\n {2}- "\[\[tags\/area\/board\]\]"$/m);
-    assert.equal(fs.readFileSync(path.join(cwd, ".x-skills", "tags", "area", "board.md"), "utf8"), TAG_NOTE("board", "area"));
-    assert.equal(fs.readFileSync(path.join(cwd, ".x-skills", "tags", "domain", "payments.md"), "utf8"), "mine\n", "an existing tag note is never rewritten");
+    assert.equal(fs.readFileSync(path.join(cwd, ".o-skills", "tags", "area", "board.md"), "utf8"), TAG_NOTE("board", "area"));
+    assert.equal(fs.readFileSync(path.join(cwd, ".o-skills", "tags", "domain", "payments.md"), "utf8"), "mine\n", "an existing tag note is never rewritten");
     assert.equal(
-      fs.readFileSync(path.join(cwd, ".x-skills", "tag.base"), "utf8"),
+      fs.readFileSync(path.join(cwd, ".o-skills", "tag.base"), "utf8"),
       fs.readFileSync(path.join(__dirname, "..", "scripts", "vault", "tag.base"), "utf8"),
       "o-plan's copy of the shared base is the one the backfill writes",
     );
@@ -98,9 +98,9 @@ describe("o-analyze tags its analysis with --topics", () => {
     const cwd = repo();
     const { dir, state } = cli(cwd, "o-analyze/scripts/scenario.mjs", "start", "--slug", "key", "--topics", "domain/key-rotation");
     assert.match(fs.readFileSync(path.join(cwd, dir, state.report), "utf8"), /^topics:\n {2}- "\[\[tags\/domain\/key-rotation\]\]"$/m);
-    assert.equal(fs.readFileSync(path.join(cwd, ".x-skills", "tags", "domain", "key-rotation.md"), "utf8"), TAG_NOTE("key-rotation", "domain"));
+    assert.equal(fs.readFileSync(path.join(cwd, ".o-skills", "tags", "domain", "key-rotation.md"), "utf8"), TAG_NOTE("key-rotation", "domain"));
     assert.equal(
-      fs.readFileSync(path.join(cwd, ".x-skills", "tag.base"), "utf8"),
+      fs.readFileSync(path.join(cwd, ".o-skills", "tag.base"), "utf8"),
       fs.readFileSync(path.join(__dirname, "..", "scripts", "vault", "tag.base"), "utf8"),
     );
 

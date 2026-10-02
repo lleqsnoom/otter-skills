@@ -1,13 +1,13 @@
 ---
 name: o-refactor
 description: Automated refactoring suggestions (extract method, rename, replace conditional) — analyzes code against SOLID principles and outputs actionable before/after comparisons
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [refactor, solid, extract-method, rename-variable, replace-conditional, polymorphism]
 user-invocable: true
 ---
 
-# X-Refactor — Automated Refactoring Analyzer
+# O-Refactor — Automated Refactoring Analyzer
 
 Analyzes source code and suggests specific refactorings based on SOLID principles, complexity metrics, and naming conventions. Outputs actionable suggestions with before/after comparisons.
 

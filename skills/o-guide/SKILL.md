@@ -1,13 +1,13 @@
 ---
 name: o-guide
 description: Route the user to the right skill or flow for their situation — name where they sit on the map (an idea, a bug, an incoming issue, a foggy effort, cleaning up the codebase) and which skill starts it, so the process for any goal has a first command. Use when asked which skill fits, where to start, what the workflow or process is, or when the user is unsure which skill to run; user-invoked, so it never fires on its own.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [router, workflow, skills, navigation, onboarding]
 user-invocable: true
 ---
 
-# X-Guide — Which Skill Fits
+# O-Guide — Which Skill Fits
 
 The set is too large to remember; nobody should have to. When asked which skill fits, place the situation on
 the map and name the entry point. Do not run it for them unless asked — a router that starts the work it named

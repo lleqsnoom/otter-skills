@@ -1,13 +1,13 @@
 ---
 name: o-plan
 description: Plan before coding — research the project and the web first, ask short plain questions until the user is sure, propose three approaches with trade-offs, then write a layered spec (contract, invariant, test) as a graph-driven scenario with guards and a memory file; gate on user approval
-version: 2.3.0
+version: 2.3.1
 author: Community
 tags: [plan, spec, requirements, architecture, clarification, testable, layers, prototype]
 user-invocable: true
 ---
 
-# X-Plan — Layered Spec-Driven Planning
+# O-Plan — Layered Spec-Driven Planning
 
 Do not write any code until the spec is approved by the user. Pipeline order: `o-plan → o-decompose → o-implement`.
 
@@ -186,15 +186,15 @@ Every spec **must** include a `## Layers` section. Define layers from prototype 
 node <skill>/scripts/scenario.mjs start --slug <topic> [--new-run | --run <nn>]
 ```
 
-- Run folder: `.x-skills/runs/YYYY-MM-DD-hhmm-R<nn>-<topic>/` — one folder per run, holding `state.json`, `memory.md`, and every artifact of the run.
+- Run folder: `.o-skills/runs/YYYY-MM-DD-hhmm-R<nn>-<topic>/` — one folder per run, holding `state.json`, `memory.md`, and every artifact of the run.
 - Artifacts are numbered `E<nn>-<kind>.md` or `E<nn>-<kind>/` in execution order, so a plain name sort lists the run in the order it was built.
 - **Tag the run at `start`** with `--topics domain/<name>,area/<name>`. First list the tags the vault already has
-  (`ls .x-skills/tags/domain .x-skills/tags/area`) and reuse one that fits; create a new tag only when none does — a
+  (`ls .o-skills/tags/domain .o-skills/tags/area`) and reuse one that fits; create a new tag only when none does — a
   near-duplicate (`auth` beside `authentication`) splits the index in two. A **domain** tag says what the work is
   about (`payments`, `teacher-panel`), at most three per run; an **area** tag names a part of the code by the module
   rule (a workspace package `apps/<x>`, `packages/<x>`, `skills/<x>`, else the top-level folder under `src/`). The
   plan carries them as `topics`, and any tag note that does not exist yet is created at
-  `.x-skills/tags/<kind>/<name>.md`, embedding the shared `tag.base` that lists everything linked to it.
+  `.o-skills/tags/<kind>/<name>.md`, embedding the shared `tag.base` that lists everything linked to it.
 - Spec report (handoff): `<run folder>/E00-plan.md` — the path `o-decompose` reads. It starts with a property block (`type: plan`, `run`, and `input` when `start` was given `--input`), so Obsidian links the plan to the analysis or research it came from.
 - The topic reuses its existing run. Use `--new-run` to start a second run of it, and `--run <nn>` to join a specific one; with two runs and neither flag the command fails rather than picking.
 - **Never write over work in progress.** A run folder whose plan still has unchecked layers belongs to

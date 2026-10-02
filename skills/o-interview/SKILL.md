@@ -1,13 +1,13 @@
 ---
 name: o-interview
 description: Interview the user to stress-test a decision, design, or idea — poke holes in it, challenge assumptions, surface the edge cases, and ask the hard questions until every branch of the design tree is resolved; work the frontier in rounds, each question carrying a recommended answer, facts fetched by sub-agents and decisions reserved for the user. Use when asked to grill, interview, or pressure-test the user's thinking.
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [interview, clarification, design-tree, frontier, stress-test]
 user-invocable: true
 ---
 
-# X-Interview — The Whole-Session Interview
+# O-Interview — The Whole-Session Interview
 
 A plan with an unasked question inside it fails later and costs more. This skill spends the conversation
 upfront: interview the user until every branch of the design tree is visited and nothing is silently assumed,

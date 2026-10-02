@@ -123,7 +123,7 @@ test('a document inside the tree is read the same way', async () => {
   const fixture = makeRepo();
   try {
     await withRoots([fixture.repo], async () => {
-      const body = parse(await (await handlerOf('read_doc'))({ project: fixture.id, path: '.x-skills/docs/roadmap.md' }));
+      const body = parse(await (await handlerOf('read_doc'))({ project: fixture.id, path: '.o-skills/docs/roadmap.md' }));
 
       assert.match(body.text, /Roadmap/);
       assert.ok(body.drift, 'the tree documents carry a report too');

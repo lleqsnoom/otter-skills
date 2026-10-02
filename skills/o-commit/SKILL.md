@@ -1,13 +1,13 @@
 ---
 name: o-commit
 description: Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [conventional-commits, git, commit-messages, commit-changes]
 user-invocable: true
 ---
 
-# X-Commit — Conventional Commits (Message Only)
+# O-Commit — Conventional Commits (Message Only)
 
 Make a conventional commit that states what the current change does. One sentence. Authoritative tone. Do not add co-authors or info that it was made with AI.
 

@@ -163,7 +163,7 @@
         "allowed_dependencies": { "a": ["b"], "b": ["a"] }
       },
       "expect": {
-        "violations": ["dependency-direction .x-skills/config/arch.json:1"],
+        "violations": ["dependency-direction .o-skills/config/arch.json:1"],
         "rated": ["naming", "dependency-direction", "boundaries"],
         "unrated": [],
         "unplaced": 0
@@ -183,7 +183,7 @@
         },
         "allowed_dependencies": { "domain": [], "application": ["domain"] }
       },
-      "configHome": ".x-skills/config/arch.json",
+      "configHome": ".o-skills/config/arch.json",
       "root": "src",
       "expect": {
         "violations": [],

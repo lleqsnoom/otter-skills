@@ -1,15 +1,15 @@
 ---
 name: o-essay
 description: Write an article end-to-end on a fixed loop — o-analyze thesis, o-roast critique, o-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim.
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [writing, article, essay, blog, editorial, loop, pipeline, drafting, prose]
 user-invocable: true
 ---
 
-# X-Essay — Author an Article Through a Fixed Critique Loop
+# O-Essay — Author an Article Through a Fixed Critique Loop
 
-Turn a claim into a finished article by running the three existing xskills in a
+Turn a claim into a finished article by running the three existing skills in a
 **fixed order and a bounded loop**, instead of doing it by hand:
 
 ```

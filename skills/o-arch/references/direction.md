@@ -75,7 +75,7 @@ not, the format crossed the boundary.
 
 ## Writing the declaration
 
-`.x-skills/config/arch.json` states the direction the repo has agreed on:
+`.o-skills/config/arch.json` states the direction the repo has agreed on:
 
 ```json
 {

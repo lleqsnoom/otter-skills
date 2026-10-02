@@ -1,13 +1,13 @@
 ---
 name: o-ui
 description: Design and audit app UIs to be clean, clear, and effective — framework-agnostic method (Vue/React/HTML) with component-selection, row-action, and pre-flight rules.
-version: 3.1.0
+version: 3.1.1
 author: Community
 tags: [ui, html, css, usability, readability, minimalism, accessibility, frontend, design]
 user-invocable: true
 ---
 
-# X-UI — Design That Works
+# O-UI — Design That Works
 
 Build app interfaces (tools, forms, dashboards-lite, internal apps) that a human reads at a glance and uses without thinking. Every rule below is a hard instruction: apply it, then verify it with the check listed under it.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * X-Parallel — Parallel Background Coding Agents
+ * O-Parallel — Parallel Background Coding Agents
  *
  * Dispatches independent markdown tasks to full background agent processes,
  * each in an isolated git worktree. Merges committed results back into the
@@ -86,8 +86,8 @@ function validateRepo() {
     console.error("ERROR: working tree is not clean. Commit or stash first.");
     process.exit(2);
   }
-  WT_BASE = join(repoRoot, ".x-skills", "worktrees");
-  LOG_DIR = join(repoRoot, ".x-skills", "parallel-logs");
+  WT_BASE = join(repoRoot, ".o-skills", "worktrees");
+  LOG_DIR = join(repoRoot, ".o-skills", "parallel-logs");
 }
 
 // --- Task discovery --------------------------------------------------------
@@ -463,7 +463,7 @@ const quote = (s) => `"${String(s).replace(/"/g, '\\"')}"`;
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((err) => {
-    console.error("X-Parallel failed:", err);
+    console.error("O-Parallel failed:", err);
     process.exit(1);
   });
 }

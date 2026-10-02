@@ -11,7 +11,7 @@ TOTAL_STAGES=2
 
 stage "Create the deploy key in the vendor dashboard"
 open_url "https://dashboard.vendor.com/settings/keys"
-step "click New deploy key, name it otter-pm-staging"
+step "click New deploy key, name it otter-skills-staging"
 step "copy the key the dashboard shows"
 ask_secret "paste the deploy key" DEPLOY_KEY
 set_secret ".env" VENDOR_DEPLOY_KEY "$DEPLOY_KEY"

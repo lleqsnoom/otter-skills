@@ -1,13 +1,13 @@
 ---
 name: o-debug
 description: Evidence-based debugging — reproduce, hypothesize, fix root cause, verify
-version: 1.0.0
+version: 1.0.1
 author: Community
 tags: [debugging, root-cause, reproduction, verification]
 user-invocable: true
 ---
 
-# X-Debug — Reproduce → Hypothesize → Fix → Verify
+# O-Debug — Reproduce → Hypothesize → Fix → Verify
 
 Do not suppress errors, disable reporting, or add try/catch that swallows them. Fix the cause and verify with the reproduction script.
 
@@ -37,7 +37,7 @@ node <path-to>/scripts/analyze.mjs --no-reproduce --error "..."  # skip auto-rep
 node <path-to>/scripts/analyze.mjs --error "..." --fixes <run folder>/E<nn>-triage.md  # link the brief or review this session answers
 ```
 
-**Output**: Debug session and fix plan as `E<nn>-` artifacts in one run folder under `.x-skills/runs/`.
+**Output**: Debug session and fix plan as `E<nn>-` artifacts in one run folder under `.o-skills/runs/`.
 
 ## Workflow (4 Steps)
 

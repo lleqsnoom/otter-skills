@@ -1,13 +1,13 @@
 ---
 name: o-arch-lint
-description: Check a code tree against the architecture it declares — reads .x-skills/config/arch.json and reports every banned directory and file name, every wrong-way import across a declared layer boundary, and every place the declaration and the tree disagree, as file:line with a rule name. Detection only, never writes code, exit 1 on a violation. Use when asked to check layer boundaries, verify dependency direction, find utils/helpers/common sprawl, or prove a repo still matches its declared structure; o-review runs it on every review.
-version: 1.0.0
+description: Check a code tree against the architecture it declares — reads .o-skills/config/arch.json and reports every banned directory and file name, every wrong-way import across a declared layer boundary, and every place the declaration and the tree disagree, as file:line with a rule name. Detection only, never writes code, exit 1 on a violation. Use when asked to check layer boundaries, verify dependency direction, find utils/helpers/common sprawl, or prove a repo still matches its declared structure; o-review runs it on every review.
+version: 1.0.1
 author: Community
 tags: [architecture, lint, boundaries, dependency-direction, naming, enforcement, parity]
 user-invocable: true
 ---
 
-# X-Arch-Lint — Is the Tree Still the Architecture It Declared?
+# O-Arch-Lint — Is the Tree Still the Architecture It Declared?
 
 A declaration that nothing checks is a wish. This skill compares the code to the architecture the repo wrote
 down and reports the difference as `file:line`, so the argument is about the declaration rather than about a
@@ -22,7 +22,7 @@ deliberate separate step.
 - "Does this still match our architecture?", "check the layer boundaries", "is this import allowed?".
 - Before a merge, or as the check `o-review` runs as part of every review.
 - After `o-arch` reported a placement problem, to confirm the declaration says what you think it does.
-- A repo that has a `.x-skills/config/arch.json` and a suspicious `utils/`.
+- A repo that has a `.o-skills/config/arch.json` and a suspicious `utils/`.
 
 The run covers the whole `--root`, deliberately: a violation that predates the branch still shows, so a review
 sees the tree as it is rather than only the diff.
@@ -42,8 +42,8 @@ model (a `src/` that holds six layers) is then split by hand. **Read the note it
 import built at run time, an absolute specifier and a re-export are invisible to it, so an empty list means
 nothing was observed rather than nothing is imported. Widen each entry to what the layer may do, then commit it.
 
-**Check that the commit takes.** A declaration under `.x-skills/` is ignored by any repo whose git config
-ignores that tree, and `git check-ignore -v .x-skills/config/arch.json` prints the rule that does it. A
+**Check that the commit takes.** A declaration under `.o-skills/` is ignored by any repo whose git config
+ignores that tree, and `git check-ignore -v .o-skills/config/arch.json` prints the rule that does it. A
 declaration no clone receives checks nothing, so either force-add it (`git add -f <path>`) or keep it where the
 repo already tracks configuration, and say which in the note the team reads.
 
@@ -58,7 +58,7 @@ node ~/.agents/skills/o-arch-lint/scripts/arch-check.mjs --self-test
 
 A local install is `.agents/skills/o-arch-lint/scripts/arch-check.mjs`. `--root` and the file paths under it are
 resolved from the working directory, so a relative path works from anywhere the script can be reached; there is
-no install root to get right. `--config` defaults to `.x-skills/config/arch.json`, found by walking up from
+no install root to get right. `--config` defaults to `.o-skills/config/arch.json`, found by walking up from
 `--root`.
 
 | Exit | Means |
@@ -75,7 +75,7 @@ Output is JSON:
 ```json
 {
   "root": "/abs/path",
-  "config": "/abs/path/.x-skills/config/arch.json",
+  "config": "/abs/path/.o-skills/config/arch.json",
   "rated": ["naming", "dependency-direction", "boundaries"],
   "unrated": [],
   "unplaced": 0,
@@ -133,7 +133,7 @@ unchecked while the run still read as verifiable.
 
 ## Config
 
-`.x-skills/config/arch.json`. Every field is optional, so a partial declaration still runs. A repo with no
+`.o-skills/config/arch.json`. Every field is optional, so a partial declaration still runs. A repo with no
 declaration starts by writing one from this schema: a `naming` block alone is a valid first step, and the layer
 keys can follow when the boundaries are agreed.
 
@@ -167,7 +167,7 @@ keys can follow when the boundaries are agreed.
   `must_not_match` are basename regexes; `message` is what a reader sees when it fires.
 - `banned_names` replaces the built-in seven. A name is banned when a listed word stands alone inside it, so
   `utils`, `date-utils` and `string_utils` all hit while `utilities` does not.
-- `exclude` adds to the built-in list (`node_modules`, `.git`, `dist`, `.astro`, `vendor`, `.venv`, `.x-skills`). A path
+- `exclude` adds to the built-in list (`node_modules`, `.git`, `dist`, `.astro`, `vendor`, `.venv`, `.o-skills`). A path
   is skipped when it contains any fragment.
 
 ## Completion

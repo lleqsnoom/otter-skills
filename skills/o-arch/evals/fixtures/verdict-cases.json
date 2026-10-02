@@ -8,37 +8,37 @@
         "src/a.mjs": "export const a = 1;\nexport const b = 2;\nexport const c = 3;\n",
         "src/utils/index.mjs": "export const pad = (value) => ` ${value}`;\n",
         "src/orders/totals.mjs": "export const total = (lines) => lines.length;\n",
-        ".x-skills/config/arch.json": "{}\n"
+        ".o-skills/config/arch.json": "{}\n"
       },
-      "record": "# Architecture pass\n\n**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for the value it holds | `src/a.mjs:1` |\n| `src/utils/index.mjs` | naming | violated | a bag: the name says nothing about what may be added to it | `src/utils/index.mjs:1` |\n| `src/orders/totals.mjs` | dependencies | ok | imports nothing outside its layer | `src/orders/totals.mjs:1` |\n",
+      "record": "# Architecture pass\n\n**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for the value it holds | `src/a.mjs:1` |\n| `src/utils/index.mjs` | naming | violated | a bag: the name says nothing about what may be added to it | `src/utils/index.mjs:1` |\n| `src/orders/totals.mjs` | dependencies | ok | imports nothing outside its layer | `src/orders/totals.mjs:1` |\n",
       "expect": { "ok": true, "rules": [] }
     },
     {
       "name": "a row that names no group of the five",
       "why": "a group outside the five is a row the pass cannot have judged",
-      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
-      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | structure | ok | looks tidy | `src/a.mjs:1` |\n",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".o-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | structure | ok | looks tidy | `src/a.mjs:1` |\n",
       "expect": { "ok": false, "rules": ["group-unknown"] }
     },
     {
       "name": "a verdict that is not one of the three",
       "why": "a fourth verdict is a judgement the next reader cannot act on",
-      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
-      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | clean | fine for now | `src/a.mjs:1` |\n",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".o-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | clean | fine for now | `src/a.mjs:1` |\n",
       "expect": { "ok": false, "rules": ["verdict-unknown"] }
     },
     {
       "name": "evidence that does not resolve to a line",
       "why": "a verdict resting on a line the file does not have is a claim nothing backs",
-      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
-      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | violated | surprising | `src/a.mjs:99` |\n",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".o-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | violated | surprising | `src/a.mjs:99` |\n",
       "expect": { "ok": false, "rules": ["evidence-unresolved"] }
     },
     {
       "name": "a verdict with no evidence at all",
       "why": "only an unrated row may write a dash, because it is the one row making no claim",
-      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
-      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | the name reads well | - |\n",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".o-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | the name reads well | - |\n",
       "expect": { "ok": false, "rules": ["evidence-missing"] }
     },
     {
@@ -58,8 +58,8 @@
     {
       "name": "a table that does not name a verdict",
       "why": "the checker reads its columns by name, so a table without them is not a record it can judge at all",
-      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
-      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Reason | Evidence |\n|------|-------|--------|----------|\n| `src/a.mjs` | naming | looks fine | `src/a.mjs:1` |\n",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".o-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Reason | Evidence |\n|------|-------|--------|----------|\n| `src/a.mjs` | naming | looks fine | `src/a.mjs:1` |\n",
       "expect": { "ok": false, "rules": ["table-missing"] }
     },
     {
@@ -79,15 +79,15 @@
     {
       "name": "a row with no reason",
       "why": "a verdict with no sentence beside it is unarguable, which is the opposite of what a record is for",
-      "tree": { "src/a.mjs": "export const a = 1;\n", ".x-skills/config/arch.json": "{}\n" },
-      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok |  | `src/a.mjs:1` |\n",
+      "tree": { "src/a.mjs": "export const a = 1;\n", ".o-skills/config/arch.json": "{}\n" },
+      "record": "**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok |  | `src/a.mjs:1` |\n",
       "expect": { "ok": false, "rules": ["reason-empty"] }
     },
     {
       "name": "a declaration this tree does not have",
       "why": "a record naming a declaration the clone never received is the case where the whole gate is a wish",
       "tree": { "src/a.mjs": "export const a = 1;\n" },
-      "record": "**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for what it holds | `src/a.mjs:1` |\n",
+      "record": "**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/a.mjs` | naming | ok | named for what it holds | `src/a.mjs:1` |\n",
       "expect": { "ok": false, "rules": ["declaration-unresolved"] }
     },
     {
@@ -99,9 +99,9 @@
         "src/orders/totals.mjs": "export const total = (lines) => lines.length;\n",
         "src/legacy/frozen_export.mjs": "export const frozenExport = true;\n",
         "src/web/report_controller.mjs": "export const handle = (request) => request.body;\n",
-        ".x-skills/config/arch.json": "{}\n"
+        ".o-skills/config/arch.json": "{}\n"
       },
-      "record": "# Architecture pass — 2026-09-27\n\n**Scope:** src/\n**Declaration:** .x-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/utils/index.mjs` | naming | violated | The name describes no domain concept, so no reader can say what may be added to it | `src/utils/index.mjs:1` |\n| `src/utils/index.mjs` | responsibilities | violated | Two reasons to change: a date format and an order invariant | `src/utils/index.mjs:14` |\n| `src/orders/retry.mjs` | dependencies | violated | The order policy imports the vendor client directly, so a vendor change reaches the rule | `src/orders/retry.mjs:3` |\n| `src/orders/totals.mjs` | naming | ok | Named for the value it computes, and it holds nothing else | `src/orders/totals.mjs:1` |\n| `src/legacy/frozen_export.mjs` | responsibilities | unrated | Excluded by the accepted-violation record in its header; the migration that removes it is owned elsewhere | `src/legacy/frozen_export.mjs:1` |\n| `src/web/report_controller.mjs` | naming | unrated | Named by the framework's router, which will not load it under another name; the parsing behind it is a finding for another task | `src/web/report_controller.mjs:1` |\n",
+      "record": "# Architecture pass — 2026-09-27\n\n**Scope:** src/\n**Declaration:** .o-skills/config/arch.json\n\n| Unit | Group | Verdict | Reason | Evidence |\n|------|-------|---------|--------|----------|\n| `src/utils/index.mjs` | naming | violated | The name describes no domain concept, so no reader can say what may be added to it | `src/utils/index.mjs:1` |\n| `src/utils/index.mjs` | responsibilities | violated | Two reasons to change: a date format and an order invariant | `src/utils/index.mjs:14` |\n| `src/orders/retry.mjs` | dependencies | violated | The order policy imports the vendor client directly, so a vendor change reaches the rule | `src/orders/retry.mjs:3` |\n| `src/orders/totals.mjs` | naming | ok | Named for the value it computes, and it holds nothing else | `src/orders/totals.mjs:1` |\n| `src/legacy/frozen_export.mjs` | responsibilities | unrated | Excluded by the accepted-violation record in its header; the migration that removes it is owned elsewhere | `src/legacy/frozen_export.mjs:1` |\n| `src/web/report_controller.mjs` | naming | unrated | Named by the framework's router, which will not load it under another name; the parsing behind it is a finding for another task | `src/web/report_controller.mjs:1` |\n",
       "expect": { "ok": true, "rules": [] }
     }
   ]

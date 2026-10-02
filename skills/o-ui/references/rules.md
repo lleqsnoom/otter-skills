@@ -1,4 +1,4 @@
-# X-UI — Strict Rules (Machine-Readable)
+# O-UI — Strict Rules (Machine-Readable)
 
 Deterministic thresholds. When a rule says a number, that number is a hard limit, not a guideline.
 

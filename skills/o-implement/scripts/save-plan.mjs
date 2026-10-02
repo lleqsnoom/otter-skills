@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Create .x-skills/runs/<stamp>-R<nn>-<slug>/E<nn>-implement.md with a resolved header skeleton.
+ * Create .o-skills/runs/<stamp>-R<nn>-<slug>/E<nn>-implement.md with a resolved header skeleton.
  * Auto-finds the plan the tasks came from — or the epic of a run written before the merge — by topic slug.
  * Usage: node save-plan.mjs --epic <slug> [--branch <name>]
  * Output (stdout): path to the created plan file.

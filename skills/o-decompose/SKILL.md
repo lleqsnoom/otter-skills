@@ -1,13 +1,13 @@
 ---
 name: o-decompose
 description: Decompose an approved plan (or an older run's epic) into layer-based tasks, triaging every candidate first — each candidate is decided as a task in this run, a run of its own (o-plan), an analysis (o-analyze), or dropped; outputs <run folder>/E<nn>-triage.md and <run folder>/E<nn>-tasks/ for handoff to o-implement
-version: 3.0.0
+version: 3.0.1
 author: Community
 tags: [decompose, tasks, layers, triage, verdict, child-run, definition-of-done, DOD, test-plan, atomic, estimation, self-contained, incremental]
 user-invocable: true
 ---
 
-# X-Decompose — Triaged, Layer-Based Task Decomposition
+# O-Decompose — Triaged, Layer-Based Task Decomposition
 
 One task file per sub-step, organized by layer. Each task is a self-contained, testable increment that builds on the previous one. Before any file is written, every candidate is **triaged**: a candidate that hides its own contract gets a run of its own instead of a task in this one. Pipeline order: `o-plan → o-decompose → o-implement`.
 
@@ -34,7 +34,7 @@ Layer 3 (Polish)       → Task 3.1: add monitoring + documentation
 
 **Key rule:** After any task completes, the system must be in a working state. You should never have "Task 1 done but nothing runs yet."
 
-**Read the architecture before cutting.** `o-arch`'s pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one) decides placement, naming, responsibility and dependency direction, and `.x-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the size cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
+**Read the architecture before cutting.** `o-arch`'s pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one) decides placement, naming, responsibility and dependency direction, and `.o-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the size cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
 
 ## Triage Rule
 
@@ -177,7 +177,7 @@ created: <YYYY-MM-DDThh:mm>
 
 **The block on top is for people and Obsidian, not for the implementer.** `title` is what Obsidian shows on the
 graph node in place of the file name (through the Front Matter Title plugin), so it reads as the task, not its file. Links are quoted wikilinks from the
-`.x-skills` root without `.md` (unquoted, YAML reads `[[x]]` as a nested list). `topics` copies the plan's `domain/` tags, then adds one `area/` tag per module the task's **Files:** touch — a
+`.o-skills` root without `.md` (unquoted, YAML reads `[[x]]` as a nested list). `topics` copies the plan's `domain/` tags, then adds one `area/` tag per module the task's **Files:** touch — a
 workspace package (`apps/<x>`, `packages/<x>`, `skills/<x>`), else the top-level folder under `src/`; tests are not
 counted. Tag notes are not created here: o-plan creates a run's tags, and the backfill creates area tags for work
 that has none yet. `depends_on` lists only the tasks that

@@ -124,7 +124,7 @@ too long) are the adapter's own and may stay.
 
 ## The declared architecture
 
-A repo can write its boundaries down in `.x-skills/config/arch.json`: layers with their roots, the directions
+A repo can write its boundaries down in `.o-skills/config/arch.json`: layers with their roots, the directions
 allowed between them, and naming rules per layer. Once it is there, `o-arch-lint` reports a wrong-way import as
 `file:line` with `rule: dependency-direction` and a naming rule violation as `boundaries`.
 

@@ -4,7 +4,7 @@
 /**
  * o-debug analyzer — evidence-based root cause analysis.
  * Usage: node analyze.mjs --error "msg" [--file src.js] [--slug topic] [--no-reproduce] [--fixes <brief or review>]
- * Writes every artifact into .x-skills/runs/<stamp>-R<nn>-<slug>/.
+ * Writes every artifact into .o-skills/runs/<stamp>-R<nn>-<slug>/.
  */
 
 import fs from "node:fs";
@@ -14,7 +14,7 @@ import { execFileSync } from "node:child_process";
 // ── Run folders ──────────────────────────────────────────────────────
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {
@@ -180,10 +180,10 @@ function reproduceLocally(errorText, targetFile, runDir) {
   }
 }
 
-/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+/** A path inside a `.o-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
-  const at = parts.lastIndexOf(".x-skills");
+  const at = parts.lastIndexOf(".o-skills");
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 

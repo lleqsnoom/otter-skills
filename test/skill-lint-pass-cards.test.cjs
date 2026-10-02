@@ -18,7 +18,7 @@ const LINT = path.join(__dirname, "..", "skills", "o-skill-lint", "scripts", "li
 let root;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-pass-cards-"));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-pass-cards-"));
 });
 
 afterEach(() => {

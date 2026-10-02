@@ -75,7 +75,7 @@ export function buildChromeArgs({ debugPort, profileDir, url, headless = false }
 }
 
 export function defaultProfileDir() {
-  return path.join(os.homedir(), ".x-skills", "chrome-profile");
+  return path.join(os.homedir(), ".o-skills", "chrome-profile");
 }
 
 export async function cdpReachable(debugPort, timeoutMs = 800) {
@@ -131,7 +131,7 @@ server (configured with --browserUrl http://127.0.0.1:9222) can attach to it.
 Options:
   --url <url>          App URL to open (default: auto-detect from project files)
   --port <n>           Remote debugging port (default: 9222, must match MCP config)
-  --profile-dir <dir>  Chrome user-data-dir (default: ~/.x-skills/chrome-profile)
+  --profile-dir <dir>  Chrome user-data-dir (default: ~/.o-skills/chrome-profile)
   --browser <path>     Explicit Chrome/Chromium executable path
   --headless           Launch without a visible window
   --foreground         Keep the launcher attached instead of detaching

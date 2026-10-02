@@ -2,7 +2,7 @@
 /**
  * o-arch-lint arch-check — compare a code tree against the architecture it declares.
  *
- * Reads `.x-skills/config/arch.json` (found by walking up from the root, or named with --config),
+ * Reads `.o-skills/config/arch.json` (found by walking up from the root, or named with --config),
  * walks the tree, and reports every place the code departs from the declaration. Detection only:
  * it never writes source, never touches the network, and never runs git.
  *
@@ -18,14 +18,14 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const DEFAULT_CONFIG_PATH = ".x-skills/config/arch.json";
+export const DEFAULT_CONFIG_PATH = ".o-skills/config/arch.json";
 
 // A repo may add to this list; it can never need to remove from it, because `utils` is not a smaller
 // word for something, it is a decision nobody made.
 export const DEFAULT_BANNED_NAMES = ["utils", "helpers", "common", "shared", "misc", "tools", "other"];
 
 // Vendored, generated and tool-owned trees are not the repo's design, so they are not its violations.
-export const DEFAULT_EXCLUDE = ["node_modules", ".git", "dist", ".astro", "vendor", ".venv", ".x-skills"];
+export const DEFAULT_EXCLUDE = ["node_modules", ".git", "dist", ".astro", "vendor", ".venv", ".o-skills"];
 
 // Naming needs no declaration, so it is rated on every run; the other two depend on what was declared.
 const ALWAYS_RATED = ["naming"];
@@ -157,7 +157,7 @@ export function classifyLayers(files, layers) {
  * repo above it, so a run scoped to a subtree resolves them there; a config named elsewhere by `--config`
  * is read against the run root, which is the only root it can be assumed to describe.
  */
-const DECLARATION_PATH = /[/\\]\.x-skills[/\\]config[/\\][^/\\]+$/;
+const DECLARATION_PATH = /[/\\]\.o-skills[/\\]config[/\\][^/\\]+$/;
 const configHome = (configPath, root) => (configPath && DECLARATION_PATH.test(configPath) ? configPath.replace(DECLARATION_PATH, "") : root);
 
 const missingRoots = (home, config) =>

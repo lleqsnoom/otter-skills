@@ -7,10 +7,10 @@ import { configFilePath } from './config.mjs';
 /**
  * The reader's own board — the one thing this app writes.
  *
- * Everything else in Otter PM is read from the repository, and moving a card cannot change what a document
+ * Everything else in Otter Skills is read from the repository, and moving a card cannot change what a document
  * says: a run is finished because its `state.json` says so, and a checklist is ticked in the file. So dragging a
  * card is a decision *about* a document rather than a change to it — kept **with the project it is about**, in
- * `<root>/board.json` inside the `.x-skills` tree, because that is the only place where a decision stays the same
+ * `<root>/board.json` inside the `.o-skills` tree, because that is the only place where a decision stays the same
  * decision: on the other branch, in the other worktree, on the other machine. One file beside the app's own config
  * looked like per-machine state and was in fact per-checkout, so `git switch` in this repository — or serving a
  * worktree of it — hid everything a reader had filed.
@@ -43,18 +43,18 @@ import { configFilePath } from './config.mjs';
  */
 export const BOARD_COLUMNS = ['todo', 'active', 'unknown', 'done', 'closed'];
 
-/** One project's board: inside the `.x-skills` tree it is about. */
+/** One project's board: inside the `.o-skills` tree it is about. */
 export function projectBoardFile(root) {
   return join(root, 'board.json');
 }
 
 /**
- * Where every project's decisions used to live: one file beside `otter-pm.config.json`, keyed
- * `<projectId>:<path>` (`$OTTER_PM_BOARD` points at it). Never written, and read only by the import that moves what
+ * Where every project's decisions used to live: one file beside `otter-skills.config.json`, keyed
+ * `<projectId>:<path>` (`$OTTER_SKILLS_BOARD` points at it). Never written, and read only by the import that moves what
  * it holds into the projects it holds it for.
  */
 export function legacyBoardFile(env = process.env) {
-  return env.OTTER_PM_BOARD || join(dirname(configFilePath({ env })), 'board.json');
+  return env.OTTER_SKILLS_BOARD || join(dirname(configFilePath({ env })), 'board.json');
 }
 
 /** A move whose column this app does not know is not a move; anything else about it is kept as it was written. */
@@ -251,7 +251,7 @@ function updateBoard(root, mutate) {
 function writeBoard(file, { moves, deleted, orders }) {
   const body = JSON.stringify(
     {
-      note: 'Column moves, archived items and lane orders for this project in Otter PM. Paths are relative to .x-skills. Delete a move to return an item to the column its own data gives it; delete an order to put a lane back in the order the items themselves sort into.',
+      note: 'Column moves, archived items and lane orders for this project in Otter Skills. Paths are relative to .o-skills. Delete a move to return an item to the column its own data gives it; delete an order to put a lane back in the order the items themselves sort into.',
       moves,
       deleted,
       orders,

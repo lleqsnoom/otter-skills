@@ -4,7 +4,7 @@
  *
  * Reports the moves that lower a repository's quality bar, as `file:line` with a rule name, by
  * reading the diff between a merge base and the working tree and comparing the declared floor
- * (`.x-skills/config/floor.json`) at the base with the one on disk.
+ * (`.o-skills/config/floor.json`) at the base with the one on disk.
  *
  * It reports the rule and the location, never the matched source text, so a suppression beside a
  * secret cannot leak through the report.
@@ -21,7 +21,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(__dirname, "..", "evals", "fixtures", "floor-cases.json");
 
-export const DEFAULT_CONFIG = ".x-skills/config/floor.json";
+export const DEFAULT_CONFIG = ".o-skills/config/floor.json";
 const BASE_CANDIDATES = ["origin/main", "origin/master", "main", "master"];
 
 /**
@@ -319,7 +319,7 @@ function usage() {
     "  node floor-guard.mjs                 # guard the repo you are in",
     "  node floor-guard.mjs --root <dir>    # guard another repo",
     "  node floor-guard.mjs --base <ref>    # diff against another base (default: origin/main, main, master)",
-    "  node floor-guard.mjs --config <path> # another floor file (default: .x-skills/config/floor.json)",
+    "  node floor-guard.mjs --config <path> # another floor file (default: .o-skills/config/floor.json)",
     "  node floor-guard.mjs --ignore <glob> # skip a path; repeatable, and the config's `ignore` adds to it",
     "  node floor-guard.mjs --self-test",
     "",

@@ -1,13 +1,13 @@
 ---
 name: o-browser
 description: Launch the real Chrome/Chromium with remote debugging and attach the chrome-devtools MCP to the project's app URL — detects the URL from README/config/env, verifies the dev server, and opens the browser so you can drive it without manual setup.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [browser, chrome, chromium, devtools, mcp, frontend, testing, automation, debugging]
 user-invocable: true
 ---
 
-# X-Browser — Launch Chrome for DevTools MCP
+# O-Browser — Launch Chrome for DevTools MCP
 
 Start a real (headed) Chrome/Chromium with the remote debugging port open, open the project's app URL, and let the `chrome-devtools` MCP server attach. This replaces the manual "launch chrome with `--remote-debugging-port`, then ask the agent to connect" prompt.
 
@@ -76,7 +76,7 @@ node skills/o-browser/scripts/launch.mjs --url http://localhost:5173
 Omit `--url` to let it auto-detect. The script:
 
 - refuses to double-launch if CDP is already answering on the port;
-- uses a dedicated profile at `~/.x-skills/chrome-profile` (never your default Chrome profile, so a running Chrome does not block debugging);
+- uses a dedicated profile at `~/.o-skills/chrome-profile` (never your default Chrome profile, so a running Chrome does not block debugging);
 - opens a real, visible browser window at the app URL.
 
 It prints JSON with `cdpUrl`, `pid`, `url`, and `appReachable`.
@@ -100,7 +100,7 @@ If `list_pages` returns no browser, the MCP is not pointed at the debug port —
 |------|---------|
 | `--url <url>` | App URL to open (default: auto-detect) |
 | `--port <n>` | Remote debugging port (default `9222`; must match MCP config) |
-| `--profile-dir <dir>` | Chrome `--user-data-dir` (default `~/.x-skills/chrome-profile`) |
+| `--profile-dir <dir>` | Chrome `--user-data-dir` (default `~/.o-skills/chrome-profile`) |
 | `--browser <path>` | Explicit Chrome/Chromium executable |
 | `--headless` | Launch without a visible window |
 | `--foreground` | Keep the launcher attached instead of detaching |

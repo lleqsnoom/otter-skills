@@ -55,7 +55,7 @@ function getTimestamp() {
 // ── Run folders ──────────────────────────────────────────────────────
 // #region run-folder
 // Two digits, not more: a wider counter would sort E100 before E99.
-const RUNS_ROOT = ".x-skills/runs";
+const RUNS_ROOT = ".o-skills/runs";
 const MAX_COUNTER = 99;
 
 function padRunCounter(value) {
@@ -321,10 +321,10 @@ function topicsOf(file) {
   return stop === -1 ? rest : rest.slice(0, stop);
 }
 
-/** A path inside a `.x-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
+/** A path inside a `.o-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
-  const at = parts.lastIndexOf(".x-skills");
+  const at = parts.lastIndexOf(".o-skills");
   return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
 }
 

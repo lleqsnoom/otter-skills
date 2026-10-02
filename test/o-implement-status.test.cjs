@@ -26,7 +26,7 @@ const EPIC = `# Epic — demo
 ---
 
 goal:         The thing works.
-spec:         .x-skills/runs/2026-01-01-0900-R01-demo/E00-plan.md
+spec:         .o-skills/runs/2026-01-01-0900-R01-demo/E00-plan.md
 issue:
 
 ## Layer 0 — Skeleton
@@ -73,7 +73,7 @@ test:         given a run, when it finishes, then it is green
 
 /** A run with an epic and three task files: two in layer 0, one in layer 1. */
 function fixture() {
-  const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "xskills-status-")), ".x-skills", "runs", "2026-01-01-0900-R01-demo");
+  const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "oskills-status-")), ".o-skills", "runs", "2026-01-01-0900-R01-demo");
   const tasks = path.join(run, "E02-tasks");
   fs.mkdirSync(tasks, { recursive: true });
   fs.writeFileSync(path.join(run, "E01-epic.md"), EPIC);
@@ -241,7 +241,7 @@ describe("o-implement status", async () => {
 
 /** A run whose layers live in a plan: the shape `o-plan` produces, with no epic anywhere. */
 function planFixture() {
-  const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "xskills-status-plan-")), ".x-skills", "runs", "2026-01-02-0900-R01-demo");
+  const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "oskills-status-plan-")), ".o-skills", "runs", "2026-01-02-0900-R01-demo");
   const tasks = path.join(run, "E01-tasks");
   fs.mkdirSync(tasks, { recursive: true });
   fs.writeFileSync(path.join(run, "E00-plan.md"), PLAN);
@@ -326,7 +326,7 @@ describe("o-implement status: a run-level status line", () => {
 
 /** A plan-based run whose one task carries a property block, as o-decompose writes it now. */
 function propertyFixture(boxes = ["[ ] the rule fires"]) {
-  const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "xskills-status-props-")), ".x-skills", "runs", "2026-01-01-0900-R01-demo");
+  const run = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "oskills-status-props-")), ".o-skills", "runs", "2026-01-01-0900-R01-demo");
   fs.mkdirSync(path.join(run, "E02-tasks"), { recursive: true });
   fs.writeFileSync(path.join(run, "E00-plan.md"), PLAN);
   const task = path.join(run, "E02-tasks", "L0-T1-rule.md");

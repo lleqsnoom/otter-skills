@@ -223,7 +223,7 @@ describe("o-autoreflection hunt-issues — the per-skill SKILL.md pass", async (
     const prompts = hunt.skillPrompts(window());
     assert.deepEqual(prompts.map((entry) => entry.skill), ["o-ui"], "o-plan shows up once, which is not a pattern");
     assert.match(prompts[0].prompt, /the file under review — skills\/o-ui\/SKILL\.md/);
-    assert.match(prompts[0].prompt, /# X-UI/, "the file's own text is in the prompt");
+    assert.match(prompts[0].prompt, /# O-UI/, "the file's own text is in the prompt");
     assert.match(prompts[0].prompt, /\[crush:s1#2\]/);
     assert.match(prompts[0].prompt, /I SAID: this is not what I asked for/);
   });

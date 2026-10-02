@@ -1,13 +1,13 @@
 ---
 name: o-search
 description: Search every indexed repository by meaning or exact identifier through the o-search MCP server — use before grepping for a symbol, when the file that owns a behaviour is unknown, or when the question spans repositories.
-version: 0.1.0
+version: 0.1.1
 author: Community
 tags: [search, semantic, vector, mcp, code-search, embeddings, sqlite]
 user-invocable: true
 ---
 
-# X-Search — Ask where something is, in one repository or all of them
+# O-Search — Ask where something is, in one repository or all of them
 
 Reach for this before `grep` when you do not know the file, before `glob` when you do not know the
 name, and whenever the question is "where does X happen" rather than "where is the string X".
@@ -77,5 +77,5 @@ will catch up within a couple of seconds. Do not treat a stale snippet as the cu
 ## What it does not do
 
 It does not read files for you: a hit is a pointer, so open the range. It does not search the web, and
-it does not search a repository that was never indexed. It indexes text files and `.x-skills`
+it does not search a repository that was never indexed. It indexes text files and `.o-skills`
 artifacts — no PDFs, no images, no session transcripts.

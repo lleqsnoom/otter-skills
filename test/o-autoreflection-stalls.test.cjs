@@ -34,7 +34,7 @@ function stalledSession(words, { skills = [] } = {}) {
       },
       { role: "tool", parts: [result("c1", "bash", "Background shell started with ID: 030\n\nUse job_output tool to view output")] },
       { role: "assistant", parts: [call("c2", "job_output", { shell_id: "030", wait: true })] },
-      { role: "tool", parts: [result("c2", "job_output", "Status: running\n\n  otter-pm   http://127.0.0.1:4322/")] },
+      { role: "tool", parts: [result("c2", "job_output", "Status: running\n\n  otter-skills   http://127.0.0.1:4322/")] },
       { role: "user", parts: [text(words)] },
     ],
     skills
