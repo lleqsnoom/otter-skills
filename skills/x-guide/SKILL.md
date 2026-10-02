@@ -67,5 +67,6 @@ A starting situation that generates work, then merges onto the main flow:
 - **x-api-draft / x-api-swagger** — API design to OpenAPI.
 - **x-ui / x-browser** — frontend work and its browser check.
 - **x-essay / x-humanize / x-roast** — prose: write it, simplify it, score it.
+- **x-walkthrough** — script the human-only steps.
 
 **x-decompose** is on the main flow; **x-triage** is an on-ramp, never for tickets the flow itself produced.
