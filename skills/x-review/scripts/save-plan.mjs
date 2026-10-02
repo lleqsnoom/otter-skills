@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, execSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { changeScope } from "./change-scope.mjs";
 
 /** The directory this script sits in: ESM has no __dirname, and the siblings are spawned from here. */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,9 @@ function parseArgs(argv) {
     else if (argv[i] === "--new-run") args.newRun = true;
     else if (argv[i] === "--run" && i + 1 < argv.length) args.run = argv[++i];
     else if (argv[i] === "--reviews" && i + 1 < argv.length) args.reviews = argv[++i];
+    else if (argv[i] === "--base" && i + 1 < argv.length) args.base = argv[++i];
+    else if (argv[i] === "--files" && i + 1 < argv.length) args.files = argv[++i];
+    else if (argv[i] === "--all") args.all = true;
   }
   return args;
 }
@@ -221,21 +225,61 @@ function aggregateStats(complexity, duplication, patterns) {
   return stats;
 }
 
+// ── Scope ────────────────────────────────────────────────────────────
+
+/**
+ * What the review measures, decided once: the analyzers and the header both read this value, so the Scope line can
+ * never name one set of files while the counts describe another.
+ */
+function resolveScope(args) {
+  if (args.all) return { kind: "all" };
+  if (args.files) {
+    const files = args.files.split(",").map((file) => path.resolve(file.trim())).filter((file) => fs.existsSync(file));
+    return { kind: "files", files };
+  }
+  return changeScope({ base: args.base });
+}
+
+const isWholeTree = (scope) => scope.kind === "all" || scope.kind === "tree";
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+function scopeLine(scope) {
+  if (scope.kind === "all") return "**Scope:** whole repository (--all)";
+  if (scope.kind === "tree") return `**Scope:** whole tree (${scope.reason})`;
+  if (scope.kind === "files") return `**Scope:** ${plural(scope.files.length, "file")} named with --files`;
+  const parts = [`${scope.committed.length} committed`, `${scope.staged.length} staged`, `${scope.unstaged.length} unstaged`, `${scope.untracked.length} untracked`];
+  return `**Scope:** ${plural(scope.files.length, "file")} changed vs ${scope.ref}@${scope.mergeBase.slice(0, 7)} (${parts.join(", ")})`;
+}
+
+/** Why a scope with no files measured nothing, or null when it has something to measure. */
+function emptyReason(scope) {
+  if (isWholeTree(scope) || scope.files.length) return null;
+  return scope.kind === "files" ? "no source files named with --files" : `no changed source files vs ${scope.ref}`;
+}
+
 // ── Plan header generation ───────────────────────────────────────────
 
-function generatePlanHeader(stats, branch, failed = []) {
+/** One count line: the value, or why it was not measured — an unmeasured count is never a zero. */
+function countLine(scope, failed) {
+  const empty = emptyReason(scope);
   const failedNames = new Set(failed.map((run) => run.script));
-  const totalFiles = stats.totalFilesAnalyzed.size;
-  const metric = (label, value, script) =>
-    failedNames.has(script)
-      ? `**${label}:** unknown — ${script} failed, so this was not measured`
-      : `**${label}:** ${value}`;
+  return (label, value, script) => {
+    if (empty) return `**${label}:** not measured — ${empty}`;
+    if (failedNames.has(script)) return `**${label}:** unknown — ${script} failed, so this was not measured`;
+    return `**${label}:** ${value}`;
+  };
+}
+
+function generatePlanHeader(stats, branch, failed = [], scope = { kind: "all" }) {
+  const totalFiles = isWholeTree(scope) ? stats.totalFilesAnalyzed.size : scope.files.length;
+  const metric = countLine(scope, failed);
   const lines = [];
   lines.push("# Code Review — Fix Plan");
   lines.push("");
   lines.push(`**Date:** ${getTimestamp()}`);
   lines.push(`**Branch:** ${branch}`);
-  lines.push("**Counts below:** repo-wide (`--all`), so they describe the whole repository, not the scope you were asked to review.");
+  lines.push(scopeLine(scope));
   lines.push(`**Total files analyzed:** ${totalFiles}`);
   lines.push(metric("Functions with complexity > 5", stats.functionsHighComplexity, "analyze-complexity.mjs"));
   lines.push(metric("Functions longer than 20 lines", stats.functionsLong, "analyze-complexity.mjs"));
@@ -315,6 +359,17 @@ function propertyBlock(runDir, reviewed) {
   ].join("\n");
 }
 
+/** Every analyzer measures the same files: the scope's, or the whole tree as `--all`. */
+function analyze(files) {
+  console.error("[x-review] Running complexity analysis...");
+  const complexity = runAnalysis("analyze-complexity.mjs", files);
+  console.error("[x-review] Running duplication check...");
+  const duplication = runAnalysis("check-duplication.mjs", files);
+  console.error("[x-review] Running refactor pattern detection...");
+  const patterns = runAnalysis("analyze-patterns.mjs", files);
+  return [complexity, duplication, patterns];
+}
+
 // ── Main ──────────────────────────────────────────────────────────────
 
 function main() {
@@ -336,20 +391,12 @@ function main() {
 
   fs.mkdirSync(dir, { recursive: true });
 
-  // Run all three analysis scripts
-  console.error("[x-review] Running complexity analysis...");
-  const complexity = runAnalysis("analyze-complexity.mjs", ["--all"]);
-
-  console.error("[x-review] Running duplication check...");
-  const duplication = runAnalysis("check-duplication.mjs", ["--all"]);
-
-  console.error("[x-review] Running refactor pattern detection...");
-  const patterns = runAnalysis("analyze-patterns.mjs", ["--all"]);
-
-  // Aggregate and write plan header
-  const stats = aggregateStats(complexity.data, duplication.data, patterns.data);
-  const failed = [complexity, duplication, patterns].filter((run) => !run.ok);
-  const header = generatePlanHeader(stats, branch, failed);
+  const scope = resolveScope(args);
+  const runs = emptyReason(scope) ? [] : analyze(isWholeTree(scope) ? ["--all"] : scope.files);
+  const [complexity, duplication, patterns] = runs.map((run) => run.data);
+  const stats = aggregateStats(complexity, duplication, patterns);
+  const failed = runs.filter((run) => !run.ok);
+  const header = generatePlanHeader(stats, branch, failed, scope);
 
   fs.writeFileSync(fullPath, propertyBlock(dir, args.reviews) + header + "\n\n---\n\n## Issues (fill in during review)\n");
   console.log(fullPath);
