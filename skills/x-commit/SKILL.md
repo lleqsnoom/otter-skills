@@ -1,7 +1,7 @@
 ---
 name: x-commit
 description: Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body
-version: 1.0.0
+version: 1.1.0
 author: Community
 tags: [conventional-commits, git, commit-messages, commit-changes]
 user-invocable: true

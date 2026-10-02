@@ -1,0 +1,14 @@
+{
+  "skill": "x-reproduce",
+  "expected_behavior": [
+    "Standalone Node.js script using only built-in modules. Minimal and deterministic.",
+    "not the bug. You must replace the placeholder block with the real trigger taken from the",
+    "not been customized: treat it as not done. Only a script that exits 1 for the *bug's own",
+    "Zero npm dependencies — only `node:fs/promises`, `path`, `child_process` built-ins"
+  ],
+  "source": [
+    "Backend (repro-backend.mjs)",
+    "Customization contract",
+    "Constraints (MANIFESTO)"
+  ]
+}

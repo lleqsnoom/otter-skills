@@ -1,0 +1,14 @@
+{
+  "skill": "x-decompose",
+  "expected_behavior": [
+    "[ ] the diff touches only this task's files",
+    "What `verify` does not check. It proves a verdict exists with a reason and a citation, that each child run exists, and that the files and the `task` verdicts agree. It cannot tell a `task` that is really a subsystem from a task. The panel and the user's gate do that; a run that decides every candidate `task` without reading anything verifies clean and is still wrong.",
+    "One level of children. `verify` cannot see a grandchild, and a candidate inside a child run that needs its own plan is a signal the parent spec was too coarse — not a third level.",
+    "`references/task-rules.md` — the size gates a task file must pass."
+  ],
+  "source": [
+    "Definition of Done",
+    "Limits",
+    "Files"
+  ]
+}

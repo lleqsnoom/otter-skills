@@ -1,0 +1,15 @@
+{
+  "skill": "x-humanize",
+  "expected_behavior": [
+    "The number is the source of truth: a rewrite is never trusted until",
+    "block stays exactly as it was. Simplify the *language*, never the *content*.",
+    "Never introduce new filler. If a phrase carries no meaning, remove it.",
+    "Keep structure. Headings, lists, and markdown formatting stay; only the",
+    "By default, present the simplified text and the report. Only overwrite the"
+  ],
+  "source": [
+    "x-humanize",
+    "Non-negotiable rules (read first)",
+    "7. Deliver"
+  ]
+}

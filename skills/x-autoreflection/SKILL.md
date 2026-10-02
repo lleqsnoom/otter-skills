@@ -1,7 +1,7 @@
 ---
 name: x-autoreflection
 description: Turn sessions into approved skill fixes — run `x-autoreflection <period>` (24h, 7d, 2w) to traverse every session of that window across every CLI, write one skill-health report (JSON truth + markdown read) and a fix plan, then ask whether an auto-heal session is wanted and, on yes, propose each fix as one multi-select option carrying the original issue, the proposed edit and the rate it should move, applying only what is picked with a revert-on-failure ledger. Without a period it reflects on one session instead (this one or an earlier one), extracting friction signals and quality anchors, verifying each against the real skill files, and routing evidence-backed proposals to a fix, a spec, or tasks. Use for "reflect on this session", "what went wrong above", "retro", "analyze my last week of sessions", "what has been failing across my skills", "heal the skills from that report", "improve the skills based on what happened".
-version: 1.2.0
+version: 1.3.0
 author: Community
 tags: [reflection, retrospective, self-improvement, transcript, session, analysis, batch, healing, skills]
 user-invocable: true

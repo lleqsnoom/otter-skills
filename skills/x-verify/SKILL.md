@@ -1,7 +1,7 @@
 ---
 name: x-verify
 description: After x-fix or an implementation, attack the change instead of trusting it — property-based tests over the changed functions with a per-language tool (fast-check, hypothesis, proptest) and a mutation pass over the diff (Stryker, mutmut, cargo-mutants), then gate on survivors-equals-zero-or-explained — every mutant no test killed ships only with an owner and a reason in .x-skills/config/verify.json. Reports a missing test runner and stops rather than inventing one. Use when asked to verify a fix beyond its tests, run a mutation pass, catch silent regressions before ship, or prove a change cannot break quietly; x-fix hands off to it.
-version: 1.0.0
+version: 1.1.0
 author: Community
 tags: [verification, property-based-testing, mutation-testing, survivors, gate, quality]
 user-invocable: true

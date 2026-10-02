@@ -1,0 +1,15 @@
+{
+  "skill": "x-unbloat",
+  "expected_behavior": [
+    "Every line must be read, tested and maintained. Before you add code, ask if it needs to exist. Before you keep",
+    "Does an installed dependency do it? Use it. Never add a dependency for what 3–4 cover.",
+    "Only then write the minimum that works for today's inputs.",
+    "| Wrapper that only passes arguments on | Call the target | It isolates a third-party API |",
+    "| Config value that never changes | A constant | It changes per environment |"
+  ],
+  "source": [
+    "x-unbloat",
+    "The Ladder",
+    "Bloat, Unless…"
+  ]
+}

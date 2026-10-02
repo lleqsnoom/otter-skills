@@ -1,7 +1,11 @@
 {
   "skill": "x-verify",
   "expected_behavior": [
-    "A repo with no test runner for a language it changed gets a report that says so and nothing else — no invented runner, no pass faked green."
+    "The pass attacks the change instead of trusting it: property-based tests over the changed functions and a mutation pass over the diff, gated on survivors-equals-zero-or-explained.",
+    "A surviving mutant is reported as file:line and ships only when .x-skills/config/verify.json explains it with an owner and a reason; a survivor without an explanation is a violation.",
+    "The pass is a driver, not a framework: per language it picks one property tool and one mutation tool from the TOOLING table and reads survivors from where those tools already write them.",
+    "A repo with no test runner for a language it changed is reported and the pass stops; it never invents a test runner.",
+    "Exit 2 means the pass could not run, and that is reported as not-a-pass, never folded into a clean 0."
   ],
-  "source": ["L3-T1 error-path spec"]
+  "source": ["SKILL.md: Procedure", "scripts/verify.mjs: TOOLING", "scripts/verify.mjs: gate"]
 }

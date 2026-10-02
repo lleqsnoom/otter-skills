@@ -2,9 +2,9 @@
 
 /**
  * Behavioral expectations are the eval surface of a skill: `evals/expectations.json` states what the
- * skill must do in claims checkable from run artifacts. This test pins the shape for the skills that
- * carry it — the claim list is grounded, so every file names its SKILL.md sections in `source` — and
- * is the runner L2-T2 extends to demand one file per skill.
+ * skill must do in claims checkable from run artifacts. This runner demands one file per skill — a
+ * skill without expectations is a skill nobody has said how to check — and pins the shape, so the
+ * eval surface grows with the skill surface forever.
  */
 
 const { describe, it } = require("node:test");
@@ -13,13 +13,26 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
-const SKILLS = ["x-plan", "x-implement", "x-research", "x-review"];
+const SKILLS_DIR = path.join(ROOT, "skills");
+
+const skills = () =>
+  fs
+    .readdirSync(SKILLS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
 
 describe("behavioral expectations", () => {
-  for (const skill of SKILLS) {
-    it(`${skill} ships evals/expectations.json with grounded claims`, () => {
-      const file = path.join(ROOT, "skills", skill, "evals", "expectations.json");
-      assert.equal(fs.existsSync(file), true, `missing ${skill}/evals/expectations.json`);
+  it("every skill ships evals/expectations.json", () => {
+    const missing = skills().filter(
+      (skill) => !fs.existsSync(path.join(SKILLS_DIR, skill, "evals", "expectations.json")),
+    );
+    assert.deepEqual(missing, [], "skills missing evals/expectations.json");
+  });
+
+  for (const skill of skills()) {
+    it(`${skill} expectations parse and stay grounded`, () => {
+      const file = path.join(SKILLS_DIR, skill, "evals", "expectations.json");
       const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
 
       assert.equal(parsed.skill, skill, `the skill field must name ${skill}`);

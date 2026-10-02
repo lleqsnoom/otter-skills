@@ -1,0 +1,14 @@
+{
+  "skill": "x-skill-lint",
+  "expected_behavior": [
+    "Catch the whole class of \"documented command that cannot run\" defects before they ship: a skill",
+    "| `cross-skill-import` | A skill's script imports another skill's script — skills must stay standalone. |",
+    "| `commonjs-script` | A `scripts//*.js` file uses `require(` or `module.exports` while the lint root's `package.json` declares `\"type\": \"module\"`, so the script throws before it runs — and it throws for whoever installed the skill, because an installed skill is a symlink into that root. Fix it by renaming the file to `.mjs` with `import` and `export`; `.cjs` is the escape hatch for a tree that must stay CommonJS. |",
+    "A line naming *another* skill is skipped by the same-skill rule, so a cross-skill hop is never reported as local",
+    "Shared files that must stay byte-identical wherever they appear: `scripts/check-questions.mjs`,"
+  ],
+  "source": [
+    "x-skill-lint",
+    "Rules checked"
+  ]
+}

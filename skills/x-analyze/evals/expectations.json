@@ -1,0 +1,15 @@
+{
+  "skill": "x-analyze",
+  "expected_behavior": [
+    "Guide the user through understanding their problem, formulating a thesis with evidence, proposing solutions, and routing to the right action (fix or task creation). This is an interactive conversation skill — it asks questions, clarifies ambiguities, and only proceeds when confident.",
+    "`verify` answers only one question — whether the run is finished — so mid-run it exits 1 even when every",
+    "analysis file to be non-empty. A mid-run `verify` exits 1 even when every guard passes — it answers only",
+    "For every aspect of the problem you are uncertain about, ask a focused question as a panel (`single`, `multi`, `open`, or `confirm`) — never in prose. Group related questions but never ask more than 3 at once.",
+    "Suggested clarification dimensions (ask only what's genuinely unclear):"
+  ],
+  "source": [
+    "x-analyze",
+    "Scenario",
+    "Phase 2: Clarify Ambiguities"
+  ]
+}

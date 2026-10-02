@@ -1,7 +1,7 @@
 ---
 name: x-fix
 description: Resolve issues from fix plans — read, edit, verify, mark complete
-version: 1.1.0
+version: 1.2.0
 author: Community
 tags: [code-quality, debugging, refactoring]
 user-invocable: true
