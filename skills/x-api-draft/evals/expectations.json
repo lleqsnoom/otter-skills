@@ -1,0 +1,14 @@
+{
+  "skill": "x-api-draft",
+  "expected_behavior": [
+    "Ask through panels, never in prose. A panel is the host's question UI in one of four shapes: `single` (one of 2-5 options + free answer), `multi` (several + open form), `open` (free text only), `confirm` (yes/no).",
+    "Clarify scope (if incomplete) — Ask one panel at a time (`single`, `multi`, or `open`) covering: target audience, core entities, key use cases, auth model, pagination, rate limiting, versioning. Never ask in prose.",
+    "`save-design.mjs` only creates the file and prints its absolute path on stdout; the agent fills in the body afterwards.",
+    "Writes a new timestamped file every run — it never overwrites an existing draft, so re-running the same topic produces a second file.",
+    "Timestamps are always JS-generated; there is no `--date` flag. Use `--branch <name>` when git is unavailable (otherwise the branch is auto-detected via `git rev-parse`)."
+  ],
+  "source": [
+    "Workflow",
+    "Errors & Limits"
+  ]
+}

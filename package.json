@@ -21,7 +21,8 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test --test-concurrency=1 test/*.test.cjs",
+    "test": "npm run validate:skills && node --test --test-concurrency=1 test/*.test.cjs",
+    "validate:skills": "node scripts/validate-skills.mjs",
     "install": "node scripts/install.mjs",
     "dev": "node scripts/dev.mjs",
     "demo": "node scripts/seed-demo.mjs",

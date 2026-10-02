@@ -1,7 +1,7 @@
 ---
 name: x-guide
 description: Route the user to the right skill or flow for their situation — name where they sit on the map (an idea, a bug, an incoming issue, a foggy effort, cleaning up the codebase) and which skill starts it, so the process for any goal has a first command. Use when asked which skill fits, where to start, what the workflow or process is, or when the user is unsure which skill to run; user-invoked, so it never fires on its own.
-version: 1.0.0
+version: 1.2.0
 author: Community
 tags: [router, workflow, skills, navigation, onboarding]
 user-invocable: true
@@ -58,6 +58,9 @@ A starting situation that generates work, then merges onto the main flow:
 - **x-parallel** — run independent tasks in isolated worktrees.
 - **x-migrate** — a framework or dependency migration.
 - **x-test-gen** — scaffold tests from code.
+- **x-verify** — attack a fixed change with property and mutation passes, gate on survivors.
+- **x-second-opinion** — a fresh-context reviewer re-checks a change before it ships.
+- **x-differential** — review just the diff, rating each hunk's regression risk to its callers.
 - **x-unbloat** — cut code to what the task needs.
 - **x-refactor** — refactoring suggestions.
 - **x-comments** — comment hygiene.

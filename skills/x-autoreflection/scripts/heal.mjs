@@ -232,9 +232,9 @@ export function applyItem(item, { cwd = process.cwd(), dryRun = false } = {}) {
   const check = runCheck(item.check, cwd);
   if (check.status !== 0) {
     if (!dryRun) fs.writeFileSync(file, original);
-    return { id: item.id, status: "reverted", detail: `check failed: ${check.stderr || check.stdout || item.check}`.slice(0, 200) };
+    return { id: item.id, status: "reverted", detail: `check failed: ${check.stderr || check.stdout || item.check}`.slice(0, 200), skill: item.skill ?? null, target: item.target ?? null, evidence: item.evidence ?? [] };
   }
-  return { id: item.id, status: dryRun ? "would-apply" : "applied", detail: item.target, ...(item.watch ? { watch: item.watch } : {}) };
+  return { id: item.id, status: dryRun ? "would-apply" : "applied", detail: item.target, skill: item.skill ?? null, target: item.target ?? null, evidence: item.evidence ?? [], ...(item.watch ? { watch: item.watch } : {}) };
 }
 
 export function applyHeal(plan, ids, { cwd = process.cwd(), dryRun = false } = {}) {
@@ -249,6 +249,96 @@ export function applyHeal(plan, ids, { cwd = process.cwd(), dryRun = false } = {
 
 export function ledgerLine(result, at = new Date()) {
   return `${JSON.stringify({ at: at.toISOString(), ...result })}\n`;
+}
+
+/**
+ * The per-skill ledger: one file per edited skill, so a skill's edit history is a single append-only
+ * trail instead of lines scattered across run ledgers. Only applied or reverted results carry a skill;
+ * a global finding has none and lands nowhere here.
+ */
+export function perSkillLedgerPath(skill, cwd = process.cwd()) {
+  return path.resolve(cwd, "skills", skill, ".heal-ledger.jsonl");
+}
+
+export function writePerSkillLedgers(results, { cwd = process.cwd(), dryRun = false, at = new Date() } = {}) {
+  for (const result of results) {
+    if (!result.skill || (result.status !== "applied" && result.status !== "reverted")) continue;
+    const ledger = perSkillLedgerPath(result.skill, cwd);
+    if (dryRun) continue;
+    fs.mkdirSync(path.dirname(ledger), { recursive: true });
+    fs.appendFileSync(ledger, ledgerLine(result, at));
+  }
+}
+
+/** The last run's summary: what landed and what was rejected, for the next session to read back. */
+export function summaryLine(results, at = new Date()) {
+  return {
+    at: at.toISOString(),
+    landed: results.filter((r) => r.status === "applied").map((r) => r.id),
+    rejected: results.filter((r) => r.status === "reverted").map((r) => r.id),
+  };
+}
+
+export function writeSummary(results, { cwd = process.cwd(), dryRun = false, at = new Date() } = {}) {
+  if (dryRun) return;
+  const summaryPath = path.resolve(cwd, ".x-skills", "runs", "last-heal-summary.json");
+  fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
+  fs.writeFileSync(summaryPath, `${JSON.stringify(summaryLine(results, at))}\n`);
+}
+
+/** A skill the heal stage has edited carries a marker, so a later run can tell ours-to-tune apart. */
+export function markSelfAuthored(results, { cwd = process.cwd(), dryRun = false, at = new Date() } = {}) {
+  for (const result of results) {
+    if (!result.skill || result.status !== "applied") continue;
+    const marker = path.resolve(cwd, "skills", result.skill, ".self-authored.json");
+    if (dryRun || fs.existsSync(marker)) continue;
+    fs.mkdirSync(path.dirname(marker), { recursive: true });
+    fs.writeFileSync(marker, `${JSON.stringify({ skill: result.skill, firstEditedAt: at.toISOString(), by: "x-autoreflection" })}\n`);
+  }
+}
+
+/**
+ * Portfolio decisions are not edits: a merge records which skill absorbed which (so a fold is never
+ * mistaken for a death), and a delete archives the directory rather than removing it, so it is
+ * revivable and its history survives.
+ */
+export function applyPortfolio(portfolio, picks, { cwd = process.cwd(), dryRun = false, at = new Date() } = {}) {
+  const wanted = new Set((picks ?? []).map(String));
+  const results = [];
+  for (const item of portfolio ?? []) {
+    if (!wanted.has(String(item.id))) continue;
+    if (item.action === "merge") {
+      const absorber = item.target ?? (item.skills && item.skills.length ? item.skills[0] : null);
+      if (!absorber) {
+        results.push({ id: item.id, status: "skipped", detail: "merge names no absorber" });
+        continue;
+      }
+      results.push({ id: item.id, status: "applied", action: "merge", absorbed_by: absorber, reason: item.reason ?? "", ...(dryRun ? { dryRun: true } : {}) });
+    } else if (item.action === "delete") {
+      const skill = item.skills?.[0] ?? item.target ?? null;
+      if (!skill) {
+        results.push({ id: item.id, status: "skipped", detail: "delete names no skill" });
+        continue;
+      }
+      const source = path.resolve(cwd, "skills", skill);
+      const archive = path.resolve(cwd, "skills", ".archive", skill);
+      if (!fs.existsSync(source)) {
+        results.push({ id: item.id, status: "stale", detail: `missing: skills/${skill}` });
+        continue;
+      }
+      if (dryRun) {
+        results.push({ id: item.id, status: "would-apply", action: "archive", skill, reason: item.reason ?? "", dryRun: true });
+        continue;
+      }
+      fs.mkdirSync(path.dirname(archive), { recursive: true });
+      fs.renameSync(source, archive);
+      results.push({ id: item.id, status: "applied", action: "archive", skill, reason: item.reason ?? "" });
+      fs.appendFileSync(path.resolve(cwd, "skills", ".archive", ".ledger.jsonl"), ledgerLine({ id: item.id, action: "archive", skill, reason: item.reason ?? "" }, at));
+    } else {
+      results.push({ id: item.id, status: "skipped", detail: `no portfolio handler for ${item.action}` });
+    }
+  }
+  return results;
 }
 
 export function renderResults(plan, results) {
@@ -358,6 +448,10 @@ function main() {
     const ledgerPath = args.ledger ? path.resolve(args.ledger) : path.join(path.dirname(planPath), "heal-ledger.jsonl");
     const lines = results.map((result) => ledgerLine(result)).join("");
     if (!dryRun) fs.appendFileSync(ledgerPath, lines);
+
+    writePerSkillLedgers(results, { cwd, dryRun });
+    markSelfAuthored(results, { cwd, dryRun });
+    writeSummary(results, { cwd, dryRun });
 
     process.stdout.write(`${JSON.stringify({ plan: planPath, results }, null, 2)}\n`);
     process.exit(results.every((r) => r.status !== "reverted") ? 0 : 1);

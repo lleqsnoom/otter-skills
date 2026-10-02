@@ -1,0 +1,11 @@
+{
+  "skill": "x-research",
+  "expected_behavior": [
+    "One atomic change per iteration: a candidate that changes more than one path fails the atomicity gate and is reverted, with the state machine deciding keep-or-revert from the numbers.",
+    "Coverage is cited, not typed: a criterion counts as met only when a source was actually opened, and record refuses to count, keep, or stop on coverage the evidence file does not cite.",
+    "A gate that asks wins: a host permission or approval pause stops the loop and is never bypassed, argued past, or disabled.",
+    "verify re-derives the stop from the recorded numbers alone and exits 0 only when the stop is justified; an escalation is reported as an open gap, never as justified success.",
+    "Hitting the cap without meeting the target escalates with the remaining gap and stops the run instead of looping."
+  ],
+  "source": ["SKILL.md: Non-negotiable rules", "SKILL.md: Procedure"]
+}

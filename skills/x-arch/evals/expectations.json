@@ -1,0 +1,14 @@
+{
+  "skill": "x-arch",
+  "expected_behavior": [
+    "A stable module never imports a volatile one. If it must, the abstraction is missing: define the port",
+    "Never silence the checker with it. An `allowed_dependencies` entry that exists only to permit a mistake",
+    "Report only. Only `x-fix` applies a finding, and only one it read from a review plan.",
+    "Never restate a rule a sibling owns: `x-unbloat` decides whether a unit should exist, `x-review` defines the"
+  ],
+  "source": [
+    "4. Dependencies",
+    "Where These Rules Do Not Apply",
+    "Rules"
+  ]
+}

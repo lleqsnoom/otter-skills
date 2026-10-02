@@ -1,0 +1,17 @@
+{
+  "skill": "x-arch-lint",
+  "expected_behavior": [
+    "Detection only. It never rewrites code, renames a file, or moves a module. It opens no network connection",
+    "sees the tree as it is rather than only the diff.",
+    "It prints a declaration to stdout and writes it only where nothing would be replaced, or with `--force`. One",
+    "names the ones the declaration cannot cover, and `unplaced` counts the files no declared layer claims (a",
+    "| `boundaries` | A declared layer root is not on disk, or a `naming` rule targets a layer the config never declares — the declaration and the tree have drifted |"
+  ],
+  "source": [
+    "x-arch-lint",
+    "When to use",
+    "Start a declaration",
+    "Run it",
+    "The rules it can check"
+  ]
+}

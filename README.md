@@ -1,756 +1,141 @@
 # Otter PM
 
-A local project board over one or more repositories' `.x-skills` trees: what is in progress, what is waiting, and
-what is done — with the artifacts readable and editable in place.
+A suite of skills (`x-*`) for planning, building, reviewing and improving code, each one a
+`SKILL.md` with its scripts, references and evals — plus a local project board over `.x-skills`
+trees. The skills write the `.x-skills` runs the board reads, so both halves sit in one checkout.
 
-One repository or twenty; a root is either a `.x-skills` directory or a repository that has one.
+## Install
+
+Link the skills into your agents and register the board's MCP server:
+
+```bash
+npm run install
+```
+
+Or install the suite as a Claude Code plugin (no local linking):
+
+```
+/plugin marketplace add lleqsnoom/otter-pm
+```
+
+The board runs as a user service; open it with `oc-otter-pm open` (or `--browser`). Full setup for
+the service, the desktop entries and the wrapper is in [`docs/install.md`](docs/install.md).
 
 ## Running it
-
-**Open the board.** If it is already running, this is all there is:
 
 ```bash
 oc-otter-pm open            # a chrome-less window on the board
 oc-otter-pm open --browser  # the same board in a browser tab
-oc-otter-pm port            # print the URL it is serving on, or fail if nothing is
+oc-otter-pm port            # print the URL it is serving on
 ```
 
-The window and the tab are the same board: the URL is published by whichever process is serving it
-(`~/.local/state/otter-pm/url`), so nothing has to know the port in advance.
-
-**Keep it running.** Installed as a user service, the board starts with your session and restarts if it dies:
-
-```bash
-systemctl --user start oc-otter-pm
-```
-
-Installing that service, the two desktop entries and the wrapper is [`docs/install.md`](docs/install.md), which is
-the right path for a machine that is going to keep the board. The three failure codes `open` can exit with, and what
-each means, are in that guide's troubleshooting section.
-
-**Run the version in this directory.** For a branch or a worktree you are testing, without disturbing the
-installed one:
-
-```bash
-otter-pm-here use     # make this checkout the one the machine runs: rebuild if stale, then restart the service
-otter-pm-here serve   # or just serve it here, in the foreground
-```
-
-`use` writes the pointer `~/.local/state/otter-pm/root`, and `oc-otter-pm` reads it — so the service, the app
-launcher and the command all follow it, while an explicit `OTTER_PM_ROOT` still wins. `otter-pm-here` also
-rebuilds when the sources are newer than `dist/`, which is the state a `git switch` leaves behind and the one
-`serve` alone would serve stale.
-
-**Develop it.**
-
-```bash
-npm install                  # once: the app's own dependencies
-npm run dev                  # hot reload on http://127.0.0.1:4321/ (the first free port from 4321)
-npm run serve                # build if needed, then serve the build on the first free port at or after 4321
-npm run serve -- --port 8080
-npm run serve -- --no-build  # serve the last build as it is
-npm run build                # build only
-npm run demo                 # write a sample tree to ./demo, so the board has something to show
-npm test                     # the app's own tests
-npm run typecheck
-```
-
-Installed as a package (`npm i -g .` from a checkout), the same server is the command's whole job: it builds the app if
-`dist/` is missing and then serves it, so the bin and `npm run serve` are one path. The package is private and is not
-on npm, so there is nothing to fetch and nothing to publish.
-
-`npm run dev` and `npm run serve` print the address and stay in the foreground; ctrl-c stops them. Both start
-their port search at `--port` (or `$PORT`), and **a dev server already running does not block a new one** — the
-next free port is taken, so two can sit side by side (4321 and 4322) without either being stopped. The cost is
-that a server started this way is not in Astro's lock file: `astro dev status`, `logs` and `stop` do not see it,
-and ctrl-c in its own terminal is how it stops.
-
-The dev loop is one process rather than a shell in front of a server: Astro owns both halves of this app (the
-shell and the `/api` routes are one server), so `scripts/dev.mjs` spawns Astro's own entry point with the Node
-binary. It also sets `ASTRO_DEV_BACKGROUND`, because Astro detects an agent CLI and otherwise re-spawns itself
-**detached** — the command would hand the prompt back while the server ran on.
-
-## Choosing what to read
-
-The default is **the Orca IDE's own project list**, so there is nothing to keep in step: add a repository to the
-IDE and it appears here, remove it and it goes. Orca's profile store carries each repository's checkout path, which
-is the only thing a root needs (`<path>/.x-skills`).
-
-```json
-{ "orca": true, "roots": [], "autoDiscover": [] }
-```
-
-| Source | Example |
-|--------|---------|
-| `orca` (the IDE's list) | `{ "orca": true }`, `--orca` / `--no-orca`, or `OTTER_PM_ORCA=1`. `$ORCA_CONFIG_DIR` points at a different profile root. |
-| `--root` flags | `npm run serve -- --root /code/app --root /code/api` |
-| `otter-pm.config.json` (`roots`) | `{ "roots": ["/code/app", "/code/api"] }` |
-| `OTTER_PM_ROOTS` | `OTTER_PM_ROOTS=/code/app,/code/api npm run serve` |
-| discovery (`autoDiscover`, `--discover`) | `{ "autoDiscover": ["/code"] }` — finds `*/.x-skills` and `*/*/.x-skills` two levels down |
-| the current directory | the fallback when nothing else is given |
-
-Every source is used, and the same path arriving twice is one root. When `orca` is on, the overview says what it
-contributed — `9 of 10 repositories in the Orca IDE, read from …/orca-data.json · 1 without a .x-skills` — so
-"is the sync working?" is answerable from the screen. A repository the IDE lists that has no run tree is reported
-as skipped, not as an error; only a path someone asked for *by name* earns a warning when it is not a root.
-
-A path is accepted either as the repository or as the `.x-skills` directory itself. `--config <file>` points at a
-different config, and `$OTTER_PM_CONFIG` does the same.
-
-The tree is read. Two things are written: `.x-skills/board.json` **inside the project**, which holds the reader's own
-decisions (a card dragged to a lane and a place in it, the order each lane was left in, and an item archived), and an
-artifact the reader edits in the app itself — see *Reading and editing* below.
-
-## Making a project
-
-`+ new project` in the rail asks for a name, what the project is about, where it goes, who may see it and which
-license it carries, and then makes all of it: a folder in Documents, a git history, and a repository on GitHub. It
-is the one thing on the board that is made from the app rather than read from a tree.
-
-```text
-~/Documents/<slug>/
-  README.md                       the name and the about text
-  LICENSE                         only when a license was chosen
-  .x-skills/
-    project.md                    the project's own mark: about, icon, colour, icon URL or file
-    icon.png                      an image chosen or dropped in the form, if there was one
-    plans/<date>-<slug>.md        the first plan, with the about text as its goal
-```
-
-The mark can be a drawn icon, an emoji, one or two letters, a colour, an image URL, or an image chosen or dropped
-straight onto the form. An uploaded image is written into the project as `.x-skills/icon.<ext>` and named by
-`**Icon file:**` in `project.md`, so the mark travels with the repository instead of living on the machine that made
-it; `GET /api/asset?project=&path=` serves it (raster types only, `nosniff`, and nothing outside the project's root).
-
-`POST /api/project` creates one and `GET /api/project` answers what the form offers (the account, the default
-directory, the licenses GitHub publishes). The tree is built in `.<slug>.otter-pm-tmp` beside its target and renamed
-into place only after `gh repo create … --source <tmp> --push` has succeeded, so a failure leaves nothing on disk and
-the config unchanged; the directory the project lands in is then added to `roots` here. A refusal says which step
-refused: 400 for a name or a directory, 409 for a folder that is already there, 501 when `gh` is missing or not
-authenticated, 502 when a command failed, with its stderr as the reason. Every command goes through one
-`run(command, args, { cwd })` seam, which is what lets the tests cover the whole flow without touching GitHub.
-
-## Adding a project that already exists
-
-`+ add existing` in the rail is for a repository that is already on this machine. It opens a picker: one level of
-folders at a time, never a file, with a path field above the list for a path that is already in the clipboard.
-Confirming adds **the folder the picker is standing in** — `POST /api/roots` with that path — and lands on it.
-
-What is written is one line: the repository path in `roots`. Nothing else in the folder is touched — no `README.md`,
-no `project.md`, no commit, and no repository is made. The one exception is a folder that has no `.x-skills` at all:
-a repository with no run tree cannot be read, so it is given the least thing that makes it one, an empty
-`.x-skills/tasks/`, and the screen says so before the button is pressed rather than after. A folder that already has
-a tree is added exactly as it is.
-
-A refusal says which step refused, the same way a create does: 400 for a path that is missing or is not a folder, 409
-for one that is already on the board or that would answer to an id another root already has (an id is the repository
-folder's name, and the board and the archive are keyed by it), 500 when the tree or the config could not be written.
-The route answers with the project id it added, so the rail navigates to it, and both caches are dropped — the new
-root is in the next snapshot with no restart and no `--root` flag.
-
-## Adding and removing
-
-**A repository** is one line in `otter-pm.config.json`: added by `+ new project`, by `+ add existing`, or by hand.
-Delete the line and it is gone.
-
-**A category** is one entry in `src/server/categories.mjs`:
-
-```js
-{ id: 'critique', label: 'Critique', order: 9, hint: 'What x-roast produced.' }
-```
-
-That is the whole change — the scanner walks whatever directories exist and the UI builds its navigation from the
-snapshot, so an unknown directory still appears (labelled from its name) and a new entry only adds the label and
-the ordering. Removing an entry leaves the category visible, just unsorted.
-
-**Two folders can be one category.** `merge` lists the other names a category answers to:
-
-```js
-{ id: 'analysis', label: 'Analysis', order: 6, merge: ['anal'], hint: '…' }
-```
-
-`anal/` and `analysis/` are then one **Analysis** in the rail, one board, and both folders' collections and
-documents sit in it together. A collection keeps the path it came from (`anal/session-a`), so it still links and
-opens; the category panel says which folders it was read from.
-
-**The parsers are generic.** A category is any directory in the root; a collection is any folder inside it; an
-artifact is any markdown, JSON or text file inside that. Nothing is registered per category, so a skill that
-starts writing a new folder is displayed without a code change.
-
-## Diagrams and code
-
-A ```` ```mermaid ```` fence is a graph in text, and it is drawn rather than shown as code. Mermaid is a megabyte
-of parser and layout engine, so it is imported **on demand**: a document with no diagram never fetches it, and a
-page without one loads 138 kB of JavaScript in four requests. The first diagram on a page costs about 930 kB more,
-once.
-
-Mermaid is initialised with `theme: 'base'` and `themeVariables` read from the live stylesheet, so a diagram is
-drawn in the app's own tokens — node on `--muted`, border on `--border`, text on `--foreground`, edges on
-`--muted-foreground`. A theme change redraws what is already on screen, because a diagram is mostly *shape* and a
-light-mode diagram on a dark page is a white slab. `layout: 'dagre'` is pinned deliberately: mermaid otherwise
-pulls in its optional ELK engine, measured at 1.4 MB of a 2.2 MB load for graphs that lay out the same way without
-it.
-
-A diagram mermaid cannot parse keeps its text on screen with the reason next to it (`Could not draw this diagram:
-Parse error on line 2 …`) — a broken fence is not silently dropped. Labels are escaped by mermaid's own `strict`
-security level.
-
-**Every other fence is coloured, and so is every file that is not markdown.** Shiki (`src/server/highlight.mjs`)
-turns a fence into tokenised markup on the server, in two themes at once: the light colour inline, the dark one in
-a `--shiki-dark` custom property that `styles.css` walks to on `prefers-color-scheme`. The surface stays the app's
-(`--muted`), never the theme's.
-
-The dialect is the fence's own info string when it names one, and **the text itself when it does not** —
-`detectLanguage` recognises JSON, YAML, TOML, shell, Python, JavaScript, TypeScript, CSS, SQL, HTML, XML, diff,
-Markdown and GraphQL with the same signals a reader would use, and a JSON file with a `.txt` extension is read as
-JSON. A guess is *disclosed*: the fence's label reads `json · detected`, and a code file's header says
-`detected as json`. Text nothing recognises stays plain, which is honest. A whole file is coloured by the same
-rules, with the extension deciding first and its own text only when the extension says nothing.
-
-## What is recognised
-
-| Signal | Where it comes from |
-|--------|---------------------|
-| Title | the first `#` heading, with a leading `Task:`/`Epic —`/`Design Spec:` stripped |
-| Layer, effort, date, branch, scope | the `**Key:** value` lines of an artifact |
-| Progress | the `- [x]` / `- [ ]` checklist, as `done/total` |
-| State | a run's `state.json`: skill, node, guards, events, questions, options, decision |
-| Status | finished node → done; some boxes ticked → in progress; none → to do; nothing counted → unsorted |
-| Stage | the `E<nn>` a run numbered an artifact with: `E00-plan.md` is rung 0, `E02-tasks/` is rung 2 |
-| Epic | the epic a task belongs to: the run both are stages of, or the slug their folders share (see below) |
-| Named in | the `**Input:**` / `Spec:` / `Plan:` paths an artifact names, when the path leads somewhere — drawn as the reads row above the document |
-| Mark | `project.md` at the root: the project's about text and how it is drawn, and the one Docs card badged `mark` |
-
-A run (a folder with `state.json`) and a task group (a folder of task files) are the same thing to the UI: a
-collection with a head and a body of artifacts — except that a task group's files are drawn instead of the group,
-because the folder is not the unit a reader picks up. See **Epics and their tasks**.
-
-## Runs and their stages
-
-The skills write one run folder per topic and number everything in it in the order they built it — `E00-plan.md`,
-`E01-triage.md` where the decomposition triaged its candidates, `E02-tasks/` — so a run is a chain of rungs and the
-folder name is the topic. That is the right unit to work in and the wrong one to find things in: an analysis that
-has to be found inside a run is not in **Analysis**, and the category that names it looks like a folder nothing has
-written to since the skills moved into run folders.
-
-So every rung is read **in the category that names its kind as well as in its run**. `E00-analysis.md` is a card
-under Analysis and a file of the run that wrote it; `E00-plan.md` is under **Plan** where `plan/` exists and
-**Plans** where only `plans/` does; a `E<nn>-tasks/` folder (x-decompose writes a folder, not a file) is read under
-**Tasks**, where its task files are the cards and the folder
-it came from travels with it as `runPath`.
-Nothing is copied — a stage keeps the path it came from, so it is the same file in two places, and the card says
-`in shared-media-kms-key-staging-sandbox` rather than leaving you to guess which of nine same-named files it is.
-
-Which category that is falls out of the kind and what the repository has: `analysis` is **Analysis**, and `plan` is
-**Plan** where `plan/` exists and **Plans** where only `plans/` does. A kind no folder
-claims (a summary, a critique, a repro script) is read where it was written. A kind the registry knows and the
-repository has never used — **Triage**, in a tree with no `triage/` — gets its category from the registry, and the
-category's own page says it was named by the runs rather than read from a folder. A run that is *already* filed in
-the category its own stage belongs to (a session living in `anal/`) is not listed twice.
-
-**One address per piece of work.** The related panel is gone, and with it the second way into a document. An artifact
-filed inside a collection is read on that collection's page, with itself selected, and the address says which artifact
-is open — `/p/<repo>/g/<run folder>/<file>` — so a link can be sent to someone. Only a document the tree files on its
-own, a loose analysis or a plan in `plan/`, has a page of its own, at `/f/<repo>/<path>`. Which run numbered an
-artifact is the pill on its card and the trail above it.
-
-**A document says what it read**, under the trail: the `**Input:**` / `Spec:` / `Plan:` paths it names, each one a
-link to the artifact, so "where did this come from" is answered where it is asked. It is the one direction a document
-writes down itself — a plan names the analysis, never the other way round — and the board holds the other half of the
-answer, since the run a document belongs to is the pill beside it.
-
-## Epics and their tasks
-
-`x-epic` used to write an `E<nn>-epic.md` beside the plan, and a run's tasks were decomposed from it. That skill is
-retired — `x-plan` carries the layer roadmap now and `x-decompose` reads it — but the document it wrote is still on
-disk in the runs it made, so the board still has to say whose tasks those are. The rules below are what it does with
-them, and they are also what the two ways below describe for a run numbered twice.
-
-A task written with a property block names its plan (`plan: "[[runs/<run>/E00-plan]]"`, see *Properties and links*
-below), and that link decides. A task that names nothing — every task written before the block — is placed by the
-tree, and there are exactly two ways the two meet (`src/lib/epics.mjs`):
-
-- **The same run.** A run numbers its epic `E<nn>-epic.md` and its tasks `E<nn>-tasks/`, at different rungs, so the
-  run folder is the identity both carry and the rungs are what say whose tasks they are: the tasks belong to the epic
-  *above* them. A run can number two epics — one run in this repository does, a second pass over the same topic — and
-  taking the run alone would give both of them the same list, under the wrong one's name. `scan.mjs` stamps the run
-  and the rung on the tasks folder as `runPath`/`step` when it files that folder under **Tasks**, because from there
-  its own path can no longer say either.
-- **The same slug.** `epics/01-09-2026-11:23-segmentation-webcodecs-proxy-upload.md` and
-  `tasks/01-09-2026-11:26-segmentation-webcodecs-proxy-upload/` are one epic's work: the stamps differ, the name
-  after them does not.
-
-With that read, three things change on screen:
-
-- **A task folder is not a card; its files are.** The folder that stood for it was named by the first task's heading
-  — `groupFor` falls back to the first markdown's title — so the card read `Tasks: Extract SSE parser into
-  sse-parser.ts`, a task's own name over a progress bar, beside the epic of the same name. One card per task is what
-  a reader came for, and each counts only its own checklist. The folder is named after itself too, so a breadcrumb
-  reads `Tasks / segmentation-webcodecs-proxy-upload / 0.1-segment-vlm-profile.md` rather than putting the file
-  inside a task it is not inside of.
-- **An epic holds its tasks.** Its card lists them — eight, then `+ N more`, and its own page lists all of them —
-  its progress is counted over them rather than over the epic document's own checklist, and its colour runs down the
-  card's leading edge.
-- **Every task wears its epic** as a pill in that epic's colour: on the board, in the list, in search results, in
-  **Newest across projects**, and beside the trail on the task's own page. Work no epic was written for is still
-  work, and says nothing rather than guessing at a parent.
-
-Work that is not task work is not claimed: a run is not a task, so the analysis inside it does not wear the run's
-epic. Only the work filed in **Tasks** does.
-
-The colours are a palette of eight in the theme — `--epic-0` … `--epic-7` in `src/styles.css`, one set per theme,
-each step chosen to clear 4.5:1 on the surface it is read on — and an epic is painted by hashing its key rather than
-by counting epics: a colour that moved when an unrelated epic was written would be worse than two epics sharing one,
-and with fifty epics and eight colours they do share. The pill carries the epic's name as text and the colour only
-agrees with it, which is the rule every badge here follows.
-
-Hiding **Tasks** on the board does not empty the epics: the link is read from the whole project first and the
-categories a reader asked to see are filtered out of the result, so a board drawing only **Epics** still shows what
-is inside each one.
-
-## Properties and links
-
-Every artifact a skill writes starts with a YAML property block, so the same files read as a connected graph in
-Obsidian and as linked cards on the board. A task looks like this:
-
-```yaml
----
-type: task
-run: "[[runs/2026-09-30-1426-R01-client-magic-link-session/index]]"
-plan: "[[runs/2026-09-30-1426-R01-client-magic-link-session/E00-plan]]"
-depends_on:
-  - "[[runs/2026-09-30-1426-R01-client-magic-link-session/E02-tasks/L0-T1-client-session-store]]"
-size: M
-complexity: complicated
-complexity_why: two ways to hand the session to the browser; cookie or header is a design call
-created: 2026-09-30T14:26
-done: false
----
-```
-
-Links are quoted wikilinks from the `.x-skills` root without `.md` — unquoted, YAML reads `[[x]]` as a nested list —
-and only forward edges are written: a task names its plan, a review names what it reviewed, and Obsidian's backlinks
-give every reverse (what a plan was split into, what reviewed a task). No two files ever hold the same edge.
-
-| Key | From → to | Written by |
-|-----|-----------|------------|
-| `type` | plan · task · triage · review · research · analysis · fix · debug · summary · run | every skill |
-| `title` | what the artifact is called in Obsidian: its kind, then its subject (`Plan · <slug>`, `L0-T2 · <task>`, `Review of L2-T1 · <task>`, `Roast of findings (#3)`) | every skill; the backfill for older work |
-| `run` | any artifact → its run's `index` note | every skill that writes into a run |
-| `plan`, `input`, `tasks`, `analysis`, `source`, `from`, `spec`, `epic` | the keys the board has always read as links | x-decompose (`plan`), x-plan (`input`) |
-| `depends_on` | task → the tasks that produce a state its Preconditions describe | x-decompose |
-| `reviews` | review or roast → what it reviewed | x-review (`--reviews`), x-roast (`--artifact`) |
-| `fixes` | debug session → the brief or review it answers; fix plan → its session | x-debug |
-| `related` | anything → anything | anyone |
-| `topics` | any artifact → the tag notes it is about (`tags/domain/<x>`, `tags/area/<x>`) | x-plan (`--topics`), x-analyze; copied by x-decompose, x-review, x-roast and the summary; the backfill for code areas |
-| `size`, `complexity`, `complexity_why` | the task's scope and how much of it is unknown | x-decompose |
-| `done`, `started`, `finished`, `reopened` | mirrored from the task's Definition of Done boxes | x-implement's `status.mjs` only — never by hand |
-
-**Size is what the change touches**, not how long it takes: XS 1 file · S 2–3 files in one module · M 4–10 files in
-one module · L more than that, more than one module, or a contract change (needs a reason) · XL several contracts,
-which is a plan rather than a task. Tests do not count, and a module is a workspace package, else a top-level folder
-under `src/`. **Complexity is how much is unknown**, by one question — could you write the steps before starting?
-🟢 **clear** (yes, there is a pattern to copy) · 🟡 **complicated** (yes, after a design call) · 🔴 **complex** (no,
-only trying it tells). The two are independent: an XS complex task is riskier than an M clear one.
-
-On the board a task card wears its size in place of an effort and its complexity as a dot with its word; the file
-view shows the block as a table with its links clickable (`src/components/Properties.tsx`) rather than as prose; and
-a task's `plan` link decides its epic. The board reads the block itself (`splitProperties`, `propertyFields` and
-`linkFields` in `src/server/parse.mjs`); legacy bold-label fields and path links are read exactly as before.
-
-**In Obsidian**, open a repository's `.x-skills` folder as a vault. Two bases list the work — `open-tasks.base`
-(tasks not done, grouped by size) and `by-run.base` (grouped by run) — in the form Obsidian saves them, which is what
-`test/fixtures/vault/` holds; Obsidian rewrites any other form on open. Each run is a cluster around its `index`
-note; when the hubs crowd the graph, the filter `-path:index` hides them. Obsidian labels a graph node with its file
-name, and `E13-review-plan` says nothing, so each artifact carries a `title` and the community plugin
-[Front Matter Title](https://github.com/snezhig/obsidian-front-matter-title) shows it instead — in the graph, the tabs
-and the file explorer — without renaming anything: the `E<nn>` names are what the board and the run order read.
-Install it in the vault and enable its *Graph*, *Tab* and *Explorer* features; its default key is `title`. `test/fixtures/vault/` itself opens as a
-vault and is the smallest example of all of it.
-
-**Tags are notes, not `#hashtags`** — the method from Odysseas' *Obsidian: The King of Learning Tools*: a tag is an
-empty note you link to, so it is a hub in the graph and can grow into an index. Here a tag lives at
-`.x-skills/tags/domain/<name>.md` (what the work is about) or `.x-skills/tags/area/<name>.md` (the part of the code it
-touches: a workspace package `apps/<x>`, `packages/<x>`, `skills/<x>`, else the folder under `src/`), and holds only a
-heading and `![[tag.base]]`. That one shared base lists every artifact linking the note it is embedded in — Obsidian's
-`this` inside an embedded base is the embedding note — so each tag is its own index and nobody keeps it by hand.
-x-plan picks a run's tags at `start --topics domain/<x>,area/<y>`, reusing existing ones first and creating the notes
-that are missing; the run's other artifacts inherit them. The `tags` key itself stays Obsidian's own.
-
-**Work written before the block** gets it from a one-shot command, one repository at a time:
-
-```bash
-node scripts/backfill-properties.mjs --root <repository or its .x-skills folder> --dry-run   # what it would add
-node scripts/backfill-properties.mjs --root <repository or its .x-skills folder>
-```
-
-It reads only `runs/`, adds the keys it can derive — `type`, `title`, `run`, a task's `plan` and its code-area `topics`, `size` from its `**Files:**` line
-and `done` from its boxes, an `input` or `reviews` a bold-label field already names — and never overwrites one that
-is set, so a second run changes nothing. It creates each run's `index` hub, the bases (`scripts/vault/`) and every tag note it
-links, when they are missing. `depends_on` and `complexity` are left for a person, and no `finished` is stamped, because the
-backfill cannot know when old work finished.
-
-Domain tags need a person's judgement, so the backfill takes them from a map you approve:
-`--domains run-domains.json`, where `{"2026-09-28-0847-R01-add-mcp-server": ["mcp-server"]}` adds `domain/mcp-server`
-to every artifact of that run (the hub excepted), ahead of its areas, and creates the tag note. A run the map names
-but the vault does not have, a name that is not lower-case kebab-case, or a fourth domain refuses the whole map with
-exit 2 before anything is written.
-
-## The board
-
-Five lanes, in this order: **To do**, **In progress**, **Unsorted**, **Done**, **Closed**. What an item's own data
-says decides its lane — a finished run is done, a partly ticked checklist is in progress — with two exceptions:
-
-- **Closed** is the window over what is finished: `Closed within 24h / 7 days / 30 days / 90 days / all`, default
-  30 days. A finished item inside the window is *Closed*; an older one is *Done*, which is the archive. "all" puts
-  every finished item in Closed and leaves Done empty, which is what that choice means.
-- **A card can be filed by hand**, by dragging it onto a lane or pressing `Alt + ←` / `Alt + →` on a focused card.
-  That is a decision *about* someone else's document rather than a change to it, so it is written to
-  **`.x-skills/board.json` in the project the card belongs to** — a file beside the app's own config looked like
-  per-machine state and was in fact per-checkout, so switching branch or serving a worktree hid everything a reader
-  had filed. A filed card says `moved`, and dropping it on the lane its data already gives it removes the entry
-  rather than storing a preference that says nothing.
-- **A card can be sorted within its lane**, and the sort is kept. A drag carries a card to a lane *and* to a place
-  in it — the slot that opens between two cards, the size of the card in hand — and letting go writes that lane, top
-  to bottom, into the project's `board.json`. So the order survives a reload, a rescan and a restart, and a card
-  dropped on the lane its own data gives it keeps its place even though it stops saying `moved`: the place was the
-  decision, and the column never was. A card that turns up later — a new run, or one that was filtered off the board
-  when the drop happened — is drawn after the ones the lane names. `Alt + ←/→` names a lane and no place, so a card
-  filed that way lands where its own data would put it.
-- **A card can be archived**, and that is a soft delete: the artifact is untouched, the board simply stops drawing
-  it, and the `Archived` list at the bottom of the project page brings it back. Archiving a collection takes
-  everything inside it off the board, while that list holds the entry the reader made rather than one line per file
-  it covers; an artifact whose own entry was not made says it is inside an archived collection. Filing, sorting and
-  archiving are three decisions in the same project file, so none of them clears the others: an unarchive lands in
-  the column and the place it was filed into, and unarchiving removes the entry rather than storing a `false`.
-
-One file per project, keyed by that project's own paths, because that is where a decision belongs: the repository is
-the thing that has branches and worktrees, so filing a card once files it everywhere. The project that filed nothing
-has no file. Whether it is committed is the repository's own business — commit it and the filing travels with the
-clone, ignore it and it stays local, and the only thing that changes either way is who else sees it.
-
-**An older board moves house with one command.** Every decision used to live in one `board.json` beside
-`otter-pm.config.json`, keyed `<projectId>:<path>`; nothing reads that file now. Point the import at it once:
-
-```bash
-node scripts/import-board.mjs --from <old board.json> [--dry-run]
-```
-
-It reports per project what it took, fills in what a project does not already say, and never overwrites a decision
-made since — a card filed in the new store after the change stays exactly as it is.
-
-A lane shows twelve cards and folds the rest behind `+ N more`; while a card is being dragged every lane opens,
-because the card you are carrying has to be droppable where you mean it.
-
-Projects wear the **icon and badge colour the Orca IDE gives them** (`repoIcon`, `badgeColor`), so one
-repository is one thing in the IDE and here. A root that did not come from the IDE gets the folder mark instead,
-and a remote avatar that will not load leaves the tile rather than a broken-image glyph.
-
-## Finding a file
-
-Three ways in, and they are deliberately different widths:
-
-| | What it covers |
-|---|---|
-| The rail's search box (⌘K / ctrl-K) | **Everything** — every collection *and every artifact inside one*. A file name is a hit even when the run it lives in says nothing about it, and the result says which collection it came from (`in cdk-high-traffic-security`). A stage found twice — under Analysis and inside its run — is one hit, because the first reading is kept. |
-| A category's board (Runs, Tasks, …) | One card per collection, plus the documents loose in that folder. A collection is the unit of work, so it is the board's unit; the artifacts inside are not separate cards. A category of a stage kind also draws the runs' stages of that kind, each saying which run it came from. **Tasks** is the exception: a task is what a reader picks up there, so the folder is not drawn and each task inside it is a card of its own, wearing the epic that claims it. |
-| A collection's page | Its workflow state, and its artifact list — every file, in the order the run produced them (`E00`, `E01`, …, then the session's own notes). |
-
-Search is a screen rather than a dropdown, and following a result clears the box: while it is up, every card is
-still a link, so a query that stayed put would change the address without changing what is on screen.
-
-Every screen draws the same trail, from the snapshot rather than the address — it renders
-`Projects / Synetic_Studio / Runs / cdk-high-traffic-security`, with each step a link and only the current page in
-the reading colour. Because it is resolved from the snapshot and not parsed from the address, a file opened
-straight from a search result still says which run it came from, the one thing its address cannot say (`locateFile`
-in `src/lib/items.ts`). A page's `h1` is the last crumb, so a category's own page is titled with the category.
-
-## Reading and editing
-
-An artifact is rendered on the server (`marked` for markdown, shiki for code) and arrives as markup, so the island
-ships neither parser. The rendered view and the raw text are the same response: **`edit`** replaces the document
-with the text it came from, the header carries `save` and `discard`, and `⌘S` / `ctrl-S` saves. Leaving by
-clicking something else is deliberately not one of the ways out — that is how a draft disappears without anyone
-deciding to lose it.
-
-Whether a file may be edited is decided on the server and travels with the read (`editable`), next to the set of
-**text extensions** the scanner reads: a markdown, a JSON, a script. A save cannot turn a screenshot into prose,
-and a read truncated at 400 kB is never editable, because saving what was shown would throw away everything past
-the cut. A save writes a dot-prefixed sibling and renames it over the original, so a scan landing mid-write cannot
-see half a file, and a failure removes the temporary instead of leaving it in the tree. The answer is the file as
-it now reads — re-rendered, with its new size — and both caches are dropped, so a checklist just ticked shows as
-`2/2` in the list it sits in and in the collection's own progress.
-
-## Markdown is set for reading
-
-By the document's own rules rather than a screen's: one measure (92ch) and one left edge, and a heading scale that
-steps down visibly — `h1` at the page title, `h2` at section size with the panel's own hairline under it, `h3`/`h4`
-marked by weight and colour, because a heading that borrows the prose's size is still a heading. A link is
-underlined where it appears rather than only under the pointer, because a document is read in order and "this is a
-link" arrives too late on hover. A table is a record and is set as one: a muted head, a hairline per row, a zebra,
-and every cell breaking a long token, so a session id or a path cannot set the table's width. A checklist has no
-bullet beside its box, and a fence scrolls inside itself and holds a height, so a long one cannot bury the document
-around it.
-
-## Layout
-
-```
-otter-pm/
-├── src/server/          # plain Node, no framework: what reads the tree
-│   ├── config.mjs       # root resolution: flags, config, env, discovery
-│   ├── categories.mjs   # the category registry: one entry per folder, and which holds the epics and which their tasks
-│   ├── create.mjs       # making a project: temp tree, git, gh, through one run seam
-│   ├── roots.mjs        # adding a folder that exists: the picker's listing, the scaffold, the config line
-│   ├── board.mjs        # the reader's own decisions: one board file per project, and the import of the old one
-│   ├── parse.mjs        # headings, bold fields, checklists, dates, artifact kinds
-│   ├── highlight.mjs    # shiki, the two-theme wiring, and the dialect detector
-│   ├── scan.mjs         # .x-skills root to project model, with an mtime-keyed cache
-│   └── snapshot.mjs     # the whole snapshot + one file's rendered content, read and written
-├── src/pages/api/       # GET /api/snapshot, GET|POST /api/file, POST /api/refresh, /api/project, /api/roots
-├── src/pages/           # the shell, for / and for every other path
-├── src/ui/              # shared primitives: Button, Input, Badge, ToggleGroup, cn
-├── src/components/      # the screens, made of the primitives: Card, Board, GroupDetail, FileView
-├── src/lib/             # types, the API client, the router, the work-item model, the epics (epics.mjs)
-├── src/styles.css       # Orca's tokens, base, and the markdown an artifact is read in
-├── src/tailwind.css     # Tailwind wired to those tokens
-├── scripts/             # dev.mjs, serve.mjs, seed-demo.mjs, import-board.mjs: the ports, the foreground, the sample, the migration
-├── public/favicon.svg   # the app icon, see brand/README.md
-├── brand/               # the mark's sources: the EPS, the traces, the proposals
-├── skills/              # the skills themselves: what writes the trees this app reads
-├── test/                # the app's tests, over a fixture .x-skills tree
-└── otter-pm.config.json # which repositories a machine reads
-```
-
-Every project is read from its own `<repo>/.x-skills`, and the one thing written there is `board.json`.
-
-**Stack.** Astro serves the shell and the API routes (one process, `@astrojs/node` standalone); SolidJS renders
-the app in the browser and owns the routing; Tailwind v4 is wired to the app's own CSS variables in
-`src/tailwind.css`, so a utility and a hand-written rule read the same values and cannot drift. Kobalte supplies
-the one control that needs behaviour a plain button does not have (the segmented switch).
-
-**Shared components.** `src/ui/` are the primitives a control is built from, `src/components/` are the screens
-built out of them, and `src/lib/` is what both use. Adding a screen means adding one file to `src/components/`
-and one route in `src/lib/router.ts` — the shell, the rail and the styling come with it.
-
-Two details in `src/ui/` are load-bearing and easy to undo by accident. `cn.ts` tells `tailwind-merge` that
-`text-chrome`/`text-body`/`text-section`/`text-title` are *sizes*, not colours — without that, merging
-`text-chrome` with `text-foreground` drops the size and every control renders at the inherited 14px. And
-`styles.css` clears the browser's own widget chrome on `button` and `input` (its 13.33px font, its
-`padding: 1px 6px`, its `buttonface` background), because this app does not import Tailwind's preflight — the rest
-of that reset is deliberately absent, so anything a control needs must come from its utilities.
-
-**Markdown and code are rendered on the server**, by `marked` and shiki in `src/server/snapshot.mjs`, and the raw
-HTML a document may contain is stripped of anything that can run (script/style/iframe tags, `on*` attributes,
-`javascript:` URLs) before it reaches the browser. The island therefore ships neither a markdown parser nor a
-highlighter.
+Keep it running as a user service: `systemctl --user start oc-otter-pm`. Develop it: `npm run dev`
+(hot reload), `npm run serve`, `npm run build`, `npm test`.
 
 ## Skills
 
-`skills/` is where the skills live: 39 of them, each a `SKILL.md` with its `scripts/`, `references/` and
-`assets/`. They write the `.x-skills` trees this board reads, so both halves of the loop sit in one checkout.
-They run from wherever they are installed, so this repository is the source of truth: edit a skill here, then
-`npm run install` links the whole set into `~/.agents/skills/`, mirrors each one in `~/.claude/skills/`, and
-registers the MCP server below with each agent config it finds — so the next agent to run a skill runs this
-checkout's copy, and can ask this checkout's board a question.
+| Skill | What it does | Say when |
+|---|---|---|
+| `x-plan` | Three approaches → a layered spec, gated on your approval | "plan this feature", "what's the spec" |
+| `x-decompose` | Cut an approved plan into triaged task files | "break this down into tasks" |
+| `x-implement` | Build tasks test-first, review-clean, one commit each | "implement the tasks" |
+| `x-fix` | Resolve a review's fix plan | "fix these findings" |
+| `x-review` | Review code against principles and spec, running every pass | "review this diff" |
+| `x-commit` | Write a conventional commit message | "commit this" |
+| `x-release` | Write the PR body | "write the PR description" |
+| `x-triage` | Structured intake for a bug or request | "a bug came in" |
+| `x-investigate` | Root cause by ranked, tested hypotheses | "why is this failing" |
+| `x-debug` | Reproduce, fix the root cause, verify | "debug this" |
+| `x-reproduce` | Generate a minimal repro case | "make a repro" |
+| `x-verify` | Mutation and property tests after a fix | "verify the fix" |
+| `x-differential` | Review the diff hunk-by-hunk for regression risk | "what could this break" |
+| `x-second-opinion` | Fresh-context re-review of a change | "second opinion before shipping" |
+| `x-arch` | Placement, naming, responsibility, dependency direction | "where does this live" |
+| `x-arch-lint` | Check the tree against the declared architecture | "prove the boundaries hold" |
+| `x-floor` | Declare and enforce the quality floor | "set or check the quality bar" |
+| `x-unbloat` | Cut code to what the task needs | "unbloat this" |
+| `x-comments` | Comment hygiene: add why, remove noise | "clean up comments" |
+| `x-refactor` | Refactoring suggestions with before/after | "suggest refactors" |
+| `x-skill-lint` | Validate the repo's own skills | "lint the skills" |
+| `x-test-gen` | Generate test stubs from code | "scaffold tests" |
+| `x-ui` | Design and audit UIs | "audit this screen" |
+| `x-browser` | Open the app in a real browser with devtools MCP | "open the app" |
+| `x-parallel` | Run independent tasks in isolated worktrees | "parallelize these tasks" |
+| `x-analyze` | Interactive analysis → thesis and three options | "analyze this" |
+| `x-research` | Metric-driven iteration toward a number | "research or tune X" |
+| `x-roast` | Critique a non-code artifact, scored by a script | "roast this" |
+| `x-humanize` | Simplify text to a B2 reading level | "simplify this text" |
+| `x-essay` | Write an article on a fixed critique loop | "write an article" |
+| `x-api-draft` | Draft an API design from requirements | "draft the API" |
+| `x-api-swagger` | API design draft → OpenAPI YAML | "make the OpenAPI" |
+| `x-migrate` | Framework or dependency migration plan | "migrate to X" |
+| `x-rollback` | Revert with multi-step confirmation | "roll this back" |
+| `x-search` | Search indexed repos by meaning or identifier | "where is this defined" |
+| `x-brief` | Write a handoff brief for the session | "hand off mid-work" |
+| `x-domain` | Glossary and ADRs as repo artifacts | "record the terms or decision" |
+| `x-interview` | Stress-test a decision with the user | "grill this decision" |
+| `x-sketch` | Throwaway prototype to answer a question | "prototype this" |
+| `x-walkthrough` | Script the human-only steps | "walk me through the manual steps" |
+| `x-guide` | Route you to the right skill | "which skill fits" |
+| `x-autoreflection` | Turn sessions into approved skill fixes | "reflect on sessions" |
 
-Nothing in the app imports them, and `files` keeps them out of the tarball.
+## Autoreflection
 
-A skill's scripts are `.mjs`: this repository's `package.json` says `"type": "module"`, and an installed skill is
-a symlink into this tree, so a `.js` script that calls `require` or writes `module.exports` throws the moment
-anyone runs it, installed or not. `x-skill-lint` fails on that (`commonjs-script`), and the fix is the extension
-and `import`/`export` — a `.cjs` file is the escape hatch for a script that must stay CommonJS.
+`x-autoreflection` reads the sessions of a window and turns what they show into fixes you approve.
 
-Skills that run inside other skills — `x-arch`, `x-unbloat`, `x-comments`, and `x-review` for a task review — ship
-a pass card, `references/pass.md`: the per-host steps and the short form of the rules, at most 600 words. A host
-reads the card; a standalone run reads `SKILL.md`. That cuts what one `x-implement` task reads from 12,091 words to
-under half. `x-skill-lint` fails on a card over 600 words (`card-budget`) and on any other skill naming a carded
-skill's `SKILL.md` (`pass-ref`).
+```bash
+x-autoreflection 24h     # last day
+x-autoreflection 7d      # last week
+x-autoreflection 2w      # last fortnight
+x-autoreflection         # no period: reflect on one session instead
+```
 
-| Skill | Description |
-|-------|-------------|
-| `x-analyze` | Interactive analysis skill — research the project and web first, ask via panels (single / multi / open / confirm) until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory. |
-| `x-api-draft` | Draft API design from requirements — clarify scope, analyze endpoints and data models, produce a human-reviewable API design in markdown |
-| `x-api-swagger` | Convert an API design draft to OpenAPI YAML — generate a valid spec from markdown drafts with endpoints, schemas, and auth definitions |
-| `x-brief` | Compact the current conversation into a handoff brief so another agent can continue the work — what is settled, what is open, what the next session should do first, written as context pointers rather than duplicated content. Use when a session is ending mid-work, when context is nearly spent, or when handing work to another agent or another machine. |
-| `x-arch` | Keep a codebase's architecture honest — where a unit lives, what it is called, what its one responsibility is, and which way its dependencies point; names banned (`utils`, `helpers`, `common`, `tools`, `misc`, `other`, `shared`), composition over inheritance, and the rule of three before extracting. Use when asked to fix a directory layout, a vague or role-shaped name, inheritance growth, where new code belongs, or a layer boundary; `x-implement`, `x-decompose`, `x-review` and `x-fix` run it as a pass. |
-| `x-arch-lint` | Check a code tree against the architecture it declares — reads `.x-skills/config/arch.json` and reports banned directory and file names plus layer-boundary and dependency-direction departures as `file:line` with a rule name; detection only, never writes code, exit 1 on a violation. Use to check layer boundaries, verify dependency direction, find `utils`/`helpers`/`common` sprawl, or prove a repo still matches its declared structure; `x-review` runs it on every review. |
-| `x-autoreflection` | Turn sessions into approved skill fixes — `x-autoreflection <period>` (24h, 7d, 2w) traverses every session of that window across every CLI and writes one skill-health report (JSON truth + markdown read) plus a fix plan, then asks whether an auto-heal session is wanted and, on yes, proposes each fix as one multi-select option carrying the original issue, the proposed edit and the rate it should move, applying only what is picked with a revert-on-failure ledger. Without a period it reflects on one session instead. |
-| `x-browser` | Launch the real Chrome/Chromium with remote debugging and attach the chrome-devtools MCP to the project’s app URL — detects the URL from README/config/env, verifies the dev server, and opens the browser so you can drive it without manual setup. |
-| `x-comments` | Comment management — add only precise, meaningful comments and remove noisy or obvious ones; refactor overly commented code into self-explanatory functions instead of describing it. `x-review` and `x-implement` run it as a pass. |
-| `x-commit` | Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body |
-| `x-debug` | Evidence-based debugging — reproduce, hypothesize, fix root cause, verify |
-| `x-decompose` | Decompose an approved plan (or an older run's epic) into layer-based tasks, triaging every candidate first — each candidate is decided as a task in this run, a run of its own (x-plan), an analysis (x-analyze), or dropped; outputs `<run folder>/E<nn>-triage.md` and `<run folder>/E<nn>-tasks/` for handoff to x-implement |
-| `x-domain` | Build and sharpen the project's domain model as repo artifacts — challenge terms against GLOSSARY.md, stress-test them with edge-case scenarios, cross-check what the code actually does, and record terms and decisions in GLOSSARY.md and ADRs the moment they crystallise. Use when discussing codebase terminology, writing or editing a glossary, recording a decision, or when terms start meaning different things to different people. |
-| `x-essay` | Write an article end-to-end on a fixed loop — x-analyze thesis, x-roast critique, x-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim. |
-| `x-fix` | Resolve issues from fix plans — read, edit, verify, mark complete |
-| `x-floor` | Set and enforce a repository’s quality floor — declare the numbers that must hold, each with its reason, in `.x-skills/config/floor.json`, then report every move that lowers the bar on the current diff: a weakened threshold, a dropped rule, a new or extended exception, a silenced checker (`@ts-ignore`, `eslint-disable`, `noqa`), unfinished work (a stub, an untracked `TODO`, an empty `catch`), a test made easier (`it.skip`, `pytest.mark.skip`), a deleted test, or an assertion removed from a test that still exists. Detection only, exit 1 on a violation. Use when asked to set a quality bar, stop a test being weakened to go green, or prove a diff did not lower the standard; `x-implement` runs it before each commit and `x-review` on every review. |
-| `x-humanize` | Simplify text, an article, a commit or PR to a B2 reading level — measure sentence length and complexity, cut noise, rewrite, then verify no meaning was lost. Use when asked to humanize, simplify, make easy to read, or plain-language a piece of prose. |
-| `x-interview` | Interview the user relentlessly about a plan, decision, or idea until every branch of the design tree is resolved — work the frontier in rounds, each question carrying a recommended answer, facts fetched by sub-agents and decisions reserved for the user. Use when the user wants their thinking stress-tested before work starts, or asks to be interviewed, grilled, or challenged about a plan. |
-| `x-implement` | Implement or fix with TDD — parallelize independent tasks with x-parallel, apply x-ui for frontend work, x-arch for placement and naming, and x-unbloat to every change, red-green-refactor per task, verify with x-review + x-fix, run only the narrowest tests inside those loops and the full suite once before each commit, run x-floor before each commit, gate on plan completion |
-| `x-investigate` | Hypothesis-driven root cause analysis — generate ranked hypotheses from evidence, test systematically with platform tools and git history, eliminate candidates until one root cause remains, output fix plan for x-fix |
-| `x-migrate` | Framework/dependency migration assistant — generates migration plans with breaking changes, upgrade paths, and automated fix candidates from source analysis |
-| `x-parallel` | Run multiple coding tasks in parallel — each task gets an isolated git worktree and its own background agent process with full tools and the parent's project rights, then committed results merge back into your branch |
-| `x-plan` | Plan before coding — research the project and the web first, ask via panels (single / multi / open / confirm) until the user is sure, propose three approaches with trade-offs, then write a layered spec (contract, invariant, test) as a graph-driven scenario with guards and a memory file; gate on user approval |
-| `x-refactor` | Automated refactoring suggestions (extract method, rename, replace conditional) — analyzes code against SOLID principles and outputs actionable before/after comparisons |
-| `x-reproduce` | Generates minimal platform-aware reproducible test cases from triage briefs — exits 1 when bug is present, exits 0 after fix applied |
-| `x-research` | Research a topic or tune a metric — research the project and web first, propose three candidate changes, then iterate one atomic change at a time, evaluating it mechanically (a command, or agent-judged criteria coverage) and keeping only measured improvements until the target, a guard, or a hard cap stops the run; graph-driven with guards, a memory file, and a report. Use for "research X", "compile/summarise sources on Y until N criteria are covered", filling knowledge gaps, literature/topic research with coverage criteria, or optimizing a measurable value. |
-| `x-guide` | Route the user to the right skill or flow for their situation — name where their situation sits on the map (an idea, a bug, an incoming issue, a foggy effort, codebase upkeep), and which skill starts it. Use when asked which skill fits, where to start, what the workflow is, or when the user is unsure which x-skill to run; user-invoked, so it never fires on its own. |
-| `x-review` | Review code against engineering principles — small functions, SOLID, KISS, DRY — with automated AST-based complexity analysis across 30+ languages including Python, C, C++, Java, JavaScript, TypeScript, Go, Rust, Ruby, PHP, Swift, Kotlin, and more. Runs the comments (`x-comments`), bloat (`x-unbloat`), architecture (`x-arch` + `x-arch-lint`) and quality-floor (`x-floor`) passes as part of every review. |
-| `x-release` | Shape a pull request body so a reviewer sees the change, the evidence, and the danger in one screen — a summary as the smallest visual that makes the change clear, before and after evidence that it works, and a merge-danger call naming one-way or two-way door and blast radius. Use when writing a PR description, opening a pull request, or asked what to put in the body. |
-| `x-roast` | Roast any non-code artifact — articles, analyses, specs, epics, tasks, research, or another skill — where the reviewer fact-checks the claims, attacks the reasoning, proposes better angles, and scores it on a weighted, anchored rubric computed by a script. Use for "roast this", "poke holes in", "review this spec/skill/analysis", or any request for a checked number and reason; the report names its reviewer (self or independent). For source code use x-review instead. |
-| `x-rollback` | Automated git revert with multi-step confirmation — identifies target commits, analyzes impact, requires approval, creates properly formatted revert commits via x-commit integration |
-| `x-search` | Search every indexed repository by meaning or exact identifier through the `x-search` MCP server — use before grepping for a symbol, when the file that owns a behaviour is unknown, or when the question spans repositories. |
-| `x-sketch` | Answer a design question with a throwaway prototype instead of a spec debate — one shareable HTML file that pushes a state model or logic through the cases that are hard to reason about on paper, or several radically different UI variants switchable on one route. Use when the question needs a runnable answer ("does this state model feel right?", "what should this screen look like?"), not more words about it. |
-| `x-skill-lint` | Validate this repo’s own skills — frontmatter parses and `name` matches the folder, every referenced `scripts/*` and `references/*` exists, no stray template tokens, optional `evals/expectations.json` and `evals/triggers.json` are well-formed, and the README skills table lists every skill. Also measures trigger rank-1 and description collisions with `scripts/trigger-rate.mjs`, so a description that would not fire is found before a user finds it. Use when adding or editing a skill, or when a skill is not triggering. |
-| `x-test-gen` | Generate test stubs from implementation — analyzes source code and creates scaffolded tests with happy path, error cases, and edge case placeholders |
-| `x-triage` | Structured intake conversation — ask targeted panels (single / multi / open / confirm) to classify a bug’s platform, type, and evidence before touching any tools. Outputs `<run folder>/E<nn>-triage.md`. |
-| `x-walkthrough` | Generate an interactive bash script that walks a human through steps only they can perform — provisioning, credentials, CI secrets, an unfamiliar dashboard, a one-off migration or cutover — stage by stage with hidden secret entry and confirmation gates. Use when the remaining steps need human hands in a browser or console; never for steps the agent can do itself. |
-| `x-unbloat` | Cut code to what the task needs — a YAGNI ladder that removes needless abstractions, wrappers, unused options and dead code, keeps behavior and protective code, and measures the result. Use when asked to unbloat, simplify, or remove over-engineering; x-implement, x-review and x-refactor run it as a pass. |
-| `x-ui` | Design and audit app UIs to be clean, clear, and effective — framework-agnostic method (Vue/React/HTML) with component-selection, row-action, and pre-flight rules. |
+It runs in three stages, and you stay in control:
+
+1. **Analyze** — a script scans every session and writes a skill-health report and a fix plan.
+   No judgement, no edits.
+2. **Propose** — the agent turns each finding into an exact edit and offers them as one
+   multi-select panel. You pick which to keep.
+3. **Apply** — `heal.mjs` applies only what you picked, reverts on a failed check, and appends a
+   per-skill ledger (`skills/<skill>/.heal-ledger.jsonl`).
+
+A background pass can run stage 1 on a cadence (`hooks/background-reflection.mjs`, tunable via
+`AUTOHARNESS_REFLECT_EVERY_N`); stages 2 and 3 are always human-triggered. For details see
+`skills/x-autoreflection/SKILL.md`.
 
 ## The MCP server
 
-`otter-pm-mcp` is a second bin for the same repositories: an MCP server over stdio, so an agent can ask what a
-project's tasks, documents and code say without reading a tree by hand.
-
-**Installing it.** `npm run install` writes the entry into the config of each agent on this machine that already has
-one, leaving the rest of that file — its other servers and its own keys — where it is. Claude Code's
-`~/.claude.json` holds them under `mcpServers`:
+`otter-pm-mcp` exposes the same repositories over stdio, so an agent can ask what a project's tasks,
+documents and code say. `npm run install` writes the entry into each agent's config; installed
+globally from this checkout, the whole entry is `{ "command": "otter-pm-mcp" }`.
 
 ```json
-{
-  "mcpServers": {
-    "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"] }
-  }
-}
+{ "mcpServers": { "otter-pm": { "command": "otter-pm-mcp" } } }
 ```
 
-and Crush's `~/.config/crush/crush.json` holds them under `mcp`, where each entry also carries its `type`:
-
-```json
-{
-  "mcp": {
-    "otter-pm": { "command": "node", "args": ["/path/to/otter-pm/scripts/mcp.mjs"], "type": "stdio" }
-  }
-}
-```
-
-An agent that has no config is left alone rather than given one, the same rule the skills follow. The package is
-private and not on npm, so the entry names this checkout's script; install it globally from the checkout and
-`otter-pm-mcp` is on `PATH`, where the whole entry is `{ "command": "otter-pm-mcp" }`.
-
-It takes no arguments of its own. It reads the same `otter-pm.config.json`, `$OTTER_PM_ROOTS` and Orca list the
-board reads, so the board and an agent cannot disagree about which repositories exist.
-
-**Running it.** There is nothing to keep running. The client starts the server itself over stdio and stops it by
-closing the pipe, so there is no service, no port and no `--help`. The roots decide what it can see, exactly as they
-do for the board: `OTTER_PM_ROOTS=/code/app node scripts/mcp.mjs` asks about one repository without touching the
-config file, and `--root` works the same way. Two sessions in one checkout are two servers over one index, which is
-safe — see the note on the database below.
-
-**Checking it answers**, without a client — this speaks the protocol by hand and prints each reply as a line:
-
-```bash
-printf '%s\n%s\n%s\n' \
-  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"shell","version":"1"}}}' \
-  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
-  | node scripts/mcp.mjs
-```
-
-The last line of that output is the `tools/list` reply — twelve tools. Swap the third line for a call and the same
-command answers one:
-
-```bash
-  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_projects","arguments":{}}}' \
-  | node scripts/mcp.mjs
-```
-
-`list_projects` answers with the projects in the reply's first text block, which is where every tool's answer
-lands — as JSON, so an agent reads the same shape a person sees here.
-
-**Twelve tools, in two halves.** The exact ones read the files, so their answer is what the repository says:
+It takes no arguments and there is nothing to keep running — the client starts and stops it over
+stdio. The same roots as the board decide what it can see.
 
 | Tool | Answers |
 |------|---------|
-| `list_projects` | every repository this machine reads, with each project's id and paths |
-| `get_project` | one project's identity, paths, board file and index state |
-| `list_epics` | a project's plans and epics with the tasks under each |
-| `list_tasks` | tasks with their state, epic, lane and archived flag |
-| `get_task` | one task in full, with its parsed fields, lane and archived flag |
-| `list_docs` | the README and the project's other documents |
-| `read_doc` | one document, **always** with its drift report against the code |
-| `search_code` | tracked source, by literal or regular expression, as `path:line` |
-| `read_code` | a tracked file, or a line range of it, with line numbers |
-| `find_symbols` | where a name is declared, by declaration shape — a heuristic, and it says so |
+| `list_projects` | every repository this machine reads |
+| `get_project` | one project's identity and paths |
+| `list_epics` | a project's plans and epics with their tasks |
+| `list_tasks` | tasks with state, epic and lane |
+| `get_task` | one task in full |
+| `list_docs` | a project's documents |
+| `read_doc` | one document, with its drift report against the code |
+| `search_code` | tracked source, as `path:line` |
+| `read_code` | a tracked file, or a line range of it |
+| `find_symbols` | where a name is declared |
+| `search_knowledge` | tasks, documents and code by meaning |
+| `find_related` | what is nearest a path |
 
-The fuzzy ones read the project's own index and report the freshness they were served from, so a ranked hit is
-never mistaken for the file:
-
-| Tool | Answers |
-|------|---------|
-| `search_knowledge` | tasks, documents and code by meaning, ranked, with the stamp the answer came from |
-| `find_related` | what is nearest a path — the file linking |
-
-**Code is the authority.** `read_doc` never returns a document without also returning what the code says about it:
-every path, `npm run` script and symbol it names is resolved against the tracked files, and each claim comes back
-`resolves`, `declared`, `missing` or `uncheckable`. A sentence the check cannot decide is reported `uncheckable`
-with the reason, never as drift — calling an unverifiable sentence drift would be a lie about the code.
-
-**Each project keeps its own database.** The fuzzy tools read `<repo>/.x-skills/knowledge.lance/`, built from the
-project's tasks, documents, source and drift, beside its `board.json` so it travels with the checkout. It is
-derived and rebuildable: deleting it costs the next fuzzy call a rebuild and nothing else. A rebuild re-embeds only
-the files that changed, and the local embedding model (`Xenova/all-MiniLM-L6-v2`, downloaded once per machine)
-means no key and no network after the first build. A machine with no model, or no LanceDB binary for its platform,
-still answers every exact tool — the index says it is unavailable and says why.
-
-**More than one client may run it.** Each client starts its own server over stdio, so two sessions in one checkout are
-two processes against one database directory. That is safe rather than merely tolerated: every write is a single
-commit that replaces a row instead of a delete followed by an add, so a file is indexed once no matter how the two
-interleave; a write the engine refuses outright is retried rather than lost; and since the index is derived, the worst
-case is a rebuild.
-
-**The server writes exactly one thing**, that database directory, and never a repository file. It is read-only by
-construction rather than by permission.
+Each project keeps its own database at `<repo>/.x-skills/knowledge.lance/`, derived and rebuildable:
+deleting it costs the next fuzzy call a rebuild and nothing else. The server writes only its own
+database, never a repository file.
 
 ## Endpoints
 
-| Route | What it answers |
-|-------|-----------------|
-| `GET /api/snapshot` | every root, every category, every collection and artifact — the one payload the app loads |
-| `GET /api/snapshot?force=1` | the same, re-read from disk |
-| `GET /api/file?project=<id>&path=<relPath>` | one artifact, rendered (markdown HTML or coloured code) and raw; 400 on a path that escapes the root |
-| `POST /api/file` | write one artifact back — `{ project, path, content }` — and answer with it as it now reads; 415 for a file that is not a text artifact, 413 for one over the size limit |
-| `POST /api/refresh` | drop both caches and answer with a fresh snapshot |
-| `GET /api/project` | what the new-project form offers before anything is typed: the account, the directory, the licenses GitHub publishes |
-| `POST /api/project` | make a project — name, about, directory, visibility, license, icon — and answer what it made |
-| `GET /api/browse?path=<dir>` | one level of folders for the picker, directories only; no path starts at the home directory, and every answer carries its own `parent` |
-| `POST /api/roots` | add a folder that already exists — `{ path }` — giving it an empty `.x-skills/tasks/` when it has no tree, and answer the id it was added as; 400 for a path that is missing or not a folder, 409 for one already read or whose id is taken |
-| `POST /api/move` | file a card into a lane, and answer with that project's board and lanes |
-| `POST /api/delete` | archive or unarchive an item, and answer with that project's deletions |
-| `GET /api/asset?project=<id>&path=<relPath>` | an image a project carries, as bytes; raster types only, and nothing outside the project's root |
-
-The snapshot is cached for four seconds and each parsed file is cached by `mtime` + size, so a reload of the UI
-does not re-read the tree and a changed file is picked up on the first request after it changes.
-
-## Tests
-
-`npm test` runs `test/*.test.cjs` over a fixture `.x-skills` tree built in a temp directory, and drives the real
-server modules the app serves — the scanner's contract (a category per directory, two spellings merging into one,
-a run's `state.json`, a task file's fields, a run's tasks folder carrying the run it came from, path-escape refusal)
-and the rendering and decision contracts beside it (a named fence coloured as what it named, a `.png` refused a
-write, a save read back off the disk, a move and an archive written and cleared, the create flow driven entirely
-through a stubbed `run`, and the two ways an epic and its tasks are read as one). Nothing in the suite touches the
-network, GitHub or the Orca IDE.
-
-## Releasing
-
-There is nothing to release. `@lleqsnoom/otter-pm` is a `private` package, so `npm publish` refuses it with `EPRIVATE`
-— the guard, not the workflow, is what makes that true. `.github/workflows/ci.yml` runs the tests and the typecheck on
-a pull request and on `main`, and publishes nothing.
-
-Install it from a checkout with `npm i -g .` to put the bins on `PATH`.
-
-The package is not a library: `files` carries the source, the scripts, `astro.config.mjs`, `tsconfig.json`
-and the config template, and the first run builds `dist/` where the package was installed. `brand/` and `test/`
-stay in the repository, out of the tarball.
+The board serves one HTTP surface and the MCP server is stdio-only; see `docs/install.md` for the
+board's routes.

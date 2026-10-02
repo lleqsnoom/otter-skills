@@ -1,0 +1,14 @@
+{
+  "skill": "x-roast",
+  "expected_behavior": [
+    "anchored rubric computed by a script: the same dimension scores always give the same total, and a",
+    "Never invent a source. If you cannot fetch it, you do not cite it. Fabricated citations are a",
+    "Score the artifact, not the author. Blunt about work, never about a person.",
+    "marked `--na evidence=\"why\"` instead. `accuracy`, `logic`, `clarity` and `completeness` always",
+    "apply: score them low, never mark them n/a."
+  ],
+  "source": [
+    "x-roast",
+    "Anti-gaming rules (read first)"
+  ]
+}

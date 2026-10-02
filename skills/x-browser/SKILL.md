@@ -1,7 +1,7 @@
 ---
 name: x-browser
 description: Launch the real Chrome/Chromium with remote debugging and attach the chrome-devtools MCP to the project's app URL — detects the URL from README/config/env, verifies the dev server, and opens the browser so you can drive it without manual setup.
-version: 1.0.0
+version: 1.1.0
 author: Community
 tags: [browser, chrome, chromium, devtools, mcp, frontend, testing, automation, debugging]
 user-invocable: true

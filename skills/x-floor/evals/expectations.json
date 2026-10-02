@@ -1,0 +1,12 @@
+{
+  "skill": "x-floor",
+  "expected_behavior": [
+    "Code files only. Widening `codeExtensions` widens the net; leaving it narrow is what stops a README that",
+    "Only the diff. A tree that already sits below its own floor is not reported. The guard is a ratchet: it",
+    "`rules[].id` — stable, referenced by an exception. A rule without one cannot be compared across the diff."
+  ],
+  "source": [
+    "What it cannot check, and where it can be blind",
+    "Declare the floor"
+  ]
+}

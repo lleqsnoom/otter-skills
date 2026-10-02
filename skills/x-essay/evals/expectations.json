@@ -1,0 +1,14 @@
+{
+  "skill": "x-essay",
+  "expected_behavior": [
+    "A brief that names a topic but no claim is not a claim, and the loop cannot judge",
+    "its own output against one it never heard. If the request does not say what the",
+    "article should convince the reader of, ask once — one `open` panel: *what must the",
+    "Fixed order. `x-analyze → x-roast → x-humanize`. Never humanize before the",
+    "facts-only final check: the corrected markers, numbers, names and URLs from the"
+  ],
+  "source": [
+    "Before the loop",
+    "Non-negotiable rules (read first)"
+  ]
+}
