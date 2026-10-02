@@ -51,6 +51,24 @@ function holdPort(port) {
   });
 }
 
+/**
+ * Hold `count` consecutive ports. A free first port says nothing about the ports after it, so a range with a busy
+ * port is released whole and another start is tried; nothing held is left open when a range is abandoned.
+ */
+async function holdRange(count, nextStart = freePort, attempts = 10) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const first = await nextStart();
+    const held = [];
+    try {
+      for (let port = first; port < first + count; port += 1) held.push(await holdPort(port));
+      return { first, held };
+    } catch {
+      await Promise.all(held.map((server) => new Promise((done) => server.close(done))));
+    }
+  }
+  throw new Error(`no ${count} consecutive free ports after ${attempts} tries`);
+}
+
 function run(args, stateHome, { entry = LAUNCH, ...options } = {}) {
   return spawn(process.execPath, [entry, ...args], {
     cwd: ROOT,
@@ -418,11 +436,25 @@ test('serve names the state path it cannot write', async () => {
   assert.ok(ran.complaint.includes(path.join(stateHome, 'otter-pm', 'url')), `it names the path (${ran.complaint.trim()})`);
 });
 
+test('holding a range skips a range with a busy port and frees what it held there', async (t) => {
+  const busyStart = await freePort();
+  const busy = await holdPort(busyStart + 3);
+  t.after(() => busy.close());
+  const elsewhere = await freePort();
+  const starts = [busyStart, elsewhere];
+
+  const range = await holdRange(5, async () => starts.shift());
+  t.after(() => range.held.forEach((server) => server.close()));
+
+  assert.equal(range.first, elsewhere);
+  assert.equal(range.held.length, 5);
+  const reused = await holdPort(busyStart);
+  reused.close();
+});
+
 test('serve names the port range when nothing in it is free', async (t) => {
   const stateHome = tempStateHome();
-  const first = await freePort();
-  const held = [];
-  for (let port = first; port < first + 20; port += 1) held.push(await holdPort(port));
+  const { first, held } = await holdRange(20);
   t.after(() => held.forEach((server) => server.close()));
 
   const ran = await runToCompletion(['serve', '--port', String(first)], stateHome);
