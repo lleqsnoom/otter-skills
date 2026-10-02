@@ -3,7 +3,9 @@
 /**
  * The marketplace is a file contract: `.claude-plugin/marketplace.json` must name every skill the
  * repo ships, so `/plugin marketplace add lleqsnoom/otter-pm` can install the set. A skill missing
- * from the listing is a skill nobody can install, so the test names it instead of counting.
+ * from the listing is a skill nobody can install, so the test names it instead of counting. The
+ * plugin's declared commands are held to the same contract: each must exist as a file and name the
+ * skill it runs.
  */
 
 const { describe, it } = require("node:test");
@@ -46,5 +48,18 @@ describe("plugin marketplace", () => {
 
     const missing = skillDirs().filter((name) => !declared.has(name));
     assert.deepEqual(missing, [], "skills missing from the marketplace listing");
+  });
+
+  it("declares the four loop commands as files that name their skill", () => {
+    const marketplace = JSON.parse(fs.readFileSync(MARKETPLACE, "utf8"));
+    const [plugin] = marketplace.plugins;
+    const commands = plugin.commands ?? {};
+    const loop = ["x-fix", "x-implement", "x-plan", "x-review"];
+    assert.deepEqual(Object.keys(commands).sort(), loop, "the plugin must declare the four loop commands");
+    for (const name of loop) {
+      const file = path.join(ROOT, plugin.source ?? plugin.skills, commands[name].source);
+      assert.equal(fs.existsSync(file), true, `command ${name} names ${commands[name].source}, which does not exist`);
+      assert.ok(fs.readFileSync(file, "utf8").includes(name), `command ${name} must name its skill`);
+    }
   });
 });

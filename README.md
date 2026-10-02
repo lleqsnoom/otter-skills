@@ -560,6 +560,12 @@ every skill directory under one plugin, so an agent that reads Claude marketplac
 with `/plugin marketplace add lleqsnoom/otter-pm` without the local linking step. The marketplace test
 (`test/marketplace.test.cjs`) fails when a skill directory is missing from the listing.
 
+Four of those skills are also reachable as slash commands: `/x-plan`, `/x-implement`, `/x-review` and
+`/x-fix`, one per step of the plan-implement-review-fix loop. Each is a markdown file under
+`skills/commands/` whose body names its skill and the one thing the user must provide, and the
+marketplace declares them under the plugin's `commands`, where the same test fails when a declared
+command file is missing or does not name its skill.
+
 A skill's scripts are `.mjs`: this repository's `package.json` says `"type": "module"`, and an installed skill is
 a symlink into this tree, so a `.js` script that calls `require` or writes `module.exports` throws the moment
 anyone runs it, installed or not. `x-skill-lint` fails on that (`commonjs-script`), and the fix is the extension
