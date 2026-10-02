@@ -12,6 +12,12 @@ const path = require("node:path");
 
 const SKILLS = path.join(__dirname, "..", "skills");
 
+const noUpstreamNaming = (text, banned) => {
+  for (const name of banned) {
+    assert.ok(!text.includes(name), `no upstream name ${name}`);
+  }
+};
+
 describe("x-release skill", () => {
   const text = fs.readFileSync(path.join(SKILLS, "x-release", "SKILL.md"), "utf8");
 
@@ -26,9 +32,7 @@ describe("x-release skill", () => {
   });
 
   it("does not carry upstream naming", () => {
-    for (const banned of ["ask-matt", "show-me", "humanlayer"]) {
-      assert.ok(!text.includes(banned), `no upstream name ${banned}`);
-    }
+    noUpstreamNaming(text, ["ask-matt", "show-me", "humanlayer"]);
   });
 
   it("ships trigger evals", () => {
@@ -53,9 +57,7 @@ describe("x-guide skill", () => {
   });
 
   it("does not carry upstream naming", () => {
-    for (const banned of ["ask-matt", "ask otter", "wayfinder"]) {
-      assert.ok(!text.includes(banned), `no upstream name ${banned}`);
-    }
+    noUpstreamNaming(text, ["ask-matt", "ask otter", "wayfinder"]);
   });
 
   it("ships trigger evals", () => {
