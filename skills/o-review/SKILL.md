@@ -1,21 +1,18 @@
 ---
 name: o-review
-description: Review code against engineering principles — small functions, SOLID, KISS, DRY — and against the originating spec, with automated AST-based complexity analysis across 30+ languages including Python, C, C++, Java, JavaScript, TypeScript, Go, Rust, Ruby, PHP, Swift, Kotlin, and more. Runs the comments (o-comments), bloat (o-unbloat), architecture (o-arch + o-arch-lint) and quality-floor (o-floor) passes as part of every review. Also checks every change against the standing Definition of Done.
-version: 2.4.1
+description: Review code against engineering principles — small functions, SOLID, KISS, DRY — and against the originating spec, with automated AST-based complexity analysis across 30+ languages. Runs the comments (o-comments), bloat (o-unbloat), architecture (o-arch + o-arch-lint) and quality-floor (o-floor) passes inside every review and writes one fix plan for o-fix. Use when asked to review code.
+version: 2.5.0
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
 user-invocable: true
-auto-trigger:
-  on-file-pattern: "*.ts,*.tsx,*.js,*.jsx,*.py,*.go,*.java,*.rb,*.rs,*.hx,*.c,*.cpp,*.cs,*.swift,*.kt,*.lua,*.dart,*.scala,*.hs,*.ex,*.erl,*.clj,*.fs,*.zig,*.jl,*.pl,*.r,*.groovy,*.adb"
-  not-when:
-    - path-matches: "node_modules/**"
-    - file-size-above: 5242880  # Skip files > 5MB
 ---
 
 # O-Review — Code Review Against Engineering Principles
 
 A review is seven passes over the same scope, and all seven write their findings into one plan file. Passes 3–6
 are child skills run **inside** this review — they are not follow-ups to recommend afterwards.
+
+`<skills>` below is the folder that holds every o-* skill, this one included.
 
 ## The Seven Passes
 
@@ -47,9 +44,9 @@ All scripts self-resolve via `__dirname` — run from any working directory by p
 
 ```bash
 # Run from anywhere (use whichever script path is available):
-node <path-to>/scripts/analyze-complexity.mjs --all       # AST-based complexity, length, params per function
-node <path-to>/scripts/check-duplication.mjs --all         # duplicated blocks (>5 lines)
-node <path-to>/scripts/save-plan.mjs --slug <topic> [--reviews <task file>] [--base <ref> | --all | --files a,b]   # create plan file with all analysis results
+node <skill>/scripts/analyze-complexity.mjs --all       # AST-based complexity, length, params per function
+node <skill>/scripts/check-duplication.mjs --all         # duplicated blocks (>5 lines)
+node <skill>/scripts/save-plan.mjs --slug <topic> [--reviews <task file>] [--base <ref> | --all | --files a,b]   # create plan file with all analysis results
 ```
 
 `save-plan.mjs` measures the change by default: the source files changed since the merge-base with `main` (else
@@ -58,19 +55,19 @@ another ref, `--files` names the files, and `--all` measures every tracked file.
 what was measured; an empty change reads `not measured`, never 0. `check-duplication.mjs` finds blocks repeated
 inside one file, not copies across files.
 
-**Auto-discovery**: Scripts resolve config and sibling scripts relative to the directory they sit in (ESM has no `__dirname`; it is derived from `import.meta.url`), so they work whether installed globally (`~/.agents/skills/o-review/scripts/`) or locally (`.agents/skills/<project>/o-review/scripts/`).
+`<skill>` is this skill's folder; its scripts find their own files from there, so run them from any directory.
 
 ## What To Do
 
 When invoked, determine the user's scope (single file, directory, or full project) and run all seven passes below
 into the one plan file. Do not ask the user what to do, and do not stop after the metrics.
 
-1. **Metrics pass — create the plan with all analyses**: `node <path-to>/scripts/save-plan.mjs --slug <topic>` — this runs complexity analysis (AST-based via tree-sitter), duplication check, AND refactor pattern detection in one step. It writes `E<nn>-review-plan.md` into the run folder and prints the full path. When the review is of one task (as o-implement's VERIFY step runs it), pass `--reviews <task file>`: the plan's property block then links the task it reviewed, so Obsidian shows the review hanging off it.
+1. **Metrics pass — create the plan with all analyses**: `node <skill>/scripts/save-plan.mjs --slug <topic>` — this runs complexity analysis (AST-based via tree-sitter), duplication check, AND refactor pattern detection in one step. It writes `E<nn>-review-plan.md` into the run folder and prints the full path. When the review is of one task (as o-implement's VERIFY step runs it), pass `--reviews <task file>`: the plan's property block then links the task it reviewed, so Obsidian shows the review hanging off it.
 2. **Principles pass** — write the complexity, SOLID, KISS, DRY and SRP findings into the plan as `[PRINCIPLE]` sections, using the format below.
-3. **Comments pass (part of the review, using o-comments)** — apply the rules in o-comments' pass card (`~/.agents/skills/o-comments/references/pass.md` for a global install, `.agents/skills/o-comments/references/pass.md` for a local one) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Report only — `o-fix` makes the edits.
-4. **Bloat pass (part of the review, using o-unbloat)** — apply the ladder and table in o-unbloat's pass card (`~/.agents/skills/o-unbloat/references/pass.md` for a global install, `.agents/skills/o-unbloat/references/pass.md` for a local one) to every reviewed file, in the card's o-review mode. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. A branch for a state the types or the internal callers rule out is reported here too, with the narrower representation named as the fix (o-unbloat's *Bloat, Unless…* row; the rule is *Make the Bad State Impossible* in o-implement's `SKILL.md`) — MAJOR when a caller must handle a failure the type could have excluded, MINOR when the check is only redundant, and never flagged where the input crosses a trust boundary. Never flag what o-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are o-fix's job.
-5. **Architecture pass (part of the review, using o-arch and o-arch-lint)** — apply the rules in o-arch's pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one) to every reviewed file, in the card's o-review mode: all five groups, report only. Then run `node ~/.agents/skills/o-arch-lint/scripts/arch-check.mjs --root .` (`.agents/skills/o-arch-lint/scripts/arch-check.mjs` for a local install). Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are o-fix's job.
-6. **Floor pass (part of the review, using o-floor)** — run `node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/o-floor/scripts/floor-guard.mjs` for a local install). It compares the quality floor declared at the merge base with the one on disk and reports the moves that lower the bar — a weakened threshold, a dropped rule, a new or extended exception, a silenced checker, unfinished work, a test made easier, a deleted test, or an assertion removed from a test that still exists. Report each under a `[Floor]` heading with its `rule`, `file` and `line`, and copy the guard's `rated` and `unrated` lists in verbatim: a repo with no `.o-skills/config/floor.json` is reported as unrated rather than as clean. Exit 2 is **not** a clean result — say the guard could not run and why. Report only: the fixes are o-fix's job.
+3. **Comments pass (part of the review, using o-comments)** — apply the rules in o-comments' pass card (`<skills>/o-comments/references/pass.md`) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Report only — `o-fix` makes the edits.
+4. **Bloat pass (part of the review, using o-unbloat)** — apply the ladder and table in o-unbloat's pass card (`<skills>/o-unbloat/references/pass.md`) to every reviewed file, in the card's o-review mode. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. A branch for a state the types or the internal callers rule out is reported here too, with the narrower representation named as the fix (o-unbloat's *Bloat, Unless…* row; the rule is *Make the Bad State Impossible* in o-implement's `SKILL.md`) — MAJOR when a caller must handle a failure the type could have excluded, MINOR when the check is only redundant, and never flagged where the input crosses a trust boundary. Never flag what o-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are o-fix's job.
+5. **Architecture pass (part of the review, using o-arch and o-arch-lint)** — apply the rules in o-arch's pass card (`<skills>/o-arch/references/pass.md`) to every reviewed file, in the card's o-review mode: all five groups, report only. Then run `node <skills>/o-arch-lint/scripts/arch-check.mjs --root .`. Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are o-fix's job.
+6. **Floor pass (part of the review, using o-floor)** — run `node <skills>/o-floor/scripts/floor-guard.mjs --root .`. It compares the quality floor declared at the merge base with the one on disk and reports the moves that lower the bar — a weakened threshold, a dropped rule, a new or extended exception, a silenced checker, unfinished work, a test made easier, a deleted test, or an assertion removed from a test that still exists. Report each under a `[Floor]` heading with its `rule`, `file` and `line`, and copy the guard's `rated` and `unrated` lists in verbatim: a repo with no `.o-skills/config/floor.json` is reported as unrated rather than as clean. Exit 2 is **not** a clean result — say the guard could not run and why. Report only: the fixes are o-fix's job.
 7. **Spec pass** — ask one question of the whole change: does the diff faithfully implement the originating spec,
    ticket, or task? Resolve the spec source in this order: (1) task or issue references in the commit messages;
    (2) a path the user passed to the review; (3) a plan or task artifact in the run folder (`E00-plan.md`, a task
@@ -81,7 +78,7 @@ into the one plan file. Do not ask the user what to do, and do not stop after th
    item with no record in the plan is MAJOR. Report findings under `[Spec]` in the finding format below.
 8. **Unmeasured analyses** — an analysis script that failed is not a zero; carry `save-plan.mjs`'s "Analysis incomplete" note into the plan rather than reporting a clean result.
 
-The complexity script auto-installs tree-sitter if missing (global install). Each script prints JSON, and the keys mislead on first read — `functions` is nested inside a file, and `duplicatedBlocks` is a **count**, not the list:
+The complexity script never installs anything on its own: when a grammar it needs is missing it prints the `npm install -g …` command and falls back to the regex engine for those files. Ask the user before running that command, or before rerunning with `--install-grammars`. Each script prints JSON, and the keys mislead on first read — `functions` is nested inside a file, and `duplicatedBlocks` is a **count**, not the list:
 
 ```
 analyze-complexity.mjs   { files: [ { file, functionCount, functions: [ { name, line, length, complexity, paramCount, issues[] } ] } ],
@@ -100,7 +97,7 @@ For language-specific review criteria, see `references/lang-typescript.md` (Type
 (Rust) — when the change is one of those languages, read its pack and apply it under
 `[PRINCIPLE]`; for a language with no pack, say so rather than inventing criteria.
 
-**After running the scripts:** The plan file path is printed by `save-plan.mjs`. Open that file with `view` or `edit`, then write your review content directly into it using the format below. **Do not use MCP resources to read/write plan files — they don't exist.**
+**After running the scripts:** The plan file path is printed by `save-plan.mjs`. Open that file with your file tools, then write your review content directly into it using the format below. **Do not use MCP resources to read/write plan files — they don't exist.**
 
 ## Related Skills
 
@@ -162,10 +159,10 @@ describe it as it now is.
 Produce a review and save it into the run folder. Use `save-plan.mjs` to create the directory and generate a numbered plan file:
 
 ```bash
-node <path-to>/scripts/save-plan.mjs --slug <topic>
+node <skill>/scripts/save-plan.mjs --slug <topic>
 ```
 
-The script prints the full path. Open that file with `edit` or `write`, then insert your review content using this format — all seven passes get their own section, and the pass headings below are written even when a pass found nothing:
+The script prints the full path. It already carries every pass heading, each with a pending line. Open it with your file tools and replace each pending line using this format — all seven passes get their own section, and the pass headings below are written even when a pass found nothing:
 
 ```markdown
 # Code Review — Fix Plan

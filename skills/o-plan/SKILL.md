@@ -1,7 +1,7 @@
 ---
 name: o-plan
-description: Plan before coding — research the project and the web first, ask short plain questions until the user is sure, propose three approaches with trade-offs, then write a layered spec (contract, invariant, test) as a graph-driven scenario with guards and a memory file; gate on user approval
-version: 2.3.1
+description: Plan before coding — research the project and the web first, ask short plain questions until the user is sure, propose three approaches with trade-offs, then write a layered spec (contract, invariant, test) as a graph-driven scenario with guards and a memory file; gate on user approval. Use when asked for a spec.
+version: 2.3.2
 author: Community
 tags: [plan, spec, requirements, architecture, clarification, testable, layers, prototype]
 user-invocable: true
@@ -10,6 +10,8 @@ user-invocable: true
 # O-Plan — Layered Spec-Driven Planning
 
 Do not write any code until the spec is approved by the user. Pipeline order: `o-plan → o-decompose → o-implement`.
+
+`<skill>` below is this skill's folder.
 
 ## When to use
 

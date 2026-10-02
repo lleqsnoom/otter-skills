@@ -1,16 +1,17 @@
 {
   "skill": "o-debug",
   "expected_behavior": [
-    "Never skip this step. It is required even for behavioral bugs with no stack trace (e.g., \"SSE event not triggered\", \"wrong value displayed\"). analyze.mjs will create empty hypothesis lists in that case, but the docs MUST exist before any further work.",
-    "node <path-to>/scripts/analyze.mjs --error \"TypeError: Cannot read property 'foo' of undefined\" [--file src/main.js]",
-    "Execute `analyze.mjs` with the bug description. This is mandatory and must complete before Step 1. The generated docs are the handoff contract for o-fix later. If auto-reproduction fails, write one manually — never proceed without it.",
-    "`analyze.mjs` generates `repro-*.js` for known error patterns. Run it to confirm the error triggers locally. If auto-reproduction fails, write one manually — never proceed without it.",
-    "The loop is the skill. A tight pass/fail signal that goes red on *this* bug is what every later step consumes, so treat the repro as a product: tighten it (faster, sharper assertion, more deterministic), and for a flaky bug raise the reproduction rate until it is debuggable instead of chasing a clean repro. Name one command that you have already run and that goes red, before Step 2. Pick the construction and the tightening moves from `references/feedback-loops.md`; when no loop can be built, stop and ask for artifacts or instrumentation — never hypothesise without one."
+    "analyze.mjs is run first and writes E<nn>-debug.md and E<nn>-fix-plan.md in one run folder; it executes nothing, so the bug text is never run as code.",
+    "Before any hypothesis is tested, there is one named command that runs the project's own code and was seen to go red on this bug.",
+    "The reproduction is saved in the run folder as E<nn>-verify.<ext> so o-fix can run it after each fix.",
+    "Hypotheses are marked Confirmed or Rejected in the session file until a single root cause remains.",
+    "The fix removes the cause; no try/catch that swallows the error, no disabled reporting, no forced exit 0 — and the reproduction exits 0 afterwards."
   ],
   "source": [
-    "Critical: Run analyze.mjs First (Always)",
-    "Usage",
-    "0. Initialize — Run analyze.mjs",
-    "1. Reproduce Locally"
+    "Step 0: open the session with analyze.mjs",
+    "Step 1: build the reproduction",
+    "Step 2: hypothesize and test",
+    "Step 3: fix the root cause (not the symptom)",
+    "Step 4: verify"
   ]
 }

@@ -141,31 +141,29 @@ function buildGrammarList(hasParser, hasLangs) {
 }
 
 /**
- * Install grammars globally via npm. Returns the list of installed packages, or null on failure.
+ * Install grammars globally via npm. Runs only on --install-grammars: a review that changes the machine's global
+ * packages unasked is a side effect nobody signed up for, so by default the command is printed for the user to run.
+ * Returns the list of installed packages, or null on failure.
  */
 async function installGrammars(neededGrammars) {
-  console.error("[o-review] Installing web-tree-sitter globally for AST-based analysis...");
+  console.error("[o-review] Installing tree-sitter grammars globally (--install-grammars)...");
 
   try {
-    cp.execSync(
-      `npm install -g --no-audit --no-fund ${neededGrammars.join(" ")}`,
-      { stdio: "pipe" }
-    );
+    cp.execFileSync("npm", ["install", "-g", "--no-audit", "--no-fund", ...neededGrammars], { stdio: "pipe" });
     console.error("[o-review] Installed globally:", neededGrammars.join(", "));
   } catch {
-    console.error(
-      "[o-review] Failed to auto-install tree-sitter. Install manually:\n" +
-      `  npm install -g web-tree-sitter ${neededGrammars.filter(g => g !== 'web-tree-sitter').join(' ')}`
-    );
+    console.error(`[o-review] Failed to install tree-sitter. Install manually:\n  ${installCommand(neededGrammars)}`);
     return null;
   }
 
   return ["web-tree-sitter", ...neededGrammars.filter((g) => g.startsWith("tree-sitter-"))];
 }
 
+const installCommand = (neededGrammars) => `npm install -g ${neededGrammars.join(" ")}`;
+
 /**
- * Auto-install web-tree-sitter + needed language grammars if missing.
- * Runs `npm install --save-dev` non-interactively.
+ * Find the tree-sitter grammars these files need and are missing. Without --install-grammars it only reports them,
+ * and the analysis falls back to the regex engine for what it cannot parse.
  */
 async function ensureTreeSitterInstalled() {
   // Collect extensions from input files to determine which grammars are needed.
@@ -190,11 +188,14 @@ async function ensureTreeSitterInstalled() {
   const { hasParser, hasLangs } = detectInstalledGrammars(extSet);
   const neededGrammars = buildGrammarList(hasParser, hasLangs);
 
-  // If everything is installed, skip install
   if (!neededGrammars) return [];
 
-  // Attempt installation with fallback
-  return (await installGrammars(neededGrammars)) || [];
+  if (process.argv.slice(2).includes("--install-grammars")) return (await installGrammars(neededGrammars)) || [];
+  console.error(
+    "[o-review] tree-sitter grammars missing; files they cover use the regex fallback. Not installed automatically —\n" +
+    `ask before running:\n  ${installCommand(neededGrammars)}\n(or rerun with --install-grammars once the user agrees)`,
+  );
+  return [];
 }
 
 /**
@@ -850,9 +851,7 @@ function warnAboutMissingTreeSitter(files) {
   const nonJsTs = files.filter((f) => !/\.(js|ts|jsx|tsx|mjs|cjs)$/.test(f));
   if (nonJsTs.length > 0) {
     console.error(
-      "Warning: tree-sitter not available. Non-JS/TS files will use regex-based analysis.\n" +
-      "Install web-tree-sitter for accurate multi-language AST parsing:\n" +
-      "  npm install --save-dev web-tree-sitter"
+      "Warning: tree-sitter not available. Non-JS/TS files will use regex-based analysis."
     );
   }
 }

@@ -1,11 +1,11 @@
 {
   "skill": "o-arch-lint",
   "expected_behavior": [
-    "Detection only. It never rewrites code, renames a file, or moves a module. It opens no network connection",
-    "sees the tree as it is rather than only the diff.",
-    "It prints a declaration to stdout and writes it only where nothing would be replaced, or with `--force`. One",
-    "names the ones the declaration cannot cover, and `unplaced` counts the files no declared layer claims (a",
-    "| `boundaries` | A declared layer root is not on disk, or a `naming` rule targets a layer the config never declares — the declaration and the tree have drifted |"
+    "The checker only reads: it never edits, renames or moves a file, and it opens no network connection.",
+    "It checks the whole tree as it stands, not only the files in the diff.",
+    "scaffold.mjs prints a proposed arch.json and writes it only when no declaration exists, or when --force is passed.",
+    "Every violation is reported as file:line with a rule name, and the run exits 1 when there is at least one.",
+    "Files no declared layer claims, and rules the declaration cannot cover, are listed as unrated instead of passing silently."
   ],
   "source": [
     "o-arch-lint",

@@ -129,3 +129,20 @@ test('list_projects reports the other root sources too', async () => {
     fixture.cleanup();
   }
 });
+
+test('an omitted project id means the repository the server was started in, the deepest when they nest', async () => {
+  const { projectOrThrow } = await import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'context.mjs')).href);
+  const context = { projects: [{ id: 'outer', repoPath: '/w/outer' }, { id: 'inner', repoPath: '/w/outer/inner' }, { id: 'other', repoPath: '/w/other' }] };
+
+  assert.equal(projectOrThrow(context, undefined, '/w/outer/src').id, 'outer');
+  assert.equal(projectOrThrow(context, undefined, '/w/outer/inner/lib').id, 'inner');
+  assert.throws(() => projectOrThrow(context, undefined, '/w/outerness'), /no project given/, 'a sibling with a longer name is not inside');
+});
+
+test('an omitted project id outside every repository names the ids to pass instead', async () => {
+  const { projectOrThrow } = await import(pathToFileURL(path.join(ROOT, 'src', 'mcp', 'context.mjs')).href);
+  const context = { projects: [{ id: 'a', repoPath: '/w/a' }, { id: 'b', repoPath: '/w/b' }] };
+
+  assert.throws(() => projectOrThrow(context, undefined, '/elsewhere'), /no project given.*pass project, one of a, b/);
+  assert.equal(projectOrThrow(context, 'b', '/elsewhere').id, 'b', 'a named id still wins');
+});

@@ -1,7 +1,7 @@
 ---
 name: o-reproduce
-description: Generates minimal platform-aware reproducible test cases from triage briefs — exits 1 when bug is present, exits 0 after fix applied
-version: 1.0.1
+description: Generates minimal platform-aware reproducible test cases from triage briefs — exits 1 when bug is present, exits 0 after fix applied. Use when asked to make a repro for a reported bug.
+version: 1.0.2
 author: Community
 tags: [debugging, reproduction, testing, platform-specific]
 user-invocable: true
@@ -11,10 +11,12 @@ user-invocable: true
 
 **Read `<run folder>/E<nn>-triage.md` to determine platform and generate minimal reproducible test case.**
 
+`<skill>` below is this skill's folder.
+
 ## Artifact Location
 
 ```bash
-node <path-to-o-reproduce-skill>/scripts/<repro-<platform>.mjs> '<error description>'
+node <skill>/scripts/<repro-<platform>.mjs> '<error description>'
 ```
 
 ## Workflow

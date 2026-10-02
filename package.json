@@ -19,6 +19,7 @@
   "scripts": {
     "test": "npm run validate:skills && node --test --test-concurrency=1 test/*.test.cjs",
     "validate:skills": "node scripts/validate-skills.mjs",
+    "eval": "node scripts/eval-run.mjs",
     "install": "node scripts/install.mjs"
   },
   "dependencies": {

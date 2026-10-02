@@ -9,7 +9,7 @@ Read this when o-implement's VERIFY step reviews one task. A review the user ask
 
 ## Steps
 
-1. **Metrics.** `node <o-review>/scripts/save-plan.mjs --slug <run topic> --reviews <task file>` creates
+1. **Metrics.** `node <skills>/o-review/scripts/save-plan.mjs --slug <run topic> --reviews <task file>` creates
    `E<nn>-review-plan.md` in the run folder and prints its path. Its `Scope:` line names the files measured;
    rerun with `--files` if the task's differ.
 2. **Principles** under `[PRINCIPLE]`: functions describable in one sentence, complexity and length within
@@ -27,7 +27,7 @@ Read this when o-implement's VERIFY step reviews one task. A review the user ask
 7. **Spec** under `[Spec]`: does the diff implement the originating spec or task? Resolve and judge per
    `SKILL.md`'s Spec pass; on no source, write `no spec available`.
 
-`<skills>` is `~/.agents/skills` for a global install, `.agents/skills` for a local one.
+`<skills>` is the folder that holds every o-* skill, this one included.
 
 ## Rules
 

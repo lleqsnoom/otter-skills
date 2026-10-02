@@ -1,7 +1,7 @@
 ---
 name: o-roast
 description: Roast any non-code artifact — articles, analyses, specs, epics, tasks, research, or another skill — where the reviewer fact-checks the claims, attacks the reasoning, proposes better angles, and scores it on a weighted, anchored rubric computed by a script. Use for "roast this", "poke holes in", "review this spec/skill/analysis", or any request for a checked number and reason; the report names its reviewer (self or independent). For source code use o-review instead.
-version: 1.5.1
+version: 1.5.2
 author: Community
 tags: [review, critique, roast, research, article, analysis, epic, task, evaluation, scoring, fact-check]
 user-invocable: true
@@ -107,8 +107,7 @@ rests on it.
 Open `references/rubric.md` and score each dimension of the profile with a whole number 1–5. Then
 run the scorer — it is the source of truth for the total, the band, and the completeness ratio. The
 scripts are in the `scripts/` folder beside this `SKILL.md`: use the skill's base directory your
-host gives you, wherever the skill is installed (`~/.agents/skills/o-roast`, a project's
-`.agents/skills/o-roast`, or another CLI's skills folder):
+host gives you, wherever the skill is installed (globally, in a project, or in a plugin):
 
 ```bash
 X=<this skill's folder>/scripts

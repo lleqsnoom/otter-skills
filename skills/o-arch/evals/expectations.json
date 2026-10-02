@@ -1,10 +1,11 @@
 {
   "skill": "o-arch",
   "expected_behavior": [
-    "A stable module never imports a volatile one. If it must, the abstraction is missing: define the port",
-    "Never silence the checker with it. An `allowed_dependencies` entry that exists only to permit a mistake",
-    "Report only. Only `o-fix` applies a finding, and only one it read from a review plan.",
-    "Never restate a rule a sibling owns: `o-unbloat` decides whether a unit should exist, `o-review` defines the"
+    "A dependency always points from the volatile module to the stable one; when a stable module needs a volatile one, the fix is a port defined on the stable side, not the import.",
+    "A directory or file named utils, helpers, common, shared, tools, misc or other is reported, with a domain name proposed in its place.",
+    "An arch.json exception is never added just to make a wrong-way import pass the checker.",
+    "As a pass inside a review the skill only reports; edits are made by o-fix from the review plan.",
+    "Questions another skill owns — whether code should exist, or how review findings are graded — are left to that skill rather than answered twice."
   ],
   "source": [
     "4. Dependencies",

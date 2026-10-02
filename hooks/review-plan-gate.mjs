@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * The review-plan gate: a hook that refuses an o-review plan missing one of the four pass headings.
- * o-review's prose already says a plan without [Comments], [Bloat], [Architecture] and [Floor] is
- * incomplete, not clean; this hook makes that enforced rather than remembered, exiting 1 with one
- * actionable line per missing heading and 0, silently, on a complete plan.
+ * The review-plan gate: refuses an o-review plan missing one of the five pass headings. o-review's prose already
+ * says a plan without [Comments], [Bloat], [Architecture], [Floor] and [Spec] is incomplete, not clean; this makes
+ * that enforced rather than remembered, with one actionable line per missing heading.
  *
- * The host that runs it is not fixed: the plan text arrives as raw stdin, as a positional file path,
- * or as the JSON payload a hook contract hands over (tool_input.content, or tool_input.file_path read
- * from disk). Clients differ in which event fires on the plan write and how they pass the file, so the
- * gate accepts all three and judges only the text.
+ * Run by hand, it judges the text it is given — raw stdin or a file path argument — and exits 1 on a gap. Run as
+ * a PostToolUse hook (hooks/hooks.json), it receives the tool payload, ignores every file that is not a
+ * `*-review-plan.md`, and exits 2 on a gap: the code Claude Code hands back to the model, so the agent that wrote
+ * the plan is the one told to finish it. save-plan.mjs writes every heading before the review starts, so a plan
+ * filled in one edit at a time never trips the gate halfway.
  */
 
 import { readFileSync } from "node:fs";
@@ -19,7 +19,10 @@ const HEADINGS = [
   ["[Bloat]", "bloat pass (o-unbloat)"],
   ["[Architecture]", "architecture pass (o-arch)"],
   ["[Floor]", "floor pass (o-floor)"],
+  ["[Spec]", "spec pass"],
 ];
+
+const REVIEW_PLAN = /-review-plan\.md$/;
 
 const headingLines = (text, heading) =>
   text.split("\n").some((line) => line.replace(/^[ \t]*(#+[ \t]*)?/, "").startsWith(heading));
@@ -42,29 +45,39 @@ const readFileOrNull = (file) => {
 
 const nonEmpty = (value) => typeof value === "string" && value.trim() !== "";
 
-const planFromPayload = (payload) => {
-  const input = payload?.tool_input;
-  if (nonEmpty(input?.content)) return input.content;
-  if (nonEmpty(input?.file_path)) return readFileOrNull(input.file_path);
-  return null;
-};
-
-const planText = (args, stdin) => {
-  const file = args[0];
-  if (file) return readFileOrNull(file) ?? stdin;
+const parsePayload = (stdin) => {
   const trimmed = stdin.trim();
-  if (!trimmed.startsWith("{")) return stdin;
+  if (!trimmed.startsWith("{")) return null;
   try {
-    return planFromPayload(JSON.parse(trimmed)) ?? stdin;
+    const payload = JSON.parse(trimmed);
+    return payload && typeof payload === "object" && "tool_input" in payload ? payload : null;
   } catch {
-    return stdin;
+    return null;
   }
 };
 
-const stdin = () => readFileOrNull(0) ?? "";
+/** What a hook payload asks the gate to judge: the plan text, or null when the write was not a review plan. */
+const planFromPayload = (payload) => {
+  const input = payload.tool_input ?? {};
+  if (!nonEmpty(input.file_path) || !REVIEW_PLAN.test(input.file_path)) return null;
+  if (nonEmpty(input.content)) return input.content;
+  return readFileOrNull(input.file_path);
+};
 
-const text = planText(process.argv.slice(2), stdin());
-const gaps = missing(text);
-if (gaps.length === 0) process.exit(0);
-for (const line of linesFor(gaps)) console.error(line);
-process.exit(1);
+const judge = (text, failCode) => {
+  const gaps = missing(text ?? "");
+  if (gaps.length === 0) process.exit(0);
+  for (const line of linesFor(gaps)) console.error(line);
+  process.exit(failCode);
+};
+
+const stdin = readFileOrNull(0) ?? "";
+const [file] = process.argv.slice(2);
+const payload = file ? null : parsePayload(stdin);
+
+if (file) judge(readFileOrNull(file) ?? stdin, 1);
+else if (payload) {
+  const plan = planFromPayload(payload);
+  if (plan === null) process.exit(0);
+  judge(plan, 2);
+} else judge(stdin, 1);

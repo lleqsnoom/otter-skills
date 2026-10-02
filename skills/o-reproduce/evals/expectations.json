@@ -1,10 +1,10 @@
 {
   "skill": "o-reproduce",
   "expected_behavior": [
-    "Standalone Node.js script using only built-in modules. Minimal and deterministic.",
-    "not the bug. You must replace the placeholder block with the real trigger taken from the",
-    "not been customized: treat it as not done. Only a script that exits 1 for the *bug's own",
-    "Zero npm dependencies — only `node:fs/promises`, `path`, `child_process` built-ins"
+    "The reproduction is a standalone Node.js script that uses only built-in modules and needs no npm install.",
+    "The placeholder block from the template is replaced with the real trigger from the triage brief; an uncustomized template is treated as not done.",
+    "The script exits 1 while the bug is present for the bug's own reason, and exits 0 once it is fixed.",
+    "The script is small and deterministic, so the same run gives the same result."
   ],
   "source": [
     "Backend (repro-backend.mjs)",

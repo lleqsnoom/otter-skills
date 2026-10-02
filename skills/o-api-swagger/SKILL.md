@@ -1,7 +1,7 @@
 ---
 name: o-api-swagger
-description: Convert an API design draft to OpenAPI YAML — generate a valid spec from markdown drafts with endpoints, schemas, and auth definitions
-version: 1.0.1
+description: Convert an approved API draft into an OpenAPI 3 YAML spec with schemas, parameters and security definitions. Use when asked for an OpenAPI or Swagger file.
+version: 1.0.2
 author: Community
 tags: [openapi, swagger, api-design, yaml, openapi-3]
 user-invocable: true
@@ -41,15 +41,10 @@ Convert a markdown API design draft produced by `o-api-draft` into a valid OpenA
 Generate the OpenAPI YAML file using the script (or manually):
 
 ```bash
-# Global install:
-node ~/.agents/skills/o-api-swagger/scripts/save-spec.mjs --topic <slug>
-
-# Local install:
-node ./.agents/skills/o-api-swagger/scripts/save-spec.mjs --topic <slug>
-
-# Auto-discovery — pass any path to save-spec.mjs:
-node /absolute/path/to/save-spec.mjs --topic <slug>
+node <skill>/scripts/save-spec.mjs --topic <slug>
 ```
+
+`<skill>` is this skill's folder.
 
 Output: `<run folder>/E<nn>-api-spec.yaml` (relative to CWD).
 

@@ -1,11 +1,11 @@
 {
   "skill": "o-humanize",
   "expected_behavior": [
-    "The number is the source of truth: a rewrite is never trusted until",
-    "block stays exactly as it was. Simplify the *language*, never the *content*.",
-    "Never introduce new filler. If a phrase carries no meaning, remove it.",
-    "Keep structure. Headings, lists, and markdown formatting stay; only the",
-    "By default, present the simplified text and the report. Only overwrite the"
+    "The readability score is measured before and after, and the rewrite is accepted only when the numbers show it got simpler.",
+    "Every fact, number, name, URL and code block survives the rewrite unchanged; only the language around them is simplified.",
+    "The rewrite adds no new filler, and phrases that carry no meaning are removed.",
+    "Headings, lists and markdown formatting survive the rewrite.",
+    "By default the simplified text and the report are shown to the user; the original file is overwritten only when asked."
   ],
   "source": [
     "o-humanize",

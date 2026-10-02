@@ -1,11 +1,11 @@
 {
   "skill": "o-walkthrough",
   "expected_behavior": [
-    "The agent cannot click through a vendor dashboard, paste a secret into a CI settings page, or approve a",
-    "hidden secret entry, `.env` upserts, confirmation gates, a closing summary. Your job is only to scope the",
-    "stages and author them. Never hand-edit the library above the `STAGES` marker; that consistency is the point.",
-    "The script is ephemeral by default: built for one run, deleted when done. Commit it only when the user wants a",
-    "`vars.*` reference in CI workflows — each is a value the script must produce. For a migration: the current"
+    "The script covers only steps a person must do — a vendor dashboard, a CI secret, an approval — and never steps the agent could automate.",
+    "Secrets are typed with hidden entry, and each value lands where the scope said it goes — .env, a CI secret, or both.",
+    "Each stage ends at a confirmation gate, and the script closes with a summary of what was set.",
+    "The shared library above the STAGES marker is left untouched; only the stages are authored.",
+    "The script is deleted after one run unless the user asks to keep it."
   ],
   "source": [
     "o-walkthrough",

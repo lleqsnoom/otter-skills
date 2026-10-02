@@ -15,7 +15,7 @@ import { spawn, execSync } from "node:child_process";
 import { readdir, readFile, writeFile, mkdir, rm, appendFile, copyFile } from "node:fs/promises";
 import { existsSync, createWriteStream, realpathSync } from "node:fs";
 import { join, basename, dirname, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 function arg(name, def) {
   const eq = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -45,8 +45,13 @@ const TASK_FILE = "TASK.md";
 // config unless these files travel with it.
 const PARENT_CONFIG_NAMES = [".crushrc", "crushrc", ".crush.json", "crush.json"];
 
-const DEFAULT_PROMPT = `You are one parallel coding agent working in an isolated copy of the repository. Read TASK.md at the repository root: it contains your complete task. Implement it fully. Follow the task's own workflow (TDD if it names tests). Do not modify files outside the task's scope. When finished, run the project tests. Then commit all changes with one conventional commit message (type(scope): description). Leave the working tree clean, with no uncommitted changes. If you cannot complete the task, still leave the tree clean and state what is missing in your final answer.`;
-const PROMPT = arg("prompt", DEFAULT_PROMPT);
+// Sibling skills sit beside this one in every install, so the worker is handed o-commit's script by absolute path.
+const COMMIT_SCRIPT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "o-commit", "scripts", "commit.mjs");
+
+export const defaultPrompt = (commitScript = COMMIT_SCRIPT) =>
+  `You are one parallel coding agent working in an isolated copy of the repository. Read TASK.md at the repository root: it contains your complete task, including the test seams already agreed with the user. Implement it test-first: a failing test at those seams, the least code that passes it, then a refactor. You cannot ask the user anything; if the task leaves a decision open that the code cannot settle, stop and state it in your final answer instead of guessing. Do not modify files outside the task's scope. Run the narrowest tests after each change and the full test suite once at the end. Commit with \`node ${commitScript} "<type(scope): description>"\` — never with git commit directly. Leave the working tree clean, with no uncommitted changes. If you cannot complete the task, still leave the tree clean and state what is missing in your final answer.`;
+
+const PROMPT = arg("prompt", defaultPrompt());
 
 const run = (cmd) =>
   execSync(cmd, { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).trim();

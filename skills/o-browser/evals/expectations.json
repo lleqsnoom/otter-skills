@@ -1,10 +1,10 @@
 {
   "skill": "o-browser",
   "expected_behavior": [
-    "refuses to double-launch if CDP is already answering on the port;",
-    "uses a dedicated profile at `~/.o-skills/chrome-profile` (never your default Chrome profile, so a running Chrome does not block debugging);",
-    "Never point `--profile-dir` at the user's real Chrome profile.",
-    "Never kill the user's existing browser processes."
+    "If a browser already answers on the debugging port, the skill attaches to it instead of launching a second one.",
+    "Chrome is launched with a dedicated profile under ~/.o-skills/chrome-profile, never the user's own profile.",
+    "The user's running browser processes are never killed.",
+    "The app URL comes from the README, config or environment, and the dev server is checked before the browser opens."
   ],
   "source": [
     "3. Launch the browser",

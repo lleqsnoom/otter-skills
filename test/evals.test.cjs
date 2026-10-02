@@ -2,9 +2,11 @@
 
 /**
  * Behavioral expectations are the eval surface of a skill: `evals/expectations.json` states what the
- * skill must do in claims checkable from run artifacts. This runner demands one file per skill — a
- * skill without expectations is a skill nobody has said how to check — and pins the shape, so the
- * eval surface grows with the skill surface forever.
+ * skill must do in claims checkable from run artifacts, and o-autoreflection's quality judge reads them
+ * against real sessions. This runner demands one file per skill — a skill without expectations is a
+ * skill nobody has said how to check — and pins the shape. A claim must be a whole sentence in its own
+ * words: a line lifted out of SKILL.md, or cut off mid-sentence, gives the judge nothing the skill file
+ * does not already say.
  */
 
 const { describe, it } = require("node:test");
@@ -45,5 +47,19 @@ describe("behavioral expectations", () => {
       assert.ok(Array.isArray(parsed.source) && parsed.source.length > 0,
         `${skill} must cite the SKILL.md sections its claims trace to`);
     });
+
+    it(`${skill} expectations say what a run does, in their own words`, () => {
+      const parsed = JSON.parse(fs.readFileSync(path.join(SKILLS_DIR, skill, "evals", "expectations.json"), "utf8"));
+      const body = flat(fs.readFileSync(path.join(SKILLS_DIR, skill, "SKILL.md"), "utf8"));
+      for (const claim of parsed.expected_behavior) {
+        assert.match(claim.trim(), /[.!?]["')`]?$/, `a claim is one or more whole sentences, not a fragment: ${claim}`);
+        assert.ok(!body.includes(flat(claim)), `a claim copied out of SKILL.md checks nothing the file does not already say: ${claim}`);
+      }
+    });
   }
 });
+
+/** Text without emphasis marks and with whitespace runs collapsed, so a line re-wrapped or un-bolded is still the same text. */
+function flat(text) {
+  return text.replace(/\*/g, "").replace(/\s+/g, " ").trim();
+}

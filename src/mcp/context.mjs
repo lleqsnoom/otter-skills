@@ -1,3 +1,5 @@
+import { resolve, sep } from 'node:path';
+
 import { boardForProject } from '../server/board.mjs';
 import { resolveRoots } from '../server/config.mjs';
 import { scanRoot } from '../server/scan.mjs';
@@ -27,12 +29,27 @@ export function resolveProjects({ argv, env, cwd } = {}) {
   return { ...resolved, projects, failures };
 }
 
-/** A project named by id, or a refusal that says which ids would have worked. */
-export function projectOrThrow(context, id) {
+/** The project whose repository holds `cwd`, the deepest one when repositories nest. */
+function projectAt(projects, cwd) {
+  const inside = projects.filter(({ repoPath }) => cwd === repoPath || cwd.startsWith(`${repoPath}${sep}`));
+  return inside.sort((a, b) => b.repoPath.length - a.repoPath.length)[0] ?? null;
+}
+
+/**
+ * A project named by id, or a refusal that says which ids would have worked. Every tool declares `project` optional,
+ * and a client starts the server in the repository it is working in, so an omitted id means that repository.
+ */
+export function projectOrThrow(context, id, cwd = process.cwd()) {
+  const known = context.projects.map((candidate) => candidate.id).sort();
+  if (id === undefined) {
+    const here = projectAt(context.projects, resolve(cwd));
+    if (here) return here;
+    if (!known.length) throw new Error('no project given, and this machine reads no repositories');
+    throw new Error(`no project given, and ${cwd} is in none of them: pass project, one of ${known.join(', ')}`);
+  }
+
   const project = context.projects.find((candidate) => candidate.id === id);
   if (project) return project;
-
-  const known = context.projects.map((candidate) => candidate.id).sort();
   if (!known.length) throw new Error(`unknown project ${id}: this machine reads no repositories`);
   throw new Error(`unknown project ${id}: known ids are ${known.join(', ')}`);
 }

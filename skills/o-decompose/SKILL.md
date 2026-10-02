@@ -1,7 +1,7 @@
 ---
 name: o-decompose
-description: Decompose an approved plan (or an older run's epic) into layer-based tasks, triaging every candidate first — each candidate is decided as a task in this run, a run of its own (o-plan), an analysis (o-analyze), or dropped; outputs <run folder>/E<nn>-triage.md and <run folder>/E<nn>-tasks/ for handoff to o-implement
-version: 3.0.1
+description: Decompose an approved plan (or an older run's epic) into layer-based tasks, triaging every candidate first — each candidate is decided as a task in this run, a run of its own (o-plan), an analysis (o-analyze), or dropped; outputs <run folder>/E<nn>-triage.md and <run folder>/E<nn>-tasks/ for handoff to o-implement. Use when asked to break a spec into tickets.
+version: 3.0.2
 author: Community
 tags: [decompose, tasks, layers, triage, verdict, child-run, definition-of-done, DOD, test-plan, atomic, estimation, self-contained, incremental]
 user-invocable: true
@@ -10,6 +10,8 @@ user-invocable: true
 # O-Decompose — Triaged, Layer-Based Task Decomposition
 
 One task file per sub-step, organized by layer. Each task is a self-contained, testable increment that builds on the previous one. Before any file is written, every candidate is **triaged**: a candidate that hides its own contract gets a run of its own instead of a task in this one. Pipeline order: `o-plan → o-decompose → o-implement`.
+
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
 
 ## When to use
 
@@ -34,7 +36,7 @@ Layer 3 (Polish)       → Task 3.1: add monitoring + documentation
 
 **Key rule:** After any task completes, the system must be in a working state. You should never have "Task 1 done but nothing runs yet."
 
-**Read the architecture before cutting.** `o-arch`'s pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one) decides placement, naming, responsibility and dependency direction, and `.o-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the size cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
+**Read the architecture before cutting.** `o-arch`'s pass card (`<skills>/o-arch/references/pass.md`) decides placement, naming, responsibility and dependency direction, and `.o-skills/config/arch.json` declares the boundaries the repo allows. A candidate that would cross a declared boundary does not fit the size cap at rule 7 below: triage it as a run of its own rather than writing it as one task's step.
 
 ## Triage Rule
 
@@ -58,8 +60,8 @@ Two edges catch most mistakes: over the cap with no contract is several tasks (a
 2. **Draft the candidates** — one id per step, `L<N>-T<M>`, registered as you go:
 
 ```bash
-node <path-to-triage.mjs> start --dir <run folder> [--source <plan|epic artifact>]
-node <path-to-triage.mjs> add   --dir <run folder> --task L0-T1 --title "one level, one sprite, arrow keys move it"
+node <skill>/scripts/triage.mjs start --dir <run folder> [--source <plan|epic artifact>]
+node <skill>/scripts/triage.mjs add   --dir <run folder> --task L0-T1 --title "one level, one sprite, arrow keys move it"
 ```
 
    `start` writes a ledger for the artifact it read and records that artifact as the ledger's `source`. Every later command follows the newest plan or epic in the run, so an ordinary run never needs the flag. A run that numbers two decompositions keeps one ledger each — pass `--source <artifact>` to reach the older one — and each ledger verifies against **its own** tasks rung, not the folder the other decomposition wrote.
@@ -67,12 +69,12 @@ node <path-to-triage.mjs> add   --dir <run folder> --task L0-T1 --title "one lev
 3. **Triage every candidate** — the pass this skill exists for:
 
 ```bash
-node <path-to-triage.mjs> list   --dir <run folder>
+node <skill>/scripts/triage.mjs list   --dir <run folder>
 node <o-plan skill>/scripts/scenario.mjs    start --slug platform-physics
-node <path-to-triage.mjs> decide --dir <run folder> --task L1-T1 --verdict plan \
+node <skill>/scripts/triage.mjs decide --dir <run folder> --task L1-T1 --verdict plan \
   --why "own contract: gravity, collision resolution, tilemap format" \
   --evidence "src/game/loop.js:1 - no collision code exists" --child platform-physics
-node <path-to-triage.mjs> decide --dir <run folder> --task L0-T1 --verdict task --why "one change, one check, 3h"
+node <skill>/scripts/triage.mjs decide --dir <run folder> --task L0-T1 --verdict task --why "one change, one check, 3h"
 ```
 
    1. **Analysis** — read the layer entry, search the repository where the candidate lands, walk the signals. Absence is evidence too: no collision code anywhere is a finding.
@@ -87,11 +89,11 @@ node <o-analyze skill>/scripts/scenario.mjs start --slug leaderboard-backend
    4. **Decide** — one verdict per candidate, with its reason, before any task file is written. A candidate that was never registered cannot be decided, and a verdict can be revised by deciding again — which is also how the child run's folder gets into the report when the run was opened afterwards.
    5. **Bound the recursion** — one level. A candidate inside a child run that demands its own plan means the parent's layers were cut too coarsely: stop and say so at the gate instead of spawning a grandchild. If more than half the candidates come back `plan`, the layers were written as a component list — re-cut them, or tell the gate you are not going to and why. What the pass may not do is hand out the fleet silently.
 
-4. **Create the tasks directory and write the files** — `node <path-to-save-tasks.mjs> --epic <slug>`, then one file per `task` verdict, named after its id. See Task Format below. Each layer becomes 1-3 task files. The folder is numbered one rung above the plan it was cut from (`E01-tasks/` when no triage was recorded, `E02-tasks/` after one), so the rung says which artifact the tasks came from rather than a fixed number saying it.
+4. **Create the tasks directory and write the files** — `node <skill>/scripts/save-tasks.mjs --epic <slug>`, then one file per `task` verdict, named after its id. See Task Format below. Each layer becomes 1-3 task files. The folder is numbered one rung above the plan it was cut from (`E01-tasks/` when no triage was recorded, `E02-tasks/` after one), so the rung says which artifact the tasks came from rather than a fixed number saying it.
 5. **Verify** — record the stop:
 
 ```bash
-node <path-to-triage.mjs> verify --dir <run folder> [--source <artifact>]   # exit 0 iff triage is complete
+node <skill>/scripts/triage.mjs verify --dir <run folder> [--source <artifact>]   # exit 0 iff triage is complete
 ```
 
    | Violation | Raised when |

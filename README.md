@@ -18,7 +18,25 @@ Or install the suite as a Claude Code plugin (no local linking):
 
 ```
 /plugin marketplace add lleqsnoom/otter-skills
+/plugin install otter-skills@otter-skills
 ```
+
+The plugin brings the skills, the four loop commands and the hooks; plugin skills are namespaced, so `o-plan` runs
+as `/otter-skills:o-plan`. It does not bring the MCP server, which needs this checkout's dependencies: for that,
+use `npm run install`. Pick one route per machine — both at once installs every skill twice.
+
+### Hooks
+
+The plugin registers three hooks (`hooks/hooks.json`):
+
+| Event | Script | Does |
+|---|---|---|
+| `SessionStart` | `session-start-summary.mjs` | prints one line on the last heal and the last background report, when there is one |
+| `PostToolUse` on a write | `review-plan-gate.mjs` | tells the agent when an `*-review-plan.md` is missing one of the five pass headings |
+| `Stop` | `background-reflection.mjs` | counts turns and runs autoreflection's report-only stage every N — only in a project that already keeps a `.o-skills/` tree |
+
+With `npm run install` instead, add the same entries to your Claude Code settings yourself, pointing at this
+checkout's `hooks/` (see [docs/install.md](docs/install.md)).
 
 ## Skills
 
@@ -58,7 +76,7 @@ Or install the suite as a Claude Code plugin (no local linking):
 | `o-api-swagger` | API design draft → OpenAPI YAML | "make the OpenAPI" |
 | `o-migrate` | Framework or dependency migration plan | "migrate to X" |
 | `o-rollback` | Revert with multi-step confirmation | "roll this back" |
-| `o-search` | Search indexed repos by meaning or identifier | "where is this defined" |
+| `o-search` | Find code, tasks and docs by identifier or meaning, across repos | "where is this defined" |
 | `o-brief` | Write a handoff brief for the session | "hand off mid-work" |
 | `o-domain` | Glossary and ADRs as repo artifacts | "record the terms or decision" |
 | `o-interview` | Stress-test a decision with the user | "grill this decision" |
@@ -87,8 +105,9 @@ It runs in three stages, and you stay in control:
 3. **Apply** — `heal.mjs` applies only what you picked, reverts on a failed check, and appends a
    per-skill ledger (`skills/<skill>/.heal-ledger.jsonl`).
 
-A background pass can run stage 1 on a cadence (`hooks/background-reflection.mjs`, tunable via
-`AUTOHARNESS_REFLECT_EVERY_N`); stages 2 and 3 are always human-triggered. For details see
+A background pass can run stage 1 on a cadence (`hooks/background-reflection.mjs`, a `Stop` hook, tunable via
+`AUTOHARNESS_REFLECT_EVERY_N`; it only runs in a project that already keeps a `.o-skills/` tree); stages 2 and 3
+are always human-triggered. For details see
 `skills/o-autoreflection/SKILL.md`.
 
 ## The MCP server
@@ -103,7 +122,8 @@ checkout, the whole entry is `{ "command": "otter-skills-mcp" }`.
 
 It takes no arguments and there is nothing to keep running — the client starts and stops it over
 stdio. Roots come from `otter-skills.config.json`, Orca's project list, `--root` flags,
-`$OTTER_SKILLS_ROOTS`, discovery, or the current directory, and decide what it can see.
+`$OTTER_SKILLS_ROOTS`, discovery, or the current directory, and decide what it can see. A tool called without
+`project` answers for the repository the client was started in.
 
 | Tool | Answers |
 |------|---------|
@@ -123,3 +143,13 @@ stdio. Roots come from `otter-skills.config.json`, Orca's project list, `--root`
 Each project keeps its own database at `<repo>/.o-skills/knowledge.lance/`, derived and rebuildable:
 deleting it costs the next fuzzy call a rebuild and nothing else. The server writes only its own
 database, never a repository file.
+
+## Checks and evals
+
+`npm test` runs the unit tests and the skill validator; CI adds the skill lint, the floor guard's self-test and
+the trigger-rate floor. None of that runs an agent.
+
+`npm run eval` does: each case under `skills/<skill>/evals/cases/<case>/` builds a fixture repository, runs
+Claude Code on its `prompt.md` with every skill installed, and checks what the agent left behind with
+`check.mjs`. It spends tokens, so it runs on demand, not in CI — `npm run eval -- --skill o-fix` runs one skill's
+cases, `--keep` keeps the fixture for inspection, and `OTTER_EVAL_AGENT_CMD` swaps in another agent command.

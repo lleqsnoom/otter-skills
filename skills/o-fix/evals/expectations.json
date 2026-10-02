@@ -1,14 +1,17 @@
 {
   "skill": "o-fix",
   "expected_behavior": [
-    "Apply fix using `edit` only (never `multiedit`)",
-    "One issue at a time \u2014 never batch fixes",
-    "NEVER silence errors \u2014 do NOT add try/catch wrappers that swallow errors, do NOT disable error reporting. Fix the root cause so the error cannot occur. Where the root cause is a state the design allows and should not, make the state impossible rather than handle it: follow *Make the Bad State Impossible* in o-implement's `SKILL.md` (`~/.agents/skills/o-implement/SKILL.md` for a global install, `.agents/skills/o-implement/SKILL.md` for a local one), narrow the representation, and keep the check only where the input crosses a trust boundary.",
-    "Minimal changes \u2014 only modify what's needed to resolve the specific issue"
+    "Uncommitted changes that were in a file before the fix plan was worked are still there afterwards; no file named in the plan is reset, restored or stashed.",
+    "Issues are resolved one per edit, in severity order, and each box is ticked only after the narrowest tests for that change passed.",
+    "No fix adds an error-swallowing try/catch, a disabled check, a skipped test or a removed assertion; o-floor's guard exits 0 on the diff.",
+    "An issue that could not be resolved stays unchecked with a note instead of being ticked.",
+    "After the last fix the full suite runs once, and the run folder's E<nn>-verify command exits 0 where one exists."
   ],
   "source": [
     "I3",
+    "The uncommitted work is not yours to drop",
     "Workflow",
-    "Rules"
+    "Rules",
+    "Definition of Done"
   ]
 }

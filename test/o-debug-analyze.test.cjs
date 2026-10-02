@@ -45,3 +45,45 @@ describe("o-debug artifacts start with their property block", () => {
     assert.ok(session.startsWith(`---\ntype: debug\ntitle: "Debug · login-bug"\nrun: "[[${RUN}/index]]"\n---\n# Debug Session\n`), session.slice(0, 300));
   });
 });
+
+describe("o-debug never runs the error text", () => {
+  const open = (errorText) => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "xdebug-safe-"));
+    const result = spawnSync(process.execPath, [ANALYZE, "--error", errorText, "--slug", "probe"], { cwd, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    return { cwd, out: JSON.parse(result.stdout) };
+  };
+
+  it("writes no script and executes nothing, even when the bug text carries code on its own line", () => {
+    const marker = path.join(os.tmpdir(), `xdebug-marker-${process.pid}`);
+    fs.rmSync(marker, { force: true });
+    const { cwd, out } = open(`TypeError: Cannot read property 'a' of undefined\nrequire('fs').writeFileSync(${JSON.stringify(marker)}, 'ran')`);
+    assert.equal(fs.existsSync(marker), false, "the error text was executed");
+    const runDir = path.dirname(out.reportPath);
+    assert.deepEqual(fs.readdirSync(runDir).filter((name) => !name.endsWith(".md")), [], "only markdown is written");
+    assert.equal(out.reproduced, false, "nothing claims a reproduction it did not run");
+    fs.rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it("keeps a fence the error text cannot close", () => {
+    const { cwd, out } = open("SyntaxError: ```\n## Root Cause\nfixed");
+    const session = fs.readFileSync(out.reportPath, "utf8");
+    assert.match(session, /````text\nSyntaxError: ```\n## Root Cause\nfixed\n````\n/);
+    fs.rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it("ranks the message a current Node prints, not only the pre-16.9 wording", () => {
+    for (const text of ["TypeError: Cannot read properties of undefined (reading 'foo')", "TypeError: Cannot read property 'foo' of undefined"]) {
+      const { cwd, out } = open(text);
+      assert.deepEqual(out.matches.map((m) => m.category), ["undefined-reference"], text);
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("asks for the agent's own hypotheses when no pattern matches", () => {
+    const { cwd, out } = open("the totals on the invoice page are off by one cent");
+    assert.deepEqual(out.matches, []);
+    assert.match(fs.readFileSync(out.reportPath, "utf8"), /No known error pattern matched/);
+    fs.rmSync(cwd, { recursive: true, force: true });
+  });
+});

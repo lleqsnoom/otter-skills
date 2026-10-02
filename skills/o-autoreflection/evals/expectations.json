@@ -1,10 +1,11 @@
 {
   "skill": "o-autoreflection",
   "expected_behavior": [
-    "Steering files — instructions that no longer modify behavior are no-ops; prune them, and move standards",
-    "Information access — a decision made blind because a log, an endpoint or a read-only view was not",
-    "A `find` that was never read, a `replace` that rewrites a whole section, or a `find` that is not unique",
-    "Proposing a portfolio `delete` as an edit — it is a decision to ask, never to auto-apply"
+    "Stage one only reads sessions and writes a report and a fix plan; no skill file changes until the user picks fixes from the multi-select panel.",
+    "Only the fixes the user picked are applied; each one is checked, a failed check reverts that fix, and the outcome is written to heal-ledger.jsonl.",
+    "Each edit names a unique find string that was actually read and replaces only that span, never a whole section.",
+    "Deleting a skill or another portfolio change is offered as a question to the user, never applied as an automatic edit.",
+    "Instructions that no longer change behaviour are proposed for pruning rather than kept as no-op text."
   ],
   "source": [
     "The environment, not only the skills",

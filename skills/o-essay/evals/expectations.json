@@ -1,11 +1,10 @@
 {
   "skill": "o-essay",
   "expected_behavior": [
-    "A brief that names a topic but no claim is not a claim, and the loop cannot judge",
-    "its own output against one it never heard. If the request does not say what the",
-    "article should convince the reader of, ask once — one `open` panel: *what must the",
-    "Fixed order. `o-analyze → o-roast → o-humanize`. Never humanize before the",
-    "facts-only final check: the corrected markers, numbers, names and URLs from the"
+    "When the request names a topic but no claim, the skill asks once, in one open panel, what the article must convince the reader of before writing.",
+    "The loop always runs o-analyze, then o-roast, then o-humanize, in that order, and repeats until the roast scores strong and the text reads clean.",
+    "The humanized text never goes out before the roast has scored it.",
+    "A final facts-only check confirms that numbers, names, URLs and corrected claims survived the rewrite unchanged."
   ],
   "source": [
     "Before the loop",

@@ -1,10 +1,10 @@
 {
   "skill": "o-interview",
   "expected_behavior": [
-    "A frontier question the filesystem, the repo, the run history, or the web could answer is never asked: dispatch",
-    "a sub-agent to find it and move on. Do not block on it either — only the questions downstream of a running",
-    "without you filling a gap — anything they cannot restate was never settled. Say the shared understanding back",
-    "o-brief — when the session must end before the frontier is empty, compact what is settled into a brief"
+    "A question that the repo, the run history or the web could answer is never put to the user; a sub-agent looks it up while the interview moves on.",
+    "Every question the user is asked carries a recommended answer.",
+    "The interview ends with the shared understanding said back to the user, and anything they cannot restate is treated as not settled.",
+    "When the session has to end with questions still open, what is settled goes into an o-brief handoff."
   ],
   "source": [
     "Facts are yours, decisions are theirs",

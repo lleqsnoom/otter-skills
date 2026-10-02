@@ -1,10 +1,10 @@
 {
   "skill": "o-guide",
   "expected_behavior": [
-    "A question the plan cannot settle → o-sketch (a throwaway prototype answers it) or o-analyze",
-    "A design question the conversation cannot settle → o-interview (the whole-session version of plan's",
-    "The session must end before the work does → o-brief (the handoff note the next session starts from).",
-    "o-walkthrough — script the human-only steps."
+    "The answer names one entry skill for the user's situation and says why it fits, instead of listing every skill.",
+    "Work that must stop before it is finished is routed to o-brief for a handoff note.",
+    "A question the plan cannot settle is routed to o-sketch for a prototype or to o-analyze for evidence; a design question the conversation cannot settle goes to o-interview.",
+    "The guide names the skill and stops; it does not start running it unless the user asks."
   ],
   "source": [
     "On-ramps",

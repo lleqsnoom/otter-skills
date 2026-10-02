@@ -2,9 +2,10 @@
 
 /**
  * The review-plan gate turns o-review's "a plan missing a pass heading is incomplete, not clean" from
- * prose into a fact: whatever text crosses the hook must carry the four pass headings, and a plan that
- * does not is refused with one actionable line per missing heading, never a silent pass. The tests pin
- * that on stdin text, on a JSON hook payload, and on the plan template o-review actually ships.
+ * prose into a fact: a review plan must carry the five pass headings, and one that does not is refused
+ * with one actionable line per missing heading, never a silent pass. The tests pin that on stdin text,
+ * on a JSON hook payload (where only review plans are judged), on the plan template o-review ships, and
+ * on the skeleton save-plan.mjs writes.
  */
 
 const { describe, it } = require("node:test");
@@ -18,7 +19,8 @@ const ROOT = path.join(__dirname, "..");
 const GATE = path.join(ROOT, "hooks", "review-plan-gate.mjs");
 const SKILL = path.join(ROOT, "skills", "o-review", "SKILL.md");
 
-const HEADINGS = ["[Comments]", "[Bloat]", "[Architecture]", "[Floor]"];
+const HEADINGS = ["[Comments]", "[Bloat]", "[Architecture]", "[Floor]", "[Spec]"];
+const SAVE_PLAN = path.join(ROOT, "skills", "o-review", "scripts", "save-plan.mjs");
 
 const run = (input, args = []) =>
   spawnSync(process.execPath, [GATE, ...args], { input, encoding: "utf8" });
@@ -35,7 +37,7 @@ const shippedPlanTemplate = () => {
 };
 
 describe("review-plan gate hook", () => {
-  it("exits 0 with no output on a plan carrying all four headings", () => {
+  it("exits 0 with no output on a plan carrying all five headings", () => {
     const result = run(plan(HEADINGS));
     assert.equal(result.status, 0);
     assert.equal(result.stdout, "");
@@ -76,9 +78,9 @@ describe("review-plan gate hook", () => {
 
   it("matches the heading however the plan writes it", () => {
     for (const text of [
-      "## [Comments] — pass 3 of the review\n## [Bloat] — pass 4\n## [Architecture] — pass 5\n## [Floor] — pass 6\n",
-      "[Comments]\n[Bloat]\n[Architecture]\n[Floor]\n",
-      "# [Comments]\n# [Bloat]\n# [Architecture]\n# [Floor]\n",
+      "## [Comments] — pass 3 of the review\n## [Bloat] — pass 4\n## [Architecture] — pass 5\n## [Floor] — pass 6\n## [Spec] — pass 7\n",
+      "[Comments]\n[Bloat]\n[Architecture]\n[Floor]\n[Spec]\n",
+      "# [Comments]\n# [Bloat]\n# [Architecture]\n# [Floor]\n# [Spec]\n",
     ]) {
       const result = run(text);
       assert.equal(result.status, 0, result.stderr);
@@ -100,7 +102,7 @@ describe("review-plan gate hook", () => {
   it("reads the plan from a hook payload naming the file", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "review-plan-gate-"));
     try {
-      const file = path.join(dir, "plan.md");
+      const file = path.join(dir, "E02-review-plan.md");
       fs.writeFileSync(file, plan(HEADINGS));
       const payload = JSON.stringify({
         hook_event_name: "PostToolUse",
@@ -118,9 +120,35 @@ describe("review-plan gate hook", () => {
     const payload = JSON.stringify({
       hook_event_name: "PreToolUse",
       tool_name: "Write",
-      tool_input: { file_path: "plan.md", content: plan(HEADINGS) },
+      tool_input: { file_path: "E02-review-plan.md", content: plan(HEADINGS) },
     });
     const result = run(payload);
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it("as a hook, exits 2 on a review plan missing a heading, so the model is told to finish it", () => {
+    const payload = JSON.stringify({
+      hook_event_name: "PostToolUse",
+      tool_name: "Write",
+      tool_input: { file_path: "/repo/.o-skills/runs/x/E03-review-plan.md", content: plan(HEADINGS.filter((h) => h !== "[Spec]")) },
+    });
+    const result = run(payload);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /\[Spec\]/);
+  });
+
+  it("as a hook, leaves every file that is not a review plan alone", () => {
+    for (const file_path of ["src/index.js", "README.md", "/repo/.o-skills/runs/x/E01-fix-plan.md"]) {
+      const payload = JSON.stringify({ hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path, content: "no headings here" } });
+      const result = run(payload);
+      assert.equal(result.status, 0, `${file_path}: ${result.stderr}`);
+      assert.equal(result.stderr, "");
+    }
+  });
+
+  it("passes the skeleton save-plan.mjs writes, so filling a plan edit by edit never trips it", async () => {
+    const { passSkeleton } = await import(SAVE_PLAN);
+    const result = run(passSkeleton());
     assert.equal(result.status, 0, result.stderr);
   });
 });

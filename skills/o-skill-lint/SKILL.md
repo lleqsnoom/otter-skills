@@ -1,7 +1,7 @@
 ---
 name: o-skill-lint
-description: Validate the repo's own skills — frontmatter parses and `name` matches the folder, every referenced `scripts/*` and `references/*` exists, no stray template tokens, script main guards survive a symlinked install, an optional `evals/expectations.json` or `evals/triggers.json` is well-formed, and the README skills table lists every skill. Also measures trigger rank-1 and description collisions with `scripts/trigger-rate.mjs`, so a description that would not fire is found before a user finds it. Use when adding or editing a skill, before shipping the repo, or when a skill is not triggering.
-version: 1.1.1
+description: Validate the repo's own skills — frontmatter, referenced scripts and references, stray template tokens, symlink-safe main guards, evals and the README skills table — and measure trigger rank-1 and description collisions. Use when adding or editing a skill, before shipping the repo, or when a skill is not triggering.
+version: 1.1.2
 author: Community
 tags: [lint, validation, skills, frontmatter, repo-hygiene, discovery]
 user-invocable: true
@@ -13,6 +13,8 @@ Catch the whole class of "documented command that cannot run" defects before the
 that names a script file that does not exist, a frontmatter `name` that disagrees with its folder,
 a stray template token, or a skill missing from the README table. Run it after editing any
 `skills/*/SKILL.md` and before a release.
+
+`<skill>` below is this skill's folder.
 
 ## When to use
 

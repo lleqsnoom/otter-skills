@@ -40,3 +40,5 @@ prompt, one iteration per launch, checking `state.mjs verify` (`0` = stop) and t
 - Treat every permission and approval gate as authoritative. This skill never
   instructs the agent to bypass a confirmation, never "never stops", and never
   "never asks".
+
+`<skill>` in this file is the skill's own folder.

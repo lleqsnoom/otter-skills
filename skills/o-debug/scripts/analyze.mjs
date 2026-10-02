@@ -2,14 +2,16 @@
 "use strict";
 
 /**
- * o-debug analyzer — evidence-based root cause analysis.
- * Usage: node analyze.mjs --error "msg" [--file src.js] [--slug topic] [--no-reproduce] [--fixes <brief or review>]
+ * o-debug analyzer — opens a debug session and the fix plan o-fix reads, with first hypotheses ranked from the
+ * error text. It never runs anything: the error text often comes from a bug report, which is untrusted input, and
+ * a reproduction only counts when it runs the project's own code, which the agent builds next.
+ *
+ * Usage: node analyze.mjs --error "msg" [--file src.js] [--slug topic] [--fixes <brief or review>]
  * Writes every artifact into .o-skills/runs/<stamp>-R<nn>-<slug>/.
  */
 
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 
 // ── Run folders ──────────────────────────────────────────────────────
 // #region run-folder
@@ -96,47 +98,36 @@ function nextE(runDir) {
 }
 // #endregion run-folder
 
+// Each runtime words the same fault its own way, and V8 changed its wording in Node 16.9 ("Cannot read properties
+// of undefined (reading 'x')"), so every reading a current runtime prints is listed.
 const PATTERNS = [
-  [/Cannot read propert(ies|y) '(\w+)' of undefined/, "undefined-reference", "Accessing property on undefined value"],
-  [/Cannot read propert(ies|y) '(\w+)' of null/, "null-reference", "Accessing property on null value"],
-  [/is not a function/, "not-a-function", "Calling non-callable value"],
-  [/Maximum call stack size exceeded/, "infinite-recursion", "Recursive function without termination"],
-  [/Unexpected token|SyntaxError/, "syntax-error", "Malformed syntax or JSON"],
-  [/Module not found|Cannot find module/, "missing-module", "Required package missing"],
-  [/ECONNREFUSED|Connection refused/, "connection-error", "Target server unreachable"],
+  [/Cannot (read|set) propert(ies|y) .*\bundefined\b/, "undefined-reference", "A property is read or set on a value that is undefined"],
+  [/Cannot (read|set) propert(ies|y) .*\bnull\b|'NoneType' object has no attribute|nil pointer dereference|called `Option::unwrap\(\)` on a `None` value|NullPointerException/, "null-reference", "A value that can be null or empty is used as if it were present"],
+  [/is not a function|object is not callable/, "not-a-function", "A value that is not callable is called"],
+  [/Maximum call stack size exceeded|RecursionError|stack overflow/, "infinite-recursion", "A recursion has no reachable base case"],
+  [/Unexpected token|SyntaxError/, "syntax-error", "Malformed source, or input parsed as JSON that is not JSON"],
+  [/Module not found|Cannot find module|ModuleNotFoundError|ERR_MODULE_NOT_FOUND/, "missing-module", "A module is missing, misnamed, or resolved from the wrong place"],
+  [/ECONNREFUSED|Connection refused/, "connection-error", "The target service is not listening where the code expects it"],
 ];
-
-const REPRO_TEMPLATES = {
-  "undefined-reference": ["const obj = undefined;", "console.log(obj.foo);"],
-  "null-reference": ["const el = null;", "console.log(el.property);"],
-  "not-a-function": ['const f = "string";', "f();"],
-  "infinite-recursion": ["function r() { return r(); }", "r();"],
-  "missing-module": ["require('nonexistent-xyz');"],
-  "connection-error": [
-    "const net = require('net');",
-    "const c = new net.Socket();",
-    "c.connect(1, '0.0.0.0', () => {});",
-    "c.on('error', () => process.exit(1));",
-  ],
-};
 
 function parseArgs(argv) {
   const args = argv.slice(2);
-  let errorText = null, targetFile = null, contextDir = ".", sessionId = null, slug = null, reproduce = true;
+  let errorText = null, targetFile = null, sessionId = null, slug = null;
   let newRun = false, run = null, fixes = null;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--error" && i + 1 < args.length) errorText = args[++i];
     else if (args[i] === "--file" && i + 1 < args.length) targetFile = args[++i];
-    else if (args[i] === "--context" && i + 1 < args.length) contextDir = args[++i];
     else if (args[i] === "--session-id" && i + 1 < args.length) sessionId = args[++i];
     else if (args[i] === "--slug" && i + 1 < args.length) slug = args[++i];
     else if (args[i] === "--new-run") newRun = true;
     else if (args[i] === "--run" && i + 1 < args.length) run = Number(args[++i]);
-    else if (args[i] === "--no-reproduce") reproduce = false;
     else if (args[i] === "--fixes" && i + 1 < args.length) fixes = args[++i];
+    // --context and --no-reproduce belonged to the removed auto-reproduction; older callers still pass them.
+    else if (args[i] === "--context" && i + 1 < args.length) i++;
+    else if (args[i] === "--no-reproduce") continue;
     else if (!args[i].startsWith("--")) targetFile = args[i];
   }
-  return { errorText, targetFile, contextDir, sessionId, slug, reproduce, fresh: newRun, run, fixes };
+  return { errorText, targetFile, sessionId, slug, fresh: newRun, run, fixes };
 }
 
 function matchPatterns(errorText) {
@@ -147,37 +138,11 @@ function matchPatterns(errorText) {
   return matches;
 }
 
-function reproduceLocally(errorText, targetFile, runDir) {
-  fs.mkdirSync(runDir, { recursive: true });
-
-  const matched = matchPatterns(errorText)[0];
-  if (!matched) return null;
-
-  const template = REPRO_TEMPLATES[matched.category];
-  if (!template) {
-    console.error("No auto-reproduction for " + matched.category);
-    return null;
-  }
-
-  const reproPath = path.join(runDir, nextE(runDir) + "-repro-debug.js");
-  const lines = ["// Reproduction for: " + errorText].concat(template).concat(["try { /* run */ } catch(e) { process.exit(1); }"]);
-  fs.writeFileSync(reproPath, lines.join("\n"));
-
-  try {
-    execFileSync(process.execPath, [reproPath], { timeout: 10000, stdio: ["ignore", "pipe", "pipe"] });
-    return null; // didn't fail as expected
-  } catch (_e) {
-    const verifyPath = path.join(runDir, nextE(runDir) + "-verify.js");
-    const verifyCode = [
-      "const { execSync } = require('child_process');",
-      "try {",
-      targetFile ? "  execSync('node \"" + targetFile + "\"', { timeout: 10000 });" : "  // Run fixed code",
-      "  console.log('PASS: Issue resolved'); process.exit(0);",
-      "} catch (e) { console.error('FAIL:', e.message); process.exit(1); }"
-    ];
-    fs.writeFileSync(verifyPath, verifyCode.join("\n"));
-    return { reproductionPath: reproPath, verificationPath: verifyPath, category: matched.category, reproducedSuccessfully: true };
-  }
+/** The error text as a fenced block whose fence is longer than any backtick run inside it, so no input can close it. */
+function fenced(text) {
+  const longest = Math.max(0, ...(String(text).match(/`+/g) ?? []).map((run) => run.length));
+  const fence = "`".repeat(Math.max(3, longest + 1));
+  return `${fence}text\n${text}\n${fence}\n`;
 }
 
 /** A path inside a `.o-skills` tree, from its root and without `.md` — the form Obsidian links by — or `null` outside one. */
@@ -213,10 +178,12 @@ function generateSession(errorText, matches, targetFile, sessionId, runDir, fixe
   const fileName = `${prefix}-debug`;
   const filePath = path.join(runDir, fileName + ".md");
 
-  let md = propertyBlock("debug", `Debug · ${runSlug(runDir)}`, runDir, fixes) + "# Debug Session\n\n**Error:** `" + errorText + "`\n";
-  if (targetFile) md += "**File:** " + path.relative(process.cwd(), targetFile) + "\n";
+  let md = propertyBlock("debug", `Debug · ${runSlug(runDir)}`, runDir, fixes) + "# Debug Session\n\n**Error:**\n\n" + fenced(errorText);
+  if (targetFile) md += "\n**File:** " + path.relative(process.cwd(), targetFile) + "\n";
+  md += "\n## Reproduction\n_Not built yet. One command that runs the project's own code and goes red on this bug; save it in this run folder as `E<nn>-verify.<ext>` so o-fix can run it._\n";
   md += "\n## Hypotheses\n";
   for (const m of matches) md += "- **" + m.category + "**: " + m.description + "\n";
+  if (!matches.length) md += "_No known error pattern matched. Write your own, ranked by likelihood._\n";
   md += "\n## Tests\n_Run each test and mark [ ] -> [x] Confirmed or [ ] Rejected_\n";
   md += "\n## Root Cause\n_Fill after testing:_\n";
   fs.writeFileSync(filePath, md);
@@ -228,7 +195,7 @@ function exportFixPlan(errorText, matches, targetFile, sessionId, confirmed, run
   fs.mkdirSync(runDir, { recursive: true });
   const filePath = path.join(runDir, nextE(runDir) + "-fix-plan.md");
 
-  let plan = propertyBlock("fix", `Fix plan · ${runSlug(runDir)}`, runDir, sessionPath) + "# Fix Plan\n\n**Error:** `" + errorText + "`\n\n";
+  let plan = propertyBlock("fix", `Fix plan · ${runSlug(runDir)}`, runDir, sessionPath) + "# Fix Plan\n\n**Error:**\n\n" + fenced(errorText) + "\n";
   if (!confirmed) {
     plan += "## Test Hypotheses First\n";
     for (const m of matches) {
@@ -243,7 +210,7 @@ function exportFixPlan(errorText, matches, targetFile, sessionId, confirmed, run
     plan += "- Do NOT add try/catch wrappers that silently swallow errors\n";
     plan += "- Do NOT disable error reporting or set process.exit(0) on failure\n";
     plan += "- DO fix the root cause so the error cannot occur\n";
-    plan += "- ALWAYS verify with reproduction script after applying fix\n";
+    plan += "- ALWAYS run the reproduction after applying the fix\n";
   }
   fs.writeFileSync(filePath, plan);
   return { filePath };
@@ -251,40 +218,23 @@ function exportFixPlan(errorText, matches, targetFile, sessionId, confirmed, run
 
 async function main() {
   const args = parseArgs(process.argv);
-  const errorText = args.errorText, targetFile = args.targetFile, contextDir = args.contextDir, sessionId = args.sessionId, reproduce = args.reproduce;
+  const { errorText, targetFile, sessionId } = args;
   if (!errorText) { console.error("Error: --error required"); process.exit(1); }
 
   const matches = matchPatterns(errorText);
   const runDir = resolveRunDir(args.slug || "debug", { fresh: args.fresh === true, run: args.run });
-  let targetResolved = targetFile ? path.resolve(targetFile) : null;
-  if (!targetResolved && contextDir) {
-    for (const c of ["index.js","app.js","server.js","main.js"]) {
-      const p = path.join(contextDir, c);
-      if (fs.existsSync(p)) { targetResolved = p; break; }
-    }
-  }
-
-  let reproResult = null;
-  if (reproduce !== false) {
-    process.stderr.write("\n[Step 1/3] Attempting local reproduction...\n\n");
-    reproResult = reproduceLocally(errorText, targetResolved, runDir);
-    if (reproResult) {
-      process.stderr.write("Reproduction: " + reproResult.category + "\n");
-      process.stderr.write("Verify script: " + reproResult.verificationPath + "\n");
-      process.stderr.write("\nIMPORTANT: Verify fix before declaring done!\n\n");
-    } else {
-      process.stderr.write("Note: Manual reproduction needed. Use --file for better results.\n\n");
-    }
-  }
+  const targetResolved = targetFile ? path.resolve(targetFile) : null;
 
   const session = generateSession(errorText, matches, targetResolved, sessionId, runDir, args.fixes);
   const fixPlan = exportFixPlan(errorText, matches, targetResolved, sessionId, false, runDir, session.reportPath);
 
-  console.log(JSON.stringify(Object.assign({}, session, { fixPlanPath: fixPlan.filePath, rootCauseConfirmed: false, reproduction: reproResult }), null, 2));
+  console.log(JSON.stringify(Object.assign({}, session, { fixPlanPath: fixPlan.filePath, rootCauseConfirmed: false, reproduced: false }), null, 2));
   process.stderr.write("\nDebug session: " + session.reportPath + "\nFix plan: " + fixPlan.filePath + "\n");
-  process.stderr.write("Matches: " + matches.length + "\n");
-  process.stderr.write("\nWorkflow:\n1. Reproduce locally (done)\n2. Confirm root cause via hypothesis testing\n3. Fix root cause - NEVER silence errors\n");
-  process.stderr.write("4. Verify: node " + (reproResult ? reproResult.verificationPath : "verify-script.js") + "\n");
+  process.stderr.write("Hypotheses from the error text: " + matches.length + "\n");
+  process.stderr.write("\nNothing has been reproduced yet. Next:\n");
+  process.stderr.write("1. Build a reproduction: one command that runs the project's code and goes red on this bug\n");
+  process.stderr.write("2. Confirm the root cause by testing the hypotheses\n3. Fix the root cause - NEVER silence errors\n");
+  process.stderr.write("4. Verify: the reproduction now exits 0\n");
   process.exit(0);
 }
 

@@ -86,3 +86,5 @@ node <skill>/scripts/check-questions.mjs --dir <run-dir>
 Exit 0 means every question follows the rules. Exit 1 lists each violation by name
 (`too-long`, `multi-idea`, `no-why`, `no-panel`, `bad-panel`, `no-options`, `unexpected-options`,
 `empty`). Fix and re-run before asking.
+
+`<skill>` in this file is the skill's own folder.

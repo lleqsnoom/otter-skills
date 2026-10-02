@@ -1,11 +1,11 @@
 {
   "skill": "o-unbloat",
   "expected_behavior": [
-    "Every line must be read, tested and maintained. Before you add code, ask if it needs to exist. Before you keep",
-    "Does an installed dependency do it? Use it. Never add a dependency for what 3–4 cover.",
-    "Only then write the minimum that works for today's inputs.",
-    "| Wrapper that only passes arguments on | Call the target | It isolates a third-party API |",
-    "| Config value that never changes | A constant | It changes per environment |"
+    "Before code is added, the ladder is walked: does it need to exist, does the standard library or an installed dependency already do it — and only then is the minimum written.",
+    "No new dependency is added for something a few lines of code or an existing dependency already covers.",
+    "A wrapper that only passes arguments through is replaced by a direct call, unless it isolates a third-party API.",
+    "A config value that never changes becomes a constant, unless it differs per environment.",
+    "Every cut keeps behaviour: call sites are checked first, and protective code on the Never Cut list stays."
   ],
   "source": [
     "o-unbloat",

@@ -1,7 +1,7 @@
 ---
 name: o-api-draft
-description: Draft API design from requirements — clarify scope, analyze endpoints and data models, produce a human-reviewable API design in markdown
-version: 1.0.1
+description: Design an API from requirements — clarify scope, then write endpoints, data models, auth and error cases as a markdown draft for human review. Use when asked to design or draft an API.
+version: 1.0.2
 author: Community
 tags: [api-design, draft, endpoints, data-models, openapi, swagger]
 user-invocable: true
@@ -10,6 +10,8 @@ user-invocable: true
 # O-API-Draft — API Design from Requirements
 
 Produce a clean, human-reviewable API design document before implementation begins. No code yet — just scope, contracts, and structure.
+
+`<skill>` below is this skill's folder.
 
 ## Workflow
 
@@ -34,7 +36,7 @@ Ask through panels, never in prose. A panel is the host's question UI in one of 
 Save the design document using the script:
 
 ```bash
-node <path-to-save-design.mjs> --topic <slug>
+node <skill>/scripts/save-design.mjs --topic <slug>
 ```
 
 Output: `<run folder>/E<nn>-api-design.md` (relative to CWD).

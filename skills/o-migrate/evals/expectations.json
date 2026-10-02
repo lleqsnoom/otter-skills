@@ -1,12 +1,17 @@
 {
   "skill": "o-migrate",
   "expected_behavior": [
-    "A migration run prints a structured JSON plan on stdout whose every step carries package, fromVersion, toVersion, change, severity, fix and automated, plus the human-readable plan on stderr.",
-    "Exit 0 includes the legitimate empty-plan case: no known breaking changes applying is success, not a silent error.",
-    "A missing target (neither --target nor --all) and an unreadable package.json are usage errors that name themselves instead of proceeding."
+    "analyze.mjs reports the declared range, the installed version and every major version the upgrade crosses, and invents no breaking changes of its own.",
+    "Every breaking change in the plan cites the official upgrade guide or changelog it came from, by URL; an unsourced change is marked unknown.",
+    "Each breaking change lists where the project uses it as file:line, or says it is not used here.",
+    "The steps go one major version at a time, with the full test suite green before the next.",
+    "A missing --target/--all or an unreadable package.json exits 1 with a message instead of proceeding."
   ],
   "source": [
-    "Definition of Done",
-    "Scripts"
+    "1. Inventory",
+    "2. Sources",
+    "3. Impact",
+    "4. Order",
+    "Definition of Done"
   ]
 }

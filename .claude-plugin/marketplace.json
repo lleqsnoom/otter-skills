@@ -1,15 +1,17 @@
 {
   "name": "otter-skills",
+  "description": "Otter Skills: the o-* skills for planning, building, reviewing and improving code.",
   "owner": {
     "name": "lleqsnoom"
   },
   "plugins": [
     {
       "name": "otter-skills",
-      "source": "./skills",
-      "commands": "./commands",
-      "hooks": "./hooks",
-      "description": "The o-* skill suite: plan, implement, review, fix, research and project management over .o-skills runs." 
+      "source": "./",
+      "description": "The o-* skill suite: plan, implement, review, fix, research and project management over .o-skills runs.",
+      "author": {
+        "name": "lleqsnoom"
+      }
     }
   ]
 }

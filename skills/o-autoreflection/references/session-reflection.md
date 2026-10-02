@@ -227,3 +227,5 @@ Completion: the user picked, and each chosen proposal has a route and a next act
    short, however clean its tool calls were. Quote the user; never argue a quality anchor away with
    "every command exited 0".
 5. **Editing the skill mid-reflection is out of order.** Write the proposal, route it, then change the file.
+
+`<skill>` in this file is the skill's own folder.

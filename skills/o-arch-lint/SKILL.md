@@ -1,7 +1,7 @@
 ---
 name: o-arch-lint
 description: Check a code tree against the architecture it declares — reads .o-skills/config/arch.json and reports every banned directory and file name, every wrong-way import across a declared layer boundary, and every place the declaration and the tree disagree, as file:line with a rule name. Detection only, never writes code, exit 1 on a violation. Use when asked to check layer boundaries, verify dependency direction, find utils/helpers/common sprawl, or prove a repo still matches its declared structure; o-review runs it on every review.
-version: 1.0.1
+version: 1.0.2
 author: Community
 tags: [architecture, lint, boundaries, dependency-direction, naming, enforcement, parity]
 user-invocable: true
@@ -32,8 +32,8 @@ sees the tree as it is rather than only the diff.
 A repo with none can have a first one proposed from the tree as it is:
 
 ```bash
-node ~/.agents/skills/o-arch-lint/scripts/scaffold.mjs --root .
-node ~/.agents/skills/o-arch-lint/scripts/scaffold.mjs --root . --force   # replace an existing declaration
+node <skill>/scripts/scaffold.mjs --root .
+node <skill>/scripts/scaffold.mjs --root . --force   # replace an existing declaration
 ```
 
 It prints a declaration to stdout and writes it only where nothing would be replaced, or with `--force`. One
@@ -50,13 +50,13 @@ repo already tracks configuration, and say which in the note the team reads.
 ## Run it
 
 ```bash
-node ~/.agents/skills/o-arch-lint/scripts/arch-check.mjs --root .
-node ~/.agents/skills/o-arch-lint/scripts/arch-check.mjs --root . --config path/to/arch.json
-node ~/.agents/skills/o-arch-lint/scripts/arch-check.mjs --root . --explain-coverage
-node ~/.agents/skills/o-arch-lint/scripts/arch-check.mjs --self-test
+node <skill>/scripts/arch-check.mjs --root .
+node <skill>/scripts/arch-check.mjs --root . --config path/to/arch.json
+node <skill>/scripts/arch-check.mjs --root . --explain-coverage
+node <skill>/scripts/arch-check.mjs --self-test
 ```
 
-A local install is `.agents/skills/o-arch-lint/scripts/arch-check.mjs`. `--root` and the file paths under it are
+`<skill>` is this skill's folder. `--root` and the file paths under it are
 resolved from the working directory, so a relative path works from anywhere the script can be reached; there is
 no install root to get right. `--config` defaults to `.o-skills/config/arch.json`, found by walking up from
 `--root`.

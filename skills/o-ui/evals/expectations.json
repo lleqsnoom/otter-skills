@@ -1,10 +1,11 @@
 {
   "skill": "o-ui",
   "expected_behavior": [
-    "Hierarchy is built from three levers: size, weight, color. Use one or two on most elements; use all three only on the primary action.",
-    "One alignment edge. Left-align text and forms; never center body text or justify it.",
-    "Neutrals: near-white background, near-black text (`#111` to `#333`), one mid gray for secondary text. Never pure `#000` on `#FFF`.",
-    "One accent, used only where the user can act: primary button, links, focus ring, active state. Saturation below 80%."
+    "Each screen has one primary action, and it is the only element that uses size, weight and colour all at once.",
+    "Text and forms are left-aligned on one edge; body text is never centred or justified.",
+    "Colour comes last: near-black text on near-white, one grey for secondary text, never pure black on pure white.",
+    "A single accent colour marks only what the user can act on — the primary button, links, focus ring, active state.",
+    "A screen is done only when it passes the pre-flight checklist."
   ],
   "source": [
     "Principle 1 — One loud thing",

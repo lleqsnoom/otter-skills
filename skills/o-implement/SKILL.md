@@ -1,7 +1,7 @@
 ---
 name: o-implement
-description: Implement or fix with TDD — parallelize independent tasks with o-parallel, apply o-ui for frontend work, o-arch for placement and naming, and o-unbloat to every change, red-green-refactor per task, verify with o-review + o-fix, gate on plan completion
-version: 1.5.1
+description: Implement decomposed tasks with TDD — red-green-refactor per task, verified with o-review + o-fix, committed task by task, independent tasks parallelized with o-parallel, gated on every task being done. Use when asked to implement a run's tasks.
+version: 1.6.0
 author: Community
 tags: [tdd, implementation, test-driven, red-green-refactor, production-code, parallel, ui]
 user-invocable: true
@@ -10,12 +10,14 @@ user-invocable: true
 # O-Implement — Test-Driven Implementation
 **No production code without a failing test first.** Wrote code before the test? Delete it. Rewrite from the test. Exception — confirm with a `confirm` panel (yes/no) first: prototypes, generated code, throwaway scripts.
 
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
+
 ## Before the first task: read the ledger a decomposition left
 
 A run decomposed by `o-decompose` carries `<run folder>/E<nn>-triage.md` and `triage-<nn>.json`, where every candidate was decided. Two verdicts handed their work to a **child run of their own** — `plan` and `analyze` — and each of those names the layer that waits on it. A layer implemented on top of a child run that never landed is how a run ends up rebuilding what another run was meant to deliver.
 
 ```bash
-node <path to o-decompose>/scripts/triage.mjs verify --dir <run folder>
+node <skills>/o-decompose/scripts/triage.mjs verify --dir <run folder>
 ```
 
 The `receipts` array says, per child run, whether it delivered: a child that closed with `E<nn>-summary.md`, or whose own `E<nn>-tasks/` are all ticked, is delivered. This is a report, not a gate — `verify`'s exit code does not change because of it. Before starting a layer whose receipts are undelivered, stop and ask with a `confirm` panel (yes/no) whether to proceed anyway; the answer belongs in the run's notes. A run with no `E<nn>-triage.md` (decomposed before this step existed) implements exactly as it does below: no panel, no error.
@@ -23,29 +25,24 @@ The `receipts` array says, per child run, whether it delivered: a child that clo
 ## Artifact Location
 
 ```bash
-node <path-to-save-plan.mjs> --epic <slug>
+node <skill>/scripts/save-plan.mjs --epic <slug>
 ```
-The flag is named for the artifact the run was decomposed from — the run's plan, or a legacy `E<nn>-epic.md` — and resolves it either way. The script creates the staging directory. Read all `.md` files inside it — one file per user story.
+It writes `E<nn>-implement.md`, the run's implementation log, beside the artifact the run was decomposed from (its plan, or a legacy `E<nn>-epic.md`), found by topic. The tasks are the files under `<run folder>/E<nn>-tasks/`.
 
 ## Directory Organization
-Place a unit with the code that owns it, and name its directory for a domain concept (`orders/`, `billing/`) rather than a file shape (`models/`, `services/`, `controllers/`). A bag name (`utils`, `common`, `shared`, `helpers`, `tools`, `misc`, `other`) says nothing and is not allowed. One file per concern, imports flow from volatile to stable, never in a cycle. `o-arch`'s pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one) is the fuller statement; see `references/dir-organization.md` for the shape this repo uses.
+Place a unit with the code that owns it, and name its directory for a domain concept (`orders/`, `billing/`) rather than a file shape (`models/`, `services/`, `controllers/`). A bag name (`utils`, `common`, `shared`, `helpers`, `tools`, `misc`, `other`) says nothing and is not allowed. One file per concern, imports flow from volatile to stable, never in a cycle. `o-arch`'s pass card (`<skills>/o-arch/references/pass.md`) is the fuller statement; see `references/dir-organization.md` for the shape this repo uses.
 
 ## Comments
 
-Code must document itself. Comments are a last resort, reserved for what the code cannot express. Follow o-comments rules on every line you write.
-
-- **No trivial comments.** Never restate what the code says (`i++`, `return user`). If the line reads fine alone, it needs no comment.
-- **Only the *why*, never the *what*.** A comment earns its place only when the code cannot express the reason: a non-obvious workaround, a CPU-architecture or third-party provider quirk, the source of a magic value, an invariant, or what breaks if changed.
-- **Prefer a better name or a smaller function over a comment.** If a block needs a paragraph to explain what it does, extract it into a descriptively named function and delete the paragraph.
-- **Strip noise in REFACTOR.** Every refactor pass must remove comments that restate code, not just improve structure.
+Code must document itself. Follow o-comments' pass card (`<skills>/o-comments/references/pass.md`) on every line you write, and strip comments that restate code in REFACTOR. Its rules are not repeated here.
 
 ## No Bloat
 
-Write the least code that works. Follow o-unbloat's pass card (`~/.agents/skills/o-unbloat/references/pass.md` for a global install, `.agents/skills/o-unbloat/references/pass.md` for a local one): its ladder before GREEN, and its ladder, table and Never Cut list in REFACTOR. Its rules are not repeated here, so read them there.
+Write the least code that works. Follow o-unbloat's pass card (`<skills>/o-unbloat/references/pass.md`): its ladder before GREEN, and its ladder, table and Never Cut list in REFACTOR. Its rules are not repeated here, so read them there.
 
 ## Architecture
 
-Before GREEN, read `o-arch`'s pass card (`~/.agents/skills/o-arch/references/pass.md` for a global install, `.agents/skills/o-arch/references/pass.md` for a local one): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.o-skills/config/arch.json`, `o-arch-lint` is the check that proves the task did not cross a declared boundary.
+Before GREEN, read `o-arch`'s pass card (`<skills>/o-arch/references/pass.md`): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.o-skills/config/arch.json`, `o-arch-lint` is the check that proves the task did not cross a declared boundary.
 
 ## Functional Style
 
@@ -97,19 +94,20 @@ Implement tasks in dependency order. When two or more tasks can run independentl
 
 1. Read every task file under `<run folder>/E<nn>-tasks/`.
 2. A task is **independent** when no other pending task modifies the same files and no other task requires its output (check each file's `Preconditions` and `Files:`).
-3. Independent tasks run concurrently:
+3. **Agree the seams first.** A background worker cannot ask the user anything, so before dispatch name the seams under test for every task in the batch, confirm them with the user in one panel, and write them into each task file.
+4. Independent tasks run concurrently:
    ```bash
-   node <path-to-o-parallel>/scripts/parallel.mjs --tasks <run folder>/E<nn>-tasks --parallel 4
+   node <skills>/o-parallel/scripts/parallel.mjs --tasks <run folder>/E<nn>-tasks --parallel 4
    ```
    o-parallel gives each task an isolated worktree and a full background agent, retries failures, and merges committed results back into your branch.
-4. Tasks that depend on one another stay in the inline TDD loop below, in dependency order.
-5. After an o-parallel batch merges, run the full test suite, then VERIFY (step 4) on the merged changes before the status update in step 7.
+5. Tasks that depend on one another stay in the inline TDD loop below, in dependency order.
+6. After an o-parallel batch merges, run the full test suite, then VERIFY (step 4) and the floor guard on the merged changes, then START/READY stamps and the status update in step 7 for each merged task.
 
 ## Frontend Work Uses O-UI
 
 When a task's scope includes UI (HTML/CSS, templates, components, or styles in any framework), apply the o-ui skill to everything you produce:
 
-1. Read the o-ui skill's `SKILL.md` before writing any UI code — `~/.agents/skills/o-ui/SKILL.md` for a global install, `.agents/skills/o-ui/SKILL.md` for a local one.
+1. Read the o-ui skill's `SKILL.md` before writing any UI code — `<skills>/o-ui/SKILL.md`.
 2. Follow o-ui's method: state the screen's primary task, then build to its strict rules (element count limits, component selection, row actions, status display, pagination rules).
 3. Exercise the screen with o-browser before VERIFY, and run o-ui's Pre-Flight Checklist after it. o-ui judges the design; the browser is what shows the screen actually renders and works, which is the *Verified* row of the standing bar. A screen that fails any checklist item is not done.
 
@@ -124,8 +122,8 @@ cannot name them, run the full suite and say why.
 0. **START** — record that the task began: `node <skill>/scripts/status.mjs <run folder> --start <task file>`. It stamps
    `started` in the task's property block once; a second call keeps the first stamp.
 1. **RED** — Write the minimal failing test for the task's acceptance criterion. It must fail for the *right reason*.
-   **Seams are pre-agreed:** before the first test of a task, name the seams under test and confirm them with
-   the user; tests observe behavior at public seams, never internals.
+   **Seams are pre-agreed:** before the first test, name the seams under test and confirm them with the user —
+   once per layer, for all its tasks, not once per task; tests observe behavior at public seams, never internals.
 2. **GREEN** — Write the minimum implementation to pass that test. Nothing more. Walk the o-unbloat ladder before writing.
 3. **REFACTOR** — Evaluate against SOLID/clean code, the comment rules, the o-unbloat pass (ladder, table, one cut at a time), the o-arch pass (placement, naming, responsibility, direction, inheritance), and the functional style above. Strip comments that restate code; extract explained blocks into named functions; push side effects to the edges and prefer pure, immutable functions. State what you assessed and what (if anything) improved — or why no changes were needed.
    - **One-sentence test:** every function you wrote must be describable in one sentence; if not, split it.
@@ -133,20 +131,20 @@ cannot name them, run the full suite and say why.
 4. **VERIFY — doubt, then o-review + o-fix + test.** Run on every finished task before committing:
    - **Doubt** — on a non-trivial decision (branching logic, a module boundary, an invariant the compiler cannot check, an irreversible change), run the adversarial pass in `references/doubt.md` *before* the review. It is cheaper than review because it aims to disprove the decision while changing it is still cheap.
    - **Test** — run the narrowest tests. All must pass.
-   - **o-review** — review the changed files by o-review's pass card (`~/.agents/skills/o-review/references/pass.md` for a global install, `.agents/skills/o-review/references/pass.md` for a local one). It writes a plan (`E<nn>-review-plan.md`) into the run folder, which `o-fix` reads.
+   - **o-review** — review the changed files by o-review's pass card (`<skills>/o-review/references/pass.md`). It writes a plan (`E<nn>-review-plan.md`) into the run folder, which `o-fix` reads.
    - **o-fix** — resolve every issue in the fix plan. Re-run the narrowest tests after each fix.
    - Repeat o-review + o-fix until the plan has no unresolved issues and the narrowest tests are green.
    - **Size check** — compare the files and modules the diff touched with the task's `size` (XS 1 file · S 2–3 · M 4–10
      in one module · L beyond, or a contract change; tests not counted). When they disagree, say so in the run's
      `memory.md` with both numbers: that record is how the scale gets tuned, so never edit `size` to match the diff.
 5. **SYNC DOCS** — Update the spec (`<run folder>/E00-plan.md`) if it exists; otherwise update living docs (README, comments) directly.
-6. **COMMIT** — **Run the full suite once**; a red suite blocks the commit. **Then the floor guard**: `node ~/.agents/skills/o-floor/scripts/floor-guard.mjs --root .` (`.agents/skills/o-floor/scripts/floor-guard.mjs` for a local install). Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <path-to-commit.mjs> "<message>"` from the o-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If o-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
+6. **COMMIT** — **Run the full suite once**; a red suite blocks the commit. **Then the floor guard**: `node <skills>/o-floor/scripts/floor-guard.mjs --root .`. Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <path-to-commit.mjs> "<message>"` from the o-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If o-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
 7. **UPDATE STATUS — the task, then the plan.** Two files, and neither write is optional. First mark where your own
    work ended: `node <skill>/scripts/status.mjs <run folder> --ready <task file>` stamps `ready` once — tests green,
    review clean, committed — before any check a person still owes. `ready − started` is the work, `finished − ready`
    the wait, and only the first says anything about a task's size.
 
-   - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. That checklist carries the task's own criterion plus the five standing rows `o-decompose` wrote in (see Definition of Done above), and both kinds are ticked the same way. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
+   - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. That checklist carries the task's own criterion plus the five standing rows `o-decompose` wrote in (see Definition of Done below), and both kinds are ticked the same way. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
    - **The plan** — the layers artifact, `<run folder>/E<nn>-plan.md` (or a legacy `E<nn>-epic.md`) — cannot see the task files, so derive it:
      ```bash
      node <skill>/scripts/status.mjs <run folder>
@@ -195,10 +193,6 @@ Three rows get claimed far more often than they get checked, and each one is a s
   one row of the bar, not the bar.
 - *"It's done apart from a bit of cleanup."* Deferred cleanup is the cleanup that never lands, and the next task
   builds on it.
-
-## Gate
-
-Before committing: evaluate the implementation against SOLID principles, design patterns, clean code, the functional style above (pure functions, immutability, side effects at the edges), and the impossible-state rule (every branch a narrower type would delete). State what you assessed and what (if anything) you improved — or why no changes were needed.
 
 ## Common Rationalizations
 

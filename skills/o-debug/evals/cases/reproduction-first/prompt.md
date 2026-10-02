@@ -1,0 +1,1 @@
+Bug report from a user: "The cart total is wrong. With two items, one at 5 and one at 7 (one of each), the cart shows 7 instead of 12." The code is in src/cart.mjs. Debug and fix it with the o-debug skill. Do not commit.

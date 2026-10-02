@@ -1,7 +1,7 @@
 ---
 name: o-parallel
-description: Run multiple coding tasks in parallel — each task gets an isolated git worktree and its own background agent process with full tools and the parent's project rights, then committed results merge back into your branch
-version: 1.1.1
+description: Run multiple coding tasks in parallel — each task gets an isolated git worktree and its own background agent process with full tools and the parent's project rights, then committed results merge back into your branch. Use when asked to parallelize or fan out independent tasks.
+version: 1.2.0
 author: Community
 tags: [parallel, agents, background, worktree, concurrency, dispatch]
 user-invocable: true
@@ -10,6 +10,8 @@ user-invocable: true
 # O-Parallel — Parallel Background Coding Agents
 
 Runs independent coding tasks concurrently. Each task is executed in an isolated git worktree by a full `crush run` agent process (read + edit + bash tools, not the read-only in-session agent tool), holding the same project rights as you. Committed results are merged back into your current branch. Use it to parallelize o-decompose output, batch fixes, or multi-file refactors.
+
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
 
 ## Requirements
 
@@ -20,7 +22,7 @@ Runs independent coding tasks concurrently. Each task is executed in an isolated
 ## Usage
 
 ```bash
-node <path-to>/scripts/parallel.mjs --tasks <task-dir> [options]
+node <skill>/scripts/parallel.mjs --tasks <task-dir> [options]
 ```
 
 | Option | Default | Meaning |
@@ -56,13 +58,21 @@ node <path-to>/scripts/parallel.mjs --tasks <task-dir> [options]
 ```
 You are one parallel coding agent working in an isolated copy of the
 repository. Read TASK.md at the repository root: it contains your complete
-task. Implement it fully. Follow the task's own workflow (TDD if it names
-tests). Do not modify files outside the task's scope. When finished, run the
-project tests. Then commit all changes with one conventional commit message
-(type(scope): description). Leave the working tree clean, with no uncommitted
-changes. If you cannot complete the task, still leave the tree clean and
-state what is missing in your final answer.
+task, including the test seams already agreed with the user. Implement it
+test-first: a failing test at those seams, the least code that passes it,
+then a refactor. You cannot ask the user anything; if the task leaves a
+decision open that the code cannot settle, stop and state it in your final
+answer instead of guessing. Do not modify files outside the task's scope.
+Run the narrowest tests after each change and the full test suite once at
+the end. Commit with `node <skills>/o-commit/scripts/commit.mjs "<message>"`
+— never with git commit directly. Leave the working tree clean, with no
+uncommitted changes. If you cannot complete the task, still leave the tree
+clean and state what is missing in your final answer.
 ```
+
+The script fills in o-commit's path from its own location. A worker cannot ask the user anything, so whatever
+needs the user — the test seams, an open design choice — is settled and written into each task file before
+dispatch.
 
 ## Rules
 

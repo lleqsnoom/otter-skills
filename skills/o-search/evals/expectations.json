@@ -1,13 +1,16 @@
 {
   "skill": "o-search",
   "expected_behavior": [
-    "The `o-search` MCP server must be wired into the CLI you are running in, and the repository must have",
-    "server never blocks a query on re-embedding, so: re-run the query, or start `o-search watch` and it",
-    "it does not search a repository that was never indexed. It indexes text files and `.o-skills`"
+    "When the otter-skills MCP tools are not registered, the agent says so and reads the files directly instead of pretending a search ran.",
+    "A known identifier is looked up with find_symbols or search_code; a described behaviour starts with search_knowledge and is confirmed with search_code or read_code before it is quoted.",
+    "A hit is opened before its text is quoted, because an index row is a whole file and not a line.",
+    "A capped search_code result is narrowed and run again rather than read as the complete list.",
+    "When the index is unavailable, the agent falls back to the exact tools instead of stopping."
   ],
   "source": [
     "Prerequisite",
-    "Staleness",
-    "What it does not do"
+    "Which tool",
+    "Reading a hit",
+    "Failure modes, and what each means"
   ]
 }
