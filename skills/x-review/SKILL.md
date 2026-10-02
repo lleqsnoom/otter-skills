@@ -47,8 +47,14 @@ All scripts self-resolve via `__dirname` — run from any working directory by p
 # Run from anywhere (use whichever script path is available):
 node <path-to>/scripts/analyze-complexity.mjs --all       # AST-based complexity, length, params per function
 node <path-to>/scripts/check-duplication.mjs --all         # duplicated blocks (>5 lines)
-node <path-to>/scripts/save-plan.mjs --slug <topic> [--reviews <task file>]   # create plan file with all analysis results
+node <path-to>/scripts/save-plan.mjs --slug <topic> [--reviews <task file>] [--base <ref> | --all | --files a,b]   # create plan file with all analysis results
 ```
+
+`save-plan.mjs` measures the change by default: the source files changed since the merge-base with `main` (else
+`master`), committed or not, so a review run before the commit measures the work in progress. `--base <ref>` picks
+another ref, `--files` names the files, and `--all` measures every tracked file. The plan's `**Scope:**` line names
+what was measured; an empty change reads `not measured`, never 0. `check-duplication.mjs` finds blocks repeated
+inside one file, not copies across files.
 
 **Auto-discovery**: Scripts resolve config and sibling scripts relative to the directory they sit in (ESM has no `__dirname`; it is derived from `import.meta.url`), so they work whether installed globally (`~/.agents/skills/x-review/scripts/`) or locally (`.agents/skills/<project>/x-review/scripts/`).
 
@@ -115,7 +121,7 @@ pass (the paths are in the steps above); this skill never restates their rules.
 | "This file is already huge, I'll just review the diff." | Then say so and ask for a split. Reviewing around a structural problem is how it gets buried; the size is itself a finding. |
 | "Ten nits and one structural problem — I'll list them in order." | Lead with leverage: correctness and structure first. If there is one structural problem and ten nits, the structural problem *is* the review. |
 | "I noticed dead code, but I won't ask about deleting it." | List it and ask. Silently deleting what you do not fully understand is the other failure, and leaving it unmentioned hides it from the next reader. |
-| "The counts are repo-wide, so they describe this change." | They do not. Say what the scope was, and whether the engine was the AST one or the regex fallback. |
+| "The Scope line is close enough to what I was asked to review." | Then the counts describe other files. Rerun with `--files` or `--base`, and say whether the engine was the AST one or the regex fallback. |
 | "The analysis script failed, so the count is zero." | An unmeasured count is not a zero. Carry the "Analysis incomplete" note into the plan and never report a failed analysis as a clean result. |
 
 ## Severity
@@ -150,7 +156,7 @@ The script prints the full path. Open that file with `edit` or `write`, then ins
 # Code Review — Fix Plan
 
 **Date:** YYYY-MM-DD-hhmm
-**Counts below:** repo-wide (`--all`), so they describe the whole repository, not the scope you were asked to review.
+**Scope:** 3 files changed vs main@1a2b3c4 (2 committed, 0 staged, 1 unstaged, 0 untracked)
 **Files analyzed:** N
 **Functions with complexity > 5:** N
 **Functions longer than 20 lines:** N

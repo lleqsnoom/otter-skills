@@ -10,8 +10,8 @@ Read this when x-implement's VERIFY step reviews one task. A review the user ask
 ## Steps
 
 1. **Metrics.** `node <x-review>/scripts/save-plan.mjs --slug <run topic> --reviews <task file>` creates
-   `E<nn>-review-plan.md` in the run folder and prints its path. Its counts are repo-wide: say so, and write
-   `Scope:` with the files you reviewed.
+   `E<nn>-review-plan.md` in the run folder and prints its path. Its `Scope:` line names the files measured;
+   rerun with `--files` if the task's differ.
 2. **Principles** under `[PRINCIPLE]`: functions describable in one sentence, complexity and length within
    bounds, one responsibility per function and class, no duplication. A function that interleaves phases with
    inline reporting (a `push` into a shared results list in each branch) is CRITICAL.
