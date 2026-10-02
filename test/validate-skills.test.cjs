@@ -49,13 +49,13 @@ const validate = (args = []) => {
 };
 
 describe("the validator gates the suite on skill hygiene", () => {
-  it("passes the clean tree and reports the 39 skills it inspected", () => {
+  it("passes the clean tree and reports the 40 skills it inspected", () => {
     const result = spawnSync(process.execPath, [VALIDATOR], { encoding: "utf8" });
     const json = JSON.parse(result.stdout);
     assert.equal(result.status, 0);
     assert.deepEqual(json.violations, []);
-    assert.equal(json.counts.skills, 39);
-    assert.equal(json.counts.readmeRows, 39);
+    assert.equal(json.counts.skills, 40);
+    assert.equal(json.counts.readmeRows, 40);
   });
 
   it("fails on frontmatter that does not parse, naming the file", () => {
