@@ -1,12 +1,22 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, normalize, relative, resolve, sep } from 'node:path';
 
-import { defaultRun } from './create.mjs';
 import { TEXT_EXTENSIONS } from './scan.mjs';
+
+/** `run(command, args, { cwd }) -> { status, stdout, stderr }`. */
+function defaultRun(command, args, { cwd = process.cwd() } = {}) {
+  const done = spawnSync(command, args, { cwd, encoding: 'utf8' });
+  return {
+    status: done.status ?? 1,
+    stdout: done.stdout ?? '',
+    stderr: done.stderr || done.error?.message || '',
+  };
+}
 
 /**
  * The repository as a whole, which is what an agent needs and what the board never reads: the board's scanner stops
- * at the `.x-skills` root, so README, documentation and source are invisible to it. Everything here is bounded by
+ * at the `.o-skills` root, so README, documentation and source are invisible to it. Everything here is bounded by
  * the repository directory — a path that resolves outside it is refused, never clamped.
  *
  * The file list comes from `git ls-files`, so a repository's own `.gitignore` decides what is source rather than a
@@ -51,14 +61,14 @@ function walk(dir, depth, acc) {
 /**
  * Every file the repository holds, relative to its root.
  *
- * `.x-skills` is walked in as well as listed: it is frequently gitignored — it is in this repository — and the tasks
+ * `.o-skills` is walked in as well as listed: it is frequently gitignored — it is in this repository — and the tasks
  * and artifacts live there, so a tracked-only list would hide the half of the repository an agent came for.
  */
 export function repoFiles(repoPath) {
   const listed = defaultRun('git', ['ls-files', '-z'], { cwd: repoPath });
   const tracked = listed.status === 0 ? listed.stdout.split('\0').filter(Boolean) : null;
 
-  const skillsRoot = join(repoPath, '.x-skills');
+  const skillsRoot = join(repoPath, '.o-skills');
   let skills = [];
   try {
     if (statSync(skillsRoot, { throwIfNoEntry: false })?.isDirectory()) {

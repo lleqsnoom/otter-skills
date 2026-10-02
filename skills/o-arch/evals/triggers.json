@@ -1,0 +1,20 @@
+{
+  "skill": "o-arch",
+  "queries": [
+    { "query": "where should this new module live?", "should_trigger": true },
+    { "query": "these class names are vague, give them proper names", "should_trigger": true },
+    { "query": "we have a utils folder that everything imports from", "should_trigger": true },
+    { "query": "should this extend the base class or take a dependency instead?", "should_trigger": true },
+    { "query": "restructure the directories so each feature owns its own code", "should_trigger": true },
+    { "query": "is it allowed for the api layer to import the database module?", "should_trigger": true },
+    { "query": "our domain code is tangled in the infrastructure, sort out the boundaries", "should_trigger": true },
+    { "query": "should this abstraction exist at all?", "should_trigger": false },
+    { "query": "review my changes before I merge", "should_trigger": false },
+    { "query": "write a commit message for my staged changes", "should_trigger": false },
+    { "query": "plan the new billing feature", "should_trigger": false },
+    { "query": "why does this test fail on CI?", "should_trigger": false },
+    { "query": "roast this spec", "should_trigger": false },
+    { "query": "simplify this blog post", "should_trigger": false },
+    { "query": "generate tests for this module", "should_trigger": false }
+  ]
+}

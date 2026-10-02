@@ -15,13 +15,13 @@ import { asText, projectOrThrow, resolveProjects } from './context.mjs';
  * reported as such and never as the file's own content — the file says what the work is, the board says where
  * somebody put it.
  *
- * Every path these tools answer with is relative to the repository, `.x-skills/` included, so one rule covers
+ * Every path these tools answer with is relative to the repository, `.o-skills/` included, so one rule covers
  * tasks, documents and source: the path an agent was given is the path it may pass back.
  */
 
 const COLUMN_OF_STATUS = { done: 'done', active: 'active', todo: 'todo' };
 
-const SKILLS = '.x-skills';
+const SKILLS = '.o-skills';
 
 const skillsPath = (relPath) => `${SKILLS}/${relPath}`;
 

@@ -23,10 +23,10 @@ function writeFile(file, text) {
 
 /** A repository whose runs were written before artifacts carried properties, plus one legacy folder. */
 function repository() {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-backfill-'));
-  const root = path.join(repo, '.x-skills');
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-skills-backfill-'));
+  const root = path.join(repo, '.o-skills');
   writeFile(path.join(root, ANALYSIS_RUN, 'E00-analysis.md'), '# Analysis — login cause\n');
-  writeFile(path.join(root, RUN, 'E00-plan.md'), `# Plan — login\n\n**Input:** \`.x-skills/${ANALYSIS_RUN}/E00-analysis.md\`\n\n## Layers\n`);
+  writeFile(path.join(root, RUN, 'E00-plan.md'), `# Plan — login\n\n**Input:** \`.o-skills/${ANALYSIS_RUN}/E00-analysis.md\`\n\n## Layers\n`);
   writeFile(path.join(root, RUN, 'E01-triage.md'), '# Task triage - login\n');
   writeFile(
     path.join(root, RUN, 'E02-tasks', 'L0-T1-a.md'),
@@ -36,7 +36,7 @@ function repository() {
     path.join(root, RUN, 'E02-tasks', 'L0-T2-b.md'),
     '---\ntitle: "b, named by hand"\nsize: M\n---\n# Task: b\n**Layer:** 0 — x\n**Files:** src/c.ts (new)\n\n## Definition of Done\n- [ ] b works\n',
   );
-  writeFile(path.join(root, RUN, 'E03-critique.md'), `# Roast — login\n\n**Artifact:** .x-skills/${RUN}/E00-plan.md\n`);
+  writeFile(path.join(root, RUN, 'E03-critique.md'), `# Roast — login\n\n**Artifact:** .o-skills/${RUN}/E00-plan.md\n`);
   writeFile(path.join(root, RUN, 'memory.md'), '# Memory — login\n');
   writeFile(path.join(root, RUN, 'E04-summary.md'), '# Summary — login\n');
   writeFile(path.join(root, 'tasks', '07-08-2026-12:56-old', 'task.md'), '# Task: old\n**Effort:** 2h\n');
@@ -81,7 +81,7 @@ test('the backfill keeps what is set, leaves what is not an artifact, and change
   const before = fs.readdirSync(root, { recursive: true }).filter((name) => name.endsWith('.md')).map((name) => read(root, name));
   backfill('--root', root);
   const after = fs.readdirSync(root, { recursive: true }).filter((name) => name.endsWith('.md')).map((name) => read(root, name));
-  assert.deepEqual(after, before, 'a second run, given the .x-skills folder itself, writes nothing');
+  assert.deepEqual(after, before, 'a second run, given the .o-skills folder itself, writes nothing');
 });
 
 test('a dry run says what it would add and writes nothing', () => {
@@ -93,10 +93,10 @@ test('a dry run says what it would add and writes nothing', () => {
   assert.match(result.stdout, new RegExp(`${RUN}/E02-tasks/L0-T1-a\\.md: \\+ type, title, run, plan, size, done`));
 });
 
-test('a root with no .x-skills is refused, by name', () => {
+test('a root with no .o-skills is refused, by name', () => {
   const result = backfill('--root', os.tmpdir());
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /no \.x-skills/);
+  assert.match(result.stderr, /no \.o-skills/);
 });
 
 const VAULT_FILES = path.join(__dirname, '..', 'scripts', 'vault');
@@ -137,7 +137,7 @@ test('the fixture vault holds the same bases the backfill writes', () => {
 
 test('a roast is numbered among the run’s critiques, and a hub written before titles gets one', () => {
   const { repo, root } = repository();
-  writeFile(path.join(root, RUN, 'E05-critique.md'), `# Roast — login\n\n**Artifact:** .x-skills/${RUN}/E00-plan.md\n`);
+  writeFile(path.join(root, RUN, 'E05-critique.md'), `# Roast — login\n\n**Artifact:** .o-skills/${RUN}/E00-plan.md\n`);
   writeFile(path.join(root, RUN, 'index.md'), '---\ntype: run\n---\n# login\n');
   backfill('--root', repo);
   assert.match(read(root, `${RUN}/E05-critique.md`), /^title: "Roast of plan \(#2\)"$/m);
@@ -148,7 +148,7 @@ test('a task gains the code areas its Files touch, and the vault the tag notes f
   const { repo, root } = repository();
   writeFile(
     path.join(root, RUN, 'E02-tasks', 'L1-T1-c.md'),
-    '# Task: c\n**Layer:** 1 — x\n**Files:** `src/server/a.mjs` (mod), skills/x-plan/b.mjs (new), apps/app-web/src/main.ts (new), test/a.test.cjs (new), package.json (mod)\n\n## Definition of Done\n- [ ] c\n',
+    '# Task: c\n**Layer:** 1 — x\n**Files:** `src/server/a.mjs` (mod), skills/o-plan/b.mjs (new), apps/app-web/src/main.ts (new), test/a.test.cjs (new), package.json (mod)\n\n## Definition of Done\n- [ ] c\n',
   );
   writeFile(path.join(root, 'tags', 'area', 'server.md'), 'mine\n');
   const result = backfill('--root', repo);
@@ -156,10 +156,10 @@ test('a task gains the code areas its Files touch, and the vault the tag notes f
 
   assert.match(
     read(root, `${RUN}/E02-tasks/L1-T1-c.md`),
-    /^topics:\n {2}- "\[\[tags\/area\/server\]\]"\n {2}- "\[\[tags\/area\/x-plan\]\]"\n {2}- "\[\[tags\/area\/app-web\]\]"$/m,
+    /^topics:\n {2}- "\[\[tags\/area\/server\]\]"\n {2}- "\[\[tags\/area\/o-plan\]\]"\n {2}- "\[\[tags\/area\/app-web\]\]"$/m,
     'one area per module, in the order the Files line names them; tests and root files name none',
   );
-  assert.equal(read(root, 'tags/area/x-plan.md'), '---\ntype: tag\ntitle: "x-plan (area)"\n---\n# x-plan\n\n![[tag.base]]\n');
+  assert.equal(read(root, 'tags/area/o-plan.md'), '---\ntype: tag\ntitle: "o-plan (area)"\n---\n# o-plan\n\n![[tag.base]]\n');
   assert.equal(read(root, 'tags/area/server.md'), 'mine\n', 'an existing tag note is kept');
   assert.equal(read(root, 'tag.base'), fs.readFileSync(path.join(VAULT_FILES, 'tag.base'), 'utf8'));
   assert.doesNotMatch(read(root, `${RUN}/E02-tasks/L0-T1-a.md`), /^topics:/m, 'a task whose files sit at the top of src/ names no area');
@@ -180,7 +180,7 @@ test('a Files line is read as paths: a list inside parentheses and a prose entry
   const { repo, root } = repository();
   writeFile(
     path.join(root, RUN, 'E02-tasks', 'L1-T1-c.md'),
-    "# Task: c\n**Layer:** 1 — x\n**Files:** test/fixtures/vault/ (new: runs/<run>/index.md, E02-tasks/L0-T1-a.md, plus tasks/legacy-task.md), src/server/parse.mjs (mod), otter-pm's .x-skills/.obsidian (not in git)\n",
+    "# Task: c\n**Layer:** 1 — x\n**Files:** test/fixtures/vault/ (new: runs/<run>/index.md, E02-tasks/L0-T1-a.md, plus tasks/legacy-task.md), src/server/parse.mjs (mod), otter-skills's .o-skills/.obsidian (not in git)\n",
   );
   backfill('--root', repo);
   const task = read(root, `${RUN}/E02-tasks/L1-T1-c.md`);

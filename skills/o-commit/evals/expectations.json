@@ -1,0 +1,11 @@
+{
+  "skill": "o-commit",
+  "expected_behavior": [
+    "One line only — no description body, no blank lines inside the message. The only exception is the `BREAKING CHANGE:` footer described below.",
+    "No AI attribution — never mention tools, models, or assistants.",
+    "Breaking changes — signal with a `!` before the colon (`feat(api)!: ...`) or, when the impact needs a sentence of its own, a single `BREAKING CHANGE:` footer separated from the subject by one blank line. That footer is the *single allowed exception* to the one-line rule, used only for a breaking change whose impact the subject cannot carry."
+  ],
+  "source": [
+    "Rules"
+  ]
+}

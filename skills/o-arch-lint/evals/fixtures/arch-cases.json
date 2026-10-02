@@ -1,0 +1,259 @@
+{
+  "why": "The cases `--self-test` runs. Each one is a tree, the declaration it is checked against, and the exact report expected of it, so a rule change that moves a violation, a rated group or a line number fails here. Add a case by adding one object; nothing in the checker needs editing. `configHome` writes the declaration inside the tree (a subtree case), and `root` checks a directory other than the tree's own.",
+  "cases": [
+    {
+      "name": "clean tree, undeclared",
+      "why": "with no declaration naming is the only group that can be rated, and the other two are named unrated rather than assumed clean",
+      "tree": {
+        "src/domain/order_entity.mjs": "export const total = (lines) => lines.reduce((n, line) => n + line.amount, 0);\n",
+        "src/domain/order_repository.mjs": "export const findById = async (id) => ({ id });\n"
+      },
+      "config": null,
+      "expect": {
+        "violations": [],
+        "rated": ["naming"],
+        "unrated": ["dependency-direction", "boundaries"],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "bag directory and compound file name",
+      "why": "a bag directory and a file named for its shape are both naming violations: the directory reports as a directory, the file at its own name",
+      "tree": {
+        "src/domain/order_entity.mjs": "export const total = (lines) => lines.reduce((n, line) => n + line.amount, 0);\n",
+        "src/domain/order_repository.mjs": "export const findById = async (id) => ({ id });\n",
+        "src/utils/string.mjs": "export const pad = (value) => ` ${value}`;\n",
+        "src/domain/date-utils.mjs": "export const isWeekend = (day) => [0, 6].includes(day.getDay());\n"
+      },
+      "config": null,
+      "expect": {
+        "violations": ["naming src/domain/date-utils.mjs:1", "naming src/utils/:1"],
+        "rated": ["naming"],
+        "unrated": ["dependency-direction", "boundaries"],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "a banned word inside a compound name, and a word that merely contains it",
+      "why": "the rule is about a word standing alone, so `string_utils` hits while `utilities` and `toolsmith` do not",
+      "tree": {
+        "src/domain/string_utils.mjs": "export const trim = (value) => value.trim();\n",
+        "src/domain/utilities.mjs": "export const format = (value) => String(value);\n",
+        "src/domain/toolsmith.mjs": "export const sharpen = (tool) => tool;\n"
+      },
+      "config": null,
+      "expect": {
+        "violations": ["naming src/domain/string_utils.mjs:1"],
+        "rated": ["naming"],
+        "unrated": ["dependency-direction", "boundaries"],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "a vendored tree is not the repo's design",
+      "why": "`node_modules` is excluded, so a bag name inside a dependency is not reported against the repo that installed it",
+      "tree": {
+        "src/domain/order_entity.mjs": "export const total = (lines) => lines.reduce((n, line) => n + line.amount, 0);\n",
+        "src/domain/order_repository.mjs": "export const findById = async (id) => ({ id });\n",
+        "node_modules/left-pad/utils/index.mjs": "export const x = 1;\n"
+      },
+      "config": null,
+      "expect": {
+        "violations": [],
+        "rated": ["naming"],
+        "unrated": ["dependency-direction", "boundaries"],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "a declared tree with a controller in domain and an import that points outward",
+      "why": "the same file fails a wildcard-free naming rule and the direction rule, and both are reported at the line that carries them",
+      "tree": {
+        "src/domain/order_controller.mjs": "import { charge } from \"../application/billing.mjs\";\nexport const handle = (order) => charge(order);\n",
+        "src/application/billing.mjs": "export const charge = (order) => order;\n"
+      },
+      "config": {
+        "layers": {
+          "domain": { "roots": ["src/domain"], "import_markers": ["application/billing"] },
+          "application": { "roots": ["src/application"], "import_markers": ["application/billing"] }
+        },
+        "allowed_dependencies": { "domain": [], "application": ["domain"] },
+        "naming": [
+          { "applies_to": "domain", "must_not_match": "controller", "message": "a controller belongs in the interface layer, not in domain" }
+        ]
+      },
+      "expect": {
+        "violations": ["dependency-direction src/domain/order_controller.mjs:1", "naming src/domain/order_controller.mjs:1"],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "a declaration with layers but no allowed dependencies",
+      "why": "the dependency group is all-or-nothing: without an entry per layer its imports are unchecked and the group is reported unrated rather than passed",
+      "tree": {
+        "src/domain/order_controller.mjs": "import { charge } from \"../application/billing.mjs\";\nexport const handle = (order) => charge(order);\n",
+        "src/application/billing.mjs": "export const charge = (order) => order;\n"
+      },
+      "config": {
+        "layers": {
+          "domain": { "roots": ["src/domain"], "import_markers": ["application/billing"] },
+          "application": { "roots": ["src/application"], "import_markers": ["application/billing"] }
+        }
+      },
+      "expect": {
+        "violations": [],
+        "rated": ["naming", "boundaries"],
+        "unrated": ["dependency-direction"],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "a file no declared layer claims",
+      "why": "`--explain-coverage` is the flag that turns the unplaced count into the list behind it",
+      "tree": {
+        "src/domain/order_entity.mjs": "export const total = (lines) => lines.reduce((n, line) => n + line.amount, 0);\n",
+        "src/application/billing.mjs": "export const charge = (order) => order;\n",
+        "src/legacy/old_orders.mjs": "export const old = true;\n"
+      },
+      "config": {
+        "layers": {
+          "domain": { "roots": ["src/domain"], "import_markers": ["application/billing"] },
+          "application": { "roots": ["src/application"], "import_markers": ["application/billing"] }
+        },
+        "allowed_dependencies": { "domain": [], "application": ["domain"] }
+      },
+      "explainCoverage": true,
+      "expect": {
+        "violations": [],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 1,
+        "unplacedFiles": ["src/legacy/old_orders.mjs"]
+      }
+    },
+    {
+      "name": "a declared layer root that is not on disk",
+      "why": "the declaration and the tree have drifted, which is a boundaries violation rather than a silent empty layer",
+      "tree": {
+        "src/domain/order_entity.mjs": "export const total = (lines) => lines.reduce((n, line) => n + line.amount, 0);\n",
+        "src/domain/order_repository.mjs": "export const findById = async (id) => ({ id });\n"
+      },
+      "config": {
+        "layers": { "domain": { "roots": ["src/domain"] }, "persistence": { "roots": ["src/persistence"] } },
+        "allowed_dependencies": { "domain": [], "persistence": [] }
+      },
+      "expect": {
+        "violations": ["boundaries src/persistence/:1"],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "a declaration that draws its own cycle",
+      "why": "the acyclic rule reads the declared whitelist, so a cycle two layers declare is caught even when no marker sees the imports",
+      "tree": {
+        "src/a/one.mjs": "export const a = 1;\n",
+        "src/b/two.mjs": "export const b = 2;\n"
+      },
+      "config": {
+        "layers": { "a": { "roots": ["src/a"] }, "b": { "roots": ["src/b"] } },
+        "allowed_dependencies": { "a": ["b"], "b": ["a"] }
+      },
+      "expect": {
+        "violations": ["dependency-direction .o-skills/config/arch.json:1"],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "a subtree root of a declared repo",
+      "why": "roots resolve against the declaration's own directory, so checking `src` of a declared repo reports nothing missing rather than every root",
+      "tree": {
+        "src/domain/order_controller.mjs": "import { charge } from \"../application/billing.mjs\";\nexport const handle = (order) => charge(order);\n",
+        "src/application/billing.mjs": "export const charge = (order) => order;\n"
+      },
+      "config": {
+        "layers": {
+          "domain": { "roots": ["src/domain"], "import_markers": ["application/billing"] },
+          "application": { "roots": ["src/application"], "import_markers": ["application/billing"] }
+        },
+        "allowed_dependencies": { "domain": [], "application": ["domain"] }
+      },
+      "configHome": ".o-skills/config/arch.json",
+      "root": "src",
+      "expect": {
+        "violations": [],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 2
+      }
+    },
+    {
+      "name": "a Python tree, declared with line markers",
+      "why": "detection is language-agnostic: the same declaration shape carries Python markers, and the allowed direction reports nothing",
+      "tree": {
+        "src/domain/pricing.py": "def total(lines):\n    return sum(line.amount for line in lines)\n",
+        "src/application/checkout.py": "from src.domain import pricing\n\ndef charge(order):\n    return pricing.total(order.lines)\n"
+      },
+      "config": {
+        "layers": {
+          "domain": { "roots": ["src/domain"], "import_markers": ["^from src\\.domain", "^import src\\.domain"] },
+          "application": { "roots": ["src/application"], "import_markers": ["^from src\\.application", "^import src\\.application"] }
+        },
+        "allowed_dependencies": { "domain": [], "application": ["domain"] }
+      },
+      "expect": {
+        "violations": [],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "the same Python tree with the import pointing the wrong way",
+      "why": "the Python markers catch the inward-pointing import the language-agnostic claim rests on, at the line it sits on",
+      "tree": {
+        "src/domain/pricing.py": "from src.application import checkout\n\ndef total(lines):\n    return sum(line.amount for line in lines)\n",
+        "src/application/checkout.py": "def charge(order):\n    return order\n"
+      },
+      "config": {
+        "layers": {
+          "domain": { "roots": ["src/domain"], "import_markers": ["^from src\\.domain", "^import src\\.domain"] },
+          "application": { "roots": ["src/application"], "import_markers": ["^from src\\.application", "^import src\\.application"] }
+        },
+        "allowed_dependencies": { "domain": [], "application": ["domain"] }
+      },
+      "expect": {
+        "violations": ["dependency-direction src/domain/pricing.py:1"],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 0
+      }
+    },
+    {
+      "name": "a Go tree, declared with its quoted import paths",
+      "why": "the marker is the quoted import path, not an import keyword, so the same declaration shape carries a Go tree and the allowed direction reports nothing",
+      "tree": {
+        "internal/domain/pricing.go": "package domain\n\nfunc Total(lines []Line) int {\n\ttotal := 0\n\tfor _, line := range lines {\n\t\ttotal += line.Amount\n\t}\n\treturn total\n}\n",
+        "internal/application/checkout.go": "package application\n\nimport \"github.com/acme/app/internal/domain\"\n\nfunc Charge(order Order) int {\n\treturn domain.Total(order.Lines)\n}\n"
+      },
+      "config": {
+        "layers": {
+          "domain": { "roots": ["internal/domain"], "import_markers": ["\"github.com/acme/app/internal/domain"] },
+          "application": { "roots": ["internal/application"], "import_markers": ["\"github.com/acme/app/internal/application"] }
+        },
+        "allowed_dependencies": { "domain": [], "application": ["domain"] }
+      },
+      "expect": {
+        "violations": [],
+        "rated": ["naming", "dependency-direction", "boundaries"],
+        "unrated": [],
+        "unplaced": 0
+      }
+    }
+  ]
+}

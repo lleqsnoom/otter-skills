@@ -1,0 +1,12 @@
+{
+  "skill": "o-test-gen",
+  "expected_behavior": [
+    "The test framework is detected from the project's existing config (jest.config.js, vitest.config.ts and friends), not assumed.",
+    "The stub is generated in the location the project's conventions name (tests/unit/ and the like) with happy path, error, and edge-case placeholders.",
+    "Assertions that need manual completion are left as explicit TODO comments rather than silently passing."
+  ],
+  "source": [
+    "Framework Detection",
+    "Definition of Done"
+  ]
+}

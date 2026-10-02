@@ -6,9 +6,9 @@ import { readOrcaRepos } from './orca.mjs';
 
 export const TOOL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-const inRepoXSkills = (repoPath) => join(repoPath, '.x-skills');
+const inRepoOSkills = (repoPath) => join(repoPath, '.o-skills');
 
-function looksLikeXSkillsRoot(dir) {
+function looksLikeOSkillsRoot(dir) {
   if (!dir || !existsSync(dir)) return false;
   return (
     existsSync(join(dir, 'runs')) ||
@@ -19,13 +19,13 @@ function looksLikeXSkillsRoot(dir) {
   );
 }
 
-/** Accept either a repo path (containing .x-skills) or the .x-skills directory itself. */
-export function toXSkillsRoot(candidate) {
+/** Accept either a repo path (containing .o-skills) or the .o-skills directory itself. */
+export function toOSkillsRoot(candidate) {
   const abs = resolve(candidate);
   if (!existsSync(abs)) return null;
-  if (looksLikeXSkillsRoot(abs)) return abs;
-  const nested = inRepoXSkills(abs);
-  if (looksLikeXSkillsRoot(nested)) return nested;
+  if (looksLikeOSkillsRoot(abs)) return abs;
+  const nested = inRepoOSkills(abs);
+  if (looksLikeOSkillsRoot(nested)) return nested;
   return null;
 }
 
@@ -34,17 +34,17 @@ export function toXSkillsRoot(candidate) {
  * module ended up — `src/server/` when the dev server runs it, `dist/server/` once it is built — so a fixed
  * relative path would only work in one of the two. The starting directory comes first because a config a person
  * edits for their own repositories has to win over the one that ships with the package. An explicit `--config` or
- * `$OTTER_PM_CONFIG` wins over both.
+ * `$OTTER_SKILLS_CONFIG` wins over both.
  */
 function findConfigFile(explicit, env) {
   if (explicit) return resolve(explicit);
-  if (env.OTTER_PM_CONFIG) return resolve(env.OTTER_PM_CONFIG);
+  if (env.OTTER_SKILLS_CONFIG) return resolve(env.OTTER_SKILLS_CONFIG);
 
   const fromModule = dirname(fileURLToPath(import.meta.url));
   for (const start of [process.cwd(), fromModule]) {
     let dir = resolve(start);
     for (let depth = 0; depth < 5; depth += 1) {
-      const candidate = join(dir, 'otter-pm.config.json');
+      const candidate = join(dir, 'otter-skills.config.json');
       if (existsSync(candidate)) return candidate;
       const parent = dirname(dir);
       if (parent === dir) break;
@@ -60,7 +60,7 @@ function readConfigFile(explicit, env) {
   try {
     return JSON.parse(readFileSync(file, 'utf8'));
   } catch (error) {
-    throw new Error(`otter-pm config ${file} is not valid JSON: ${error.message}`);
+    throw new Error(`otter-skills config ${file} is not valid JSON: ${error.message}`);
   }
 }
 
@@ -75,7 +75,7 @@ export function configFilePath({ argv = process.argv.slice(2), env = process.env
     if (argv[index] === '--config' && argv[index + 1]) explicit = argv[index + 1];
     else if (argv[index].startsWith('--config=')) explicit = argv[index].slice('--config='.length);
   }
-  return findConfigFile(explicit, env) ?? join(process.cwd(), 'otter-pm.config.json');
+  return findConfigFile(explicit, env) ?? join(process.cwd(), 'otter-skills.config.json');
 }
 
 function splitList(value) {
@@ -98,12 +98,12 @@ function discoverUnder(dir, depth, found) {
     if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
     if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
     const child = join(dir, entry.name);
-    if (looksLikeXSkillsRoot(child)) {
+    if (looksLikeOSkillsRoot(child)) {
       found.push(child);
       continue;
     }
-    const nested = inRepoXSkills(child);
-    if (looksLikeXSkillsRoot(nested)) {
+    const nested = inRepoOSkills(child);
+    if (looksLikeOSkillsRoot(nested)) {
       found.push(nested);
       continue;
     }
@@ -129,10 +129,10 @@ function parseRootFlags(argv) {
   return flags;
 }
 
-/** `--orca` / `--no-orca` beats `$OTTER_PM_ORCA`, which beats `orca` in the config file. */
+/** `--orca` / `--no-orca` beats `$OTTER_SKILLS_ORCA`, which beats `orca` in the config file. */
 function prefersOrca(flags, config, env) {
   if (flags.orca !== null) return flags.orca;
-  if (env.OTTER_PM_ORCA) return env.OTTER_PM_ORCA === '1' || env.OTTER_PM_ORCA === 'true';
+  if (env.OTTER_SKILLS_ORCA) return env.OTTER_SKILLS_ORCA === '1' || env.OTTER_SKILLS_ORCA === 'true';
   return config.orca === true;
 }
 
@@ -144,7 +144,7 @@ function candidateSources({ flags, config, env, cwd, orcaRepos }) {
   const explicit = [
     ...flags.roots,
     ...(Array.isArray(config.roots) ? config.roots : []),
-    ...(env.OTTER_PM_ROOTS ? splitList(env.OTTER_PM_ROOTS) : []),
+    ...(env.OTTER_SKILLS_ROOTS ? splitList(env.OTTER_SKILLS_ROOTS) : []),
   ];
   const discoverDirs = [...flags.discover, ...(Array.isArray(config.autoDiscover) ? config.autoDiscover : [])];
   const discovered = discoverDirs.flatMap((dir) => discoverUnder(resolve(dir), 2, []));
@@ -158,7 +158,7 @@ function candidateSources({ flags, config, env, cwd, orcaRepos }) {
 
 /**
  * Turns candidates into roots, and keeps the two ways of not being one apart: a path someone asked for by name is
- * `rejected`, while a repository the IDE lists with no `.x-skills` is `skipped` — most repositories have none, and
+ * `rejected`, while a repository the IDE lists with no `.o-skills` is `skipped` — most repositories have none, and
  * calling that a mistake would put a warning on most of a real workspace. A path arriving twice is one root.
  */
 function classifyCandidates({ explicit, discovered, fromOrca, orcaRepos }) {
@@ -170,7 +170,7 @@ function classifyCandidates({ explicit, discovered, fromOrca, orcaRepos }) {
   const seen = new Set();
 
   for (const candidate of [...explicit, ...fromOrca, ...discovered]) {
-    const root = toXSkillsRoot(isAbsolute(candidate) ? candidate : resolve(process.cwd(), candidate));
+    const root = toOSkillsRoot(isAbsolute(candidate) ? candidate : resolve(process.cwd(), candidate));
     if (!root) {
       if (fromOrca.includes(candidate)) skipped.push(candidate);
       else rejected.push(candidate);
@@ -207,8 +207,8 @@ function orcaReport(enabled, repos, rootsFromOrca) {
 }
 
 /**
- * Roots come from, in order: `--root` flags, the config file, `$OTTER_PM_ROOTS`, discovery, Orca's own project list,
- * and finally the current directory. Every root is either a `.x-skills` directory or a repository that has one.
+ * Roots come from, in order: `--root` flags, the config file, `$OTTER_SKILLS_ROOTS`, discovery, Orca's own project list,
+ * and finally the current directory. Every root is either a `.o-skills` directory or a repository that has one.
  *
  * `--root` and `--orca` both work, and they are not exclusive: an explicit root is for a repository the IDE does
  * not know about, and Orca's list is for the ones it does.

@@ -15,12 +15,12 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const LINT = path.join(__dirname, "..", "skills", "x-skill-lint", "scripts", "lint.mjs");
+const LINT = path.join(__dirname, "..", "skills", "o-skill-lint", "scripts", "lint.mjs");
 
 let root;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-commonjs-"));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-commonjs-"));
 });
 
 afterEach(() => {
@@ -42,19 +42,19 @@ function write(rel, text) {
 /** A root that is a module, plus one fixture skill that satisfies every other rule. */
 function fixtureModuleRoot() {
   write("package.json", JSON.stringify({ type: "module" }));
-  write("README.md", "| Skill | Description |\n|-------|-------------|\n| `x-probe` | probe |\n");
+  write("README.md", "| Skill | Description |\n|-------|-------------|\n| `o-probe` | probe |\n");
   write(
-    "skills/x-probe/SKILL.md",
-    "---\nname: x-probe\ndescription: probe fixture\ntags: [fixture]\n---\n\n# X-Probe\n\nA fixture skill.\n",
+    "skills/o-probe/SKILL.md",
+    "---\nname: o-probe\ndescription: probe fixture\ntags: [fixture]\n---\n\n# O-Probe\n\nA fixture skill.\n",
   );
 }
 
 describe("the lint refuses CommonJS under a module root", () => {
   it("flags a script that requires, and one that exports, at any depth", () => {
     fixtureModuleRoot();
-    write("skills/x-probe/scripts/tool.js", 'const fs = require("node:fs");\nconsole.log(fs);\n');
-    write("skills/x-probe/scripts/utils/helper.js", "module.exports = { helper: true };\n");
-    write("skills/x-probe/scripts/clean.js", 'const marker = "no module syntax here";\nconsole.log(marker);\n');
+    write("skills/o-probe/scripts/tool.js", 'const fs = require("node:fs");\nconsole.log(fs);\n');
+    write("skills/o-probe/scripts/utils/helper.js", "module.exports = { helper: true };\n");
+    write("skills/o-probe/scripts/clean.js", 'const marker = "no module syntax here";\nconsole.log(marker);\n');
 
     const result = lintOn(root);
     assert.equal(result.code, 1);
@@ -62,13 +62,13 @@ describe("the lint refuses CommonJS under a module root", () => {
       result.commonjs.map((violation) => violation.file).sort(),
       [path.join("scripts", "tool.js"), path.join("scripts", "utils", "helper.js")],
     );
-    assert.equal(result.commonjs[0].skill, "x-probe");
+    assert.equal(result.commonjs[0].skill, "o-probe");
     assert.match(result.commonjs[0].detail, /\.mjs/);
   });
 
   it("ignores the words require and module.exports inside strings and comments", () => {
     fixtureModuleRoot();
-    write("skills/x-probe/scripts/quotes.js", 'const hint = "run node -e \\"require(x)\\"";\n// require("node:fs") is only prose here\nconsole.log(hint);\n');
+    write("skills/o-probe/scripts/quotes.js", 'const hint = "run node -e \\"require(x)\\"";\n// require("node:fs") is only prose here\nconsole.log(hint);\n');
 
     const result = lintOn(root);
     assert.deepEqual(result.commonjs, []);
@@ -77,8 +77,8 @@ describe("the lint refuses CommonJS under a module root", () => {
 
   it("exempts the extensions that say which module system they are", () => {
     fixtureModuleRoot();
-    write("skills/x-probe/scripts/tool.mjs", 'import fs from "node:fs";\nconsole.log(fs);\n');
-    write("skills/x-probe/scripts/tool.cjs", 'const fs = require("node:fs");\nconsole.log(fs);\n');
+    write("skills/o-probe/scripts/tool.mjs", 'import fs from "node:fs";\nconsole.log(fs);\n');
+    write("skills/o-probe/scripts/tool.cjs", 'const fs = require("node:fs");\nconsole.log(fs);\n');
 
     const result = lintOn(root);    assert.deepEqual(result.commonjs, []);
     assert.equal(result.code, 0);
@@ -87,7 +87,7 @@ describe("the lint refuses CommonJS under a module root", () => {
   it("stays silent when the root is not a module", () => {
     fixtureModuleRoot();
     write("package.json", JSON.stringify({ name: "fixture" }));
-    write("skills/x-probe/scripts/tool.js", 'const fs = require("node:fs");\nconsole.log(fs);\n');
+    write("skills/o-probe/scripts/tool.js", 'const fs = require("node:fs");\nconsole.log(fs);\n');
 
     const result = lintOn(root);
     assert.deepEqual(result.commonjs, []);
@@ -97,7 +97,7 @@ describe("the lint refuses CommonJS under a module root", () => {
   it("stays silent when the root declares commonjs explicitly", () => {
     fixtureModuleRoot();
     write("package.json", JSON.stringify({ type: "commonjs" }));
-    write("skills/x-probe/scripts/tool.js", "module.exports = {};\n");
+    write("skills/o-probe/scripts/tool.js", "module.exports = {};\n");
 
     const result = lintOn(root);
     assert.deepEqual(result.commonjs, []);

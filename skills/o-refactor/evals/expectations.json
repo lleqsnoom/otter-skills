@@ -1,0 +1,13 @@
+{
+  "skill": "o-refactor",
+  "expected_behavior": [
+    "The skill is analysis-only: it outputs JSON and markdown suggestions and never applies changes automatically.",
+    "o-unbloat's ladder runs before any suggestion, and an extraction that adds a layer must name the second caller or the idea that pays for it.",
+    "The analyzer detects the four named patterns \u2014 extract method, rename variable, replace conditional, inline method \u2014 and reports each with a before/after comparison."
+  ],
+  "source": [
+    "Related Skills",
+    "Refactoring Patterns Detected",
+    "Definition of Done"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "skill": "o-guide",
+  "queries": [
+    { "query": "which skill should I use for this?", "should_trigger": true },
+    { "query": "where do I even start with this repo's workflow?", "should_trigger": true },
+    { "query": "what's the process to get this feature built?", "should_trigger": true },
+    { "query": "is there a skill for cleaning up code?", "should_trigger": true },
+    { "query": "I have a vague idea, what now?", "should_trigger": true },
+    { "query": "which tool handles incoming bug reports?", "should_trigger": true },
+    { "query": "how do these skills fit together?", "should_trigger": true },
+    { "query": "what do I run to start a big refactor?", "should_trigger": true },
+    { "query": "review my changes", "should_trigger": false },
+    { "query": "write the spec", "should_trigger": false },
+    { "query": "fix this bug", "should_trigger": false },
+    { "query": "plan the feature", "should_trigger": false },
+    { "query": "commit this", "should_trigger": false },
+    { "query": "why is this failing", "should_trigger": false }
+  ]
+}

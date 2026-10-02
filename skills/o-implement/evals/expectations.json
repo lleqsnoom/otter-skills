@@ -1,0 +1,11 @@
+{
+  "skill": "o-implement",
+  "expected_behavior": [
+    "No production code lands without a failing test first: RED, GREEN, REFACTOR run per task, and code written before its test is deleted and rewritten from the test.",
+    "Every commit goes through the o-commit skill's commit.mjs; a raw `git commit` is never run, and a commit.mjs validation error stops the task rather than being bypassed.",
+    "Task status stamps — started, ready, done, finished — are written only by status.mjs; nobody sets them by hand.",
+    "After an o-parallel batch merges, the full test suite and the VERIFY step run on the merged changes before any status update is made.",
+    "A floor-guard exit of 2 (could not run) is reported as not-a-pass, and a red suite blocks the commit instead of being committed beside."
+  ],
+  "source": ["SKILL.md: Workflow", "SKILL.md: Definition of Done", "SKILL.md: Parallelize Independent Tasks"]
+}

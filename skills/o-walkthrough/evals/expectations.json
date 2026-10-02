@@ -1,0 +1,14 @@
+{
+  "skill": "o-walkthrough",
+  "expected_behavior": [
+    "The agent cannot click through a vendor dashboard, paste a secret into a CI settings page, or approve a",
+    "hidden secret entry, `.env` upserts, confirmation gates, a closing summary. Your job is only to scope the",
+    "stages and author them. Never hand-edit the library above the `STAGES` marker; that consistency is the point.",
+    "The script is ephemeral by default: built for one run, deleted when done. Commit it only when the user wants a",
+    "`vars.*` reference in CI workflows — each is a value the script must produce. For a migration: the current"
+  ],
+  "source": [
+    "o-walkthrough",
+    "1. Scope the procedure"
+  ]
+}

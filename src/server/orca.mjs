@@ -7,8 +7,8 @@ import { join } from 'node:path';
  *
  * Keeping a list of repositories to preview in two places is a list that drifts: a repo added to the IDE would
  * have to be added here as well, and a repo removed from the IDE would leave a root pointing at a directory that
- * is no longer one. So Otter PM can read the IDE's list instead — `repos[]` in Orca's profile store, where
- * every entry carries the checkout path, which is the only thing a root needs (`<path>/.x-skills`).
+ * is no longer one. So Otter Skills can read the IDE's list instead — `repos[]` in Orca's profile store, where
+ * every entry carries the checkout path, which is the only thing a root needs (`<path>/.o-skills`).
  *
  * The store is a JSON document the app rewrites as you work, so this reads defensively: a missing file, an old
  * schema or a file being written mid-read all mean "no roots from here", never a crash — the explicit roots and
@@ -45,10 +45,10 @@ export function orcaDataFile(env = process.env) {
 /**
  * Every repository the IDE has, as `{ name, path, icon, badgeColor }`.
  *
- * The icon and the badge colour are the IDE's own fields, carried through unchanged so Otter PM and the IDE
+ * The icon and the badge colour are the IDE's own fields, carried through unchanged so Otter Skills and the IDE
  * label the same repository the same way — `repoIcon` is a GitHub avatar for a repository imported from GitHub, and
  * `badgeColor` is the colour Orca paints that repository's badge. Nothing is invented for a repository that has
- * neither, and nothing is filtered here beyond a shape check: whether a path is a root is `toXSkillsRoot`'s
+ * neither, and nothing is filtered here beyond a shape check: whether a path is a root is `toOSkillsRoot`'s
  * question, and the answer is the same wherever the candidate came from.
  */
 export function readOrcaRepos(env = process.env) {

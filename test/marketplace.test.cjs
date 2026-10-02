@@ -2,7 +2,7 @@
 
 /**
  * The marketplace is a file contract: `.claude-plugin/marketplace.json` must name every skill the
- * repo ships, so `/plugin marketplace add lleqsnoom/otter-pm` can install the set. A skill missing
+ * repo ships, so `/plugin marketplace add lleqsnoom/otter-skills` can install the set. A skill missing
  * from the listing is a skill nobody can install, so the test names it instead of counting. The
  * plugin's declared commands are held to the same contract: each must exist as a file and name the
  * skill it runs.
@@ -53,7 +53,7 @@ describe("plugin marketplace", () => {
   it("declares the four loop commands as files that name their skill", () => {
     const marketplace = JSON.parse(fs.readFileSync(MARKETPLACE, "utf8"));
     const [plugin] = marketplace.plugins;
-    const loop = ["x-fix", "x-implement", "x-plan", "x-review"];
+    const loop = ["o-fix", "o-implement", "o-plan", "o-review"];
     assert.equal(typeof plugin.commands, "string", "the plugin must declare its commands directory");
     const commandsDir = path.join(ROOT, plugin.commands);
     assert.equal(fs.existsSync(commandsDir), true, `commands directory ${plugin.commands} does not exist`);

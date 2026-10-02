@@ -13,12 +13,12 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const LINT = path.join(__dirname, "..", "skills", "x-skill-lint", "scripts", "lint.mjs");
+const LINT = path.join(__dirname, "..", "skills", "o-skill-lint", "scripts", "lint.mjs");
 
 let root;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-pass-cards-"));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-pass-cards-"));
 });
 
 afterEach(() => {
@@ -34,12 +34,12 @@ const write = (rel, text) => {
 const skill = (name, body) =>
   write(`skills/${name}/SKILL.md`, `---\nname: ${name}\ndescription: ${name} fixture\ntags: [fixture]\n---\n\n# ${name}\n\n${body}\n`);
 
-/** x-card ships a pass card of `cardWords` words; x-host's body is `hostBody`. */
+/** o-card ships a pass card of `cardWords` words; o-host's body is `hostBody`. */
 function fixture({ cardWords = 10, hostBody = "A fixture skill." } = {}) {
-  write("README.md", "| Skill | Description |\n|-------|-------------|\n| `x-card` | fixture |\n| `x-host` | fixture |\n");
-  skill("x-card", "A fixture skill.");
-  write("skills/x-card/references/pass.md", Array.from({ length: cardWords }, () => "word").join(" ") + "\n");
-  skill("x-host", hostBody);
+  write("README.md", "| Skill | Description |\n|-------|-------------|\n| `o-card` | fixture |\n| `o-host` | fixture |\n");
+  skill("o-card", "A fixture skill.");
+  write("skills/o-card/references/pass.md", Array.from({ length: cardWords }, () => "word").join(" ") + "\n");
+  skill("o-host", hostBody);
 }
 
 const lint = (rule) => {
@@ -59,39 +59,39 @@ describe("pass-card budget", () => {
     fixture({ cardWords: 601 });
     const { code, hits } = lint("card-budget");
     assert.equal(code, 1);
-    assert.deepEqual(hits.map((hit) => [hit.skill, hit.detail]), [["x-card", "references/pass.md has 601 words; the budget is 600"]]);
+    assert.deepEqual(hits.map((hit) => [hit.skill, hit.detail]), [["o-card", "references/pass.md has 601 words; the budget is 600"]]);
   });
 });
 
 describe("pass-card reference", () => {
   it("accepts a caller that names the card", () => {
-    fixture({ hostBody: "Read `~/.agents/skills/x-card/references/pass.md`." });
+    fixture({ hostBody: "Read `~/.agents/skills/o-card/references/pass.md`." });
     const { code, hits } = lint("pass-ref");
     assert.deepEqual(hits, []);
     assert.equal(code, 0);
   });
 
   it("rejects a caller that names a carded skill's SKILL.md, with the line and the card to use", () => {
-    fixture({ hostBody: "First line.\nRead `~/.agents/skills/x-card/SKILL.md`." });
+    fixture({ hostBody: "First line.\nRead `~/.agents/skills/o-card/SKILL.md`." });
     const { code, hits } = lint("pass-ref");
     assert.equal(code, 1);
     assert.deepEqual(hits.map((hit) => [hit.skill, hit.file, hit.detail]), [
-      ["x-host", "SKILL.md:10", "names x-card/SKILL.md; x-card has a pass card, so name x-card/references/pass.md"],
+      ["o-host", "SKILL.md:10", "names o-card/SKILL.md; o-card has a pass card, so name o-card/references/pass.md"],
     ]);
   });
 
   it("checks a caller's references too, and lets a skill name its own SKILL.md", () => {
     fixture();
-    write("skills/x-host/references/notes.md", "See x-card/SKILL.md.\n");
-    write("skills/x-card/references/more.md", "See x-card/SKILL.md.\n");
+    write("skills/o-host/references/notes.md", "See o-card/SKILL.md.\n");
+    write("skills/o-card/references/more.md", "See o-card/SKILL.md.\n");
     const { hits } = lint("pass-ref");
-    assert.deepEqual(hits.map((hit) => [hit.skill, hit.file]), [["x-host", "references/notes.md:1"]]);
+    assert.deepEqual(hits.map((hit) => [hit.skill, hit.file]), [["o-host", "references/notes.md:1"]]);
   });
 
   it("leaves a skill without a card alone", () => {
-    fixture({ hostBody: "Read x-other/SKILL.md." });
-    skill("x-other", "A fixture skill.");
-    write("README.md", "| Skill | Description |\n|-------|-------------|\n| `x-card` | fixture |\n| `x-host` | fixture |\n| `x-other` | fixture |\n");
+    fixture({ hostBody: "Read o-other/SKILL.md." });
+    skill("o-other", "A fixture skill.");
+    write("README.md", "| Skill | Description |\n|-------|-------------|\n| `o-card` | fixture |\n| `o-host` | fixture |\n| `o-other` | fixture |\n");
     assert.deepEqual(lint("pass-ref").hits, []);
   });
 });

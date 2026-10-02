@@ -10,7 +10,7 @@ import { TOOLS } from './registry.mjs';
  * a handler that throws becomes an error result carrying the message. A tool that refuses — an unknown project, a path
  * outside the repository — is therefore readable to the agent rather than a connection error it cannot see.
  */
-const SERVER_NAME = 'otter-pm';
+const SERVER_NAME = 'otter-skills';
 const SERVER_VERSION = '0.1.0';
 
 /** One handler call, as a tool result — the only translation between a plain handler and the protocol. */

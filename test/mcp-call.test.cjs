@@ -74,7 +74,7 @@ function start() {
       const answered = await request('initialize', {
         protocolVersion: '2025-06-18',
         capabilities: {},
-        clientInfo: { name: 'otter-pm-test', version: '1' },
+        clientInfo: { name: 'otter-skills-test', version: '1' },
       });
       child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`);
       return answered;

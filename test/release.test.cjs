@@ -38,6 +38,6 @@ test('the workflow still runs what would have caught a broken merge', () => {
   const workflow = read(path.join('.github', 'workflows', 'ci.yml'));
 
   assert.match(workflow, /npm test/, 'the tests run');
-  assert.match(workflow, /npm run typecheck/, 'and so does the typecheck');
-  assert.match(workflow, /pull_request/, 'on a pull request, where a type error is cheaper to find than on main');
+  assert.match(workflow, /skill-lint/, 'and so does the skill lint');
+  assert.match(workflow, /pull_request/, 'on a pull request, where a broken skill is cheaper to find than on main');
 });

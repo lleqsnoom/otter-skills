@@ -1,0 +1,16 @@
+{
+  "skill": "o-investigate",
+  "expected_behavior": [
+    "These files must exist from prior steps in the debugging pipeline:",
+    "The loop comes before the hypotheses: the repro must be a tight pass/fail signal that goes red on this bug — one command, already run. If it is slow, loosely asserted, or flaky, tighten it first (faster, sharper assertion, more deterministic; for a flaky bug raise the reproduction rate until it is debuggable) using `o-debug`'s `references/feedback-loops.md`. No hypothesis is tested without a loop.",
+    "If a hypothesis cannot be tested without additional information, mark it as `[ ] Not testable — requires: <what's needed>` and continue to next.",
+    "The `Fix Instructions` section must target exactly one root cause with a specific file, location, and change. Never produce ambiguous or multi-file fixes.",
+    "Never applies fixes — uses `edit` only for writing session docs and fix plans. Source files are never modified by this skill."
+  ],
+  "source": [
+    "Prerequisites",
+    "4. Test Each Hypothesis Systematically",
+    "Hypothesis Log",
+    "Constraints (MANIFESTO)"
+  ]
+}

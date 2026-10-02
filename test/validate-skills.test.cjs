@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * The suite gate over skills/: x-skill-lint's checks wired as `npm test`, plus trail of bits'
+ * The suite gate over skills/: o-skill-lint's checks wired as `npm test`, plus trail of bits'
  * zero-items rule — a checker that inspects zero items must fail, not pass — and the version rules:
  * every SKILL.md carries a version, and a skill changed against git HEAD without a version bump
  * fails. These tests pin the exit codes and the named file on the paths that matter: a broken
@@ -23,7 +23,7 @@ const REPO_ROOT = path.join(__dirname, "..");
 let root;
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), "xskills-validate-"));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "oskills-validate-"));
 });
 
 afterEach(() => {
@@ -76,17 +76,17 @@ describe("the validator gates the suite on skill hygiene", () => {
   });
 
   it("fails on frontmatter that does not parse, naming the file", () => {
-    fixture(["x-a"]);
-    write("skills/x-a/SKILL.md", "# x-a\n\nNo frontmatter here.\n");
+    fixture(["o-a"]);
+    write("skills/o-a/SKILL.md", "# o-a\n\nNo frontmatter here.\n");
     const { code, json } = validate();
     assert.equal(code, 1);
     const violation = json.violations.find((entry) => entry.rule === "frontmatter");
-    assert.equal(violation.file, "x-a/SKILL.md");
+    assert.equal(violation.file, "o-a/SKILL.md");
   });
 
   it("fails on a referenced script that does not exist, naming it", () => {
-    fixture(["x-a"]);
-    write("skills/x-a/SKILL.md", "---\nname: x-a\ndescription: x-a fixture\n---\n\nRun `scripts/gone.mjs`.\n");
+    fixture(["o-a"]);
+    write("skills/o-a/SKILL.md", "---\nname: o-a\ndescription: o-a fixture\n---\n\nRun `scripts/gone.mjs`.\n");
     const { code, json } = validate();
     assert.equal(code, 1);
     const violation = json.violations.find((entry) => entry.rule === "missing-ref");
@@ -94,54 +94,54 @@ describe("the validator gates the suite on skill hygiene", () => {
   });
 
   it("fails on an evals file that does not parse", () => {
-    fixture(["x-a"]);
-    write("skills/x-a/evals/expectations.json", "{not json");
+    fixture(["o-a"]);
+    write("skills/o-a/evals/expectations.json", "{not json");
     const { code, json } = validate();
     assert.equal(code, 1);
     assert.ok(json.violations.some((entry) => entry.rule === "expectations-shape" && /not JSON/.test(entry.detail)));
   });
 
   it("fails on a skill left out of the README skills table", () => {
-    fixture(["x-a", "x-b"]);
-    write("README.md", "| Skill | Description |\n|-------|-------------|\n| `x-a` | fixture |\n");
+    fixture(["o-a", "o-b"]);
+    write("README.md", "| Skill | Description |\n|-------|-------------|\n| `o-a` | fixture |\n");
     const { code, json } = validate();
     assert.equal(code, 1);
     const violation = json.violations.find((entry) => entry.rule === "readme");
-    assert.equal(violation.skill, "x-b");
+    assert.equal(violation.skill, "o-b");
   });
 
   it("fails on a skill changed against HEAD without a version bump, naming it", () => {
-    const git = committedFixture(["x-a"]);
-    write("skills/x-a/SKILL.md", `---\nname: x-a\nversion: 1.0.0\ndescription: x-a fixture\n---\n\n# x-a\n\nA changed fixture skill.\n`);
+    const git = committedFixture(["o-a"]);
+    write("skills/o-a/SKILL.md", `---\nname: o-a\nversion: 1.0.0\ndescription: o-a fixture\n---\n\n# o-a\n\nA changed fixture skill.\n`);
     const { code, json } = validate();
     assert.equal(code, 1);
     const violation = json.violations.find((entry) => entry.rule === "version-bump");
-    assert.equal(violation.skill, "x-a");
-    assert.equal(violation.file, "x-a/SKILL.md");
+    assert.equal(violation.skill, "o-a");
+    assert.equal(violation.file, "o-a/SKILL.md");
     git("checkout", "-q", "--", "skills");
     assert.equal(validate().code, 0);
   });
 
   it("passes a skill changed against HEAD whose version was bumped", () => {
-    committedFixture(["x-a"]);
-    write("skills/x-a/SKILL.md", `---\nname: x-a\nversion: 1.1.0\ndescription: x-a fixture\n---\n\n# x-a\n\nA changed fixture skill.\n`);
+    committedFixture(["o-a"]);
+    write("skills/o-a/SKILL.md", `---\nname: o-a\nversion: 1.1.0\ndescription: o-a fixture\n---\n\n# o-a\n\nA changed fixture skill.\n`);
     const { code, json } = validate();
     assert.equal(code, 0);
     assert.deepEqual(json.violations, []);
   });
 
   it("fails on a SKILL.md without a version field", () => {
-    fixture(["x-a"]);
-    write("skills/x-a/SKILL.md", "---\nname: x-a\ndescription: x-a fixture\n---\n\n# x-a\n");
+    fixture(["o-a"]);
+    write("skills/o-a/SKILL.md", "---\nname: o-a\ndescription: o-a fixture\n---\n\n# o-a\n");
     const { code, json } = validate();
     assert.equal(code, 1);
     const violation = json.violations.find((entry) => entry.rule === "version");
-    assert.equal(violation.file, "x-a/SKILL.md");
+    assert.equal(violation.file, "o-a/SKILL.md");
   });
 
   it("fails on an empty skills directory under the zero-items rule", () => {
-    fixture(["x-a"]);
-    fs.rmSync(path.join(root, "skills", "x-a"), { recursive: true, force: true });
+    fixture(["o-a"]);
+    fs.rmSync(path.join(root, "skills", "o-a"), { recursive: true, force: true });
     const { code, json } = validate();
     assert.equal(code, 1);
     assert.equal(json.counts.skills, 0);

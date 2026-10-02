@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * One repository for the MCP suite to read: a `.x-skills` tree with a task and a plan, a README and a source file
+ * One repository for the MCP suite to read: a `.o-skills` tree with a task and a plan, a README and a source file
  * beside it, and a real git history so the tracked-file reader has something to find. Committed with an explicit
  * identity, because the machine running the tests may have no `user.email` configured and a fixture that depends on
  * one would fail for a reason that has nothing to do with the code.
@@ -51,9 +51,9 @@ test:         a test reads it
 `;
 
 function makeRepo({ name = 'fixture-repo', git = true } = {}) {
-  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-pm-mcp-'));
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'otter-skills-mcp-'));
   const repo = path.join(parent, name);
-  const root = path.join(repo, '.x-skills');
+  const root = path.join(repo, '.o-skills');
 
   write(path.join(repo, 'README.md'), `# Fixture\n\nSee \`src/thing.mjs\` for the one function.\n`);
   write(path.join(repo, 'package.json'), `${JSON.stringify({ name: 'fixture', scripts: { test: 'node --test' } }, null, 2)}\n`);
@@ -87,23 +87,23 @@ function makeRepo({ name = 'fixture-repo', git = true } = {}) {
 
 /** Runs `body` with the root sources pointed at `paths`, restoring the environment afterwards. */
 async function withRoots(paths, body) {
-  const previous = process.env.OTTER_PM_ROOTS;
-  const previousOrca = process.env.OTTER_PM_ORCA;
-  const previousConfig = process.env.OTTER_PM_CONFIG;
-  // `$OTTER_PM_ROOTS` is comma-separated, not path-delimited: `splitList` in config.mjs reads commas, semicolons
+  const previous = process.env.OTTER_SKILLS_ROOTS;
+  const previousOrca = process.env.OTTER_SKILLS_ORCA;
+  const previousConfig = process.env.OTTER_SKILLS_CONFIG;
+  // `$OTTER_SKILLS_ROOTS` is comma-separated, not path-delimited: `splitList` in config.mjs reads commas, semicolons
   // and newlines, so a `:`-joined value would arrive as one path and be rejected as one.
-  process.env.OTTER_PM_ROOTS = paths.join(',');
-  process.env.OTTER_PM_ORCA = '0';
+  process.env.OTTER_SKILLS_ROOTS = paths.join(',');
+  process.env.OTTER_SKILLS_ORCA = '0';
   // A config found beside the working directory would contribute roots of its own and make the test's answer
   // depend on where it was run from, so it is pointed at a path that does not exist.
-  process.env.OTTER_PM_CONFIG = path.join(os.tmpdir(), 'otter-pm-mcp-no-config.json');
+  process.env.OTTER_SKILLS_CONFIG = path.join(os.tmpdir(), 'otter-skills-mcp-no-config.json');
   try {
     return await body();
   } finally {
     for (const [key, value] of [
-      ['OTTER_PM_ROOTS', previous],
-      ['OTTER_PM_ORCA', previousOrca],
-      ['OTTER_PM_CONFIG', previousConfig],
+      ['OTTER_SKILLS_ROOTS', previous],
+      ['OTTER_SKILLS_ORCA', previousOrca],
+      ['OTTER_SKILLS_CONFIG', previousConfig],
     ]) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;

@@ -1,0 +1,13 @@
+{
+  "skill": "o-guide",
+  "expected_behavior": [
+    "A question the plan cannot settle → o-sketch (a throwaway prototype answers it) or o-analyze",
+    "A design question the conversation cannot settle → o-interview (the whole-session version of plan's",
+    "The session must end before the work does → o-brief (the handoff note the next session starts from).",
+    "o-walkthrough — script the human-only steps."
+  ],
+  "source": [
+    "On-ramps",
+    "Mechanical one-offs"
+  ]
+}

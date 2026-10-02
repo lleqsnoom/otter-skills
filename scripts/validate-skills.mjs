@@ -2,7 +2,7 @@
 /**
  * validate-skills — the suite gate over skills/.
  *
- * Runs x-skill-lint's checks against a repo root — parseable frontmatter whose name matches the
+ * Runs o-skill-lint's checks against a repo root — parseable frontmatter whose name matches the
  * folder, every referenced scripts/* and references/* existing, evals files that parse, the README
  * skills table listing every skill — and adds trail of bits' zero-items rule (a checker that
  * inspects zero items must fail, not pass) plus the version rules: every SKILL.md carries a
@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { lintRepo, parseFrontmatter, readmeSkills } from "../skills/x-skill-lint/scripts/lint.mjs";
+import { lintRepo, parseFrontmatter, readmeSkills } from "../skills/o-skill-lint/scripts/lint.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(__dirname, "..");

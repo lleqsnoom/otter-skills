@@ -1,15 +1,15 @@
 {
-  "name": "otter-pm",
+  "name": "otter-skills",
   "owner": {
     "name": "lleqsnoom"
   },
   "plugins": [
     {
-      "name": "otter-pm-skills",
+      "name": "otter-skills",
       "source": "./skills",
       "commands": "./commands",
       "hooks": "./hooks",
-      "description": "The x-* skill suite: plan, implement, review, fix, research and project management over .x-skills runs." 
+      "description": "The o-* skill suite: plan, implement, review, fix, research and project management over .o-skills runs." 
     }
   ]
 }

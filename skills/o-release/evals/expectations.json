@@ -1,0 +1,13 @@
+{
+  "skill": "o-release",
+  "expected_behavior": [
+    "The PR body is shaped into the three named sections \u2014 Summary, Evidence (before and after), and Merge Danger \u2014 rather than a prose recap.",
+    "Merge Danger classifies the change as a one-way or two-way door and states its blast radius in one word plus a sentence.",
+    "The skill stays PR-scoped and hands off from o-commit, which stays commit-scoped."
+  ],
+  "source": [
+    "Body template",
+    "Merge Danger",
+    "Relation to the other skills"
+  ]
+}

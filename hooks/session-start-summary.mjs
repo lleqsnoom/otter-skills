@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function readSummary(cwd = process.cwd()) {
   try {
-    return JSON.parse(fs.readFileSync(path.resolve(cwd, ".x-skills", "runs", "last-heal-summary.json"), "utf8"));
+    return JSON.parse(fs.readFileSync(path.resolve(cwd, ".o-skills", "runs", "last-heal-summary.json"), "utf8"));
   } catch {
     return null;
   }
@@ -24,7 +24,7 @@ export function readSummary(cwd = process.cwd()) {
 
 export function readReportPointer(cwd = process.cwd()) {
   try {
-    return JSON.parse(fs.readFileSync(path.resolve(cwd, ".x-skills", "runs", "last-background-report.json"), "utf8"));
+    return JSON.parse(fs.readFileSync(path.resolve(cwd, ".o-skills", "runs", "last-background-report.json"), "utf8"));
   } catch {
     return null;
   }

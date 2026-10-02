@@ -1,8 +1,8 @@
 "use strict";
 
 /**
- * Inside x-implement's loops the agent runs the narrowest tests; the full suite runs once per task, before
- * COMMIT, and once after an x-parallel merge. These assertions pin that policy in the skill text, where the
+ * Inside o-implement's loops the agent runs the narrowest tests; the full suite runs once per task, before
+ * COMMIT, and once after an o-parallel merge. These assertions pin that policy in the skill text, where the
  * agent reads it.
  */
 
@@ -22,8 +22,8 @@ function step(text, name) {
   return lines.slice(start, end === -1 ? undefined : end).join("\n");
 }
 
-describe("x-implement test policy", () => {
-  const implement = read("x-implement/SKILL.md");
+describe("o-implement test policy", () => {
+  const implement = read("o-implement/SKILL.md");
 
   it("defines the narrowest tests", () => {
     assert.match(implement, /\*\*Narrowest tests\*\*/);
@@ -39,13 +39,13 @@ describe("x-implement test policy", () => {
     assert.match(step(implement, "COMMIT"), /full suite/);
   });
 
-  it("keeps the full suite after an x-parallel merge", () => {
-    assert.match(implement, /After an x-parallel batch merges, run the full test suite/);
+  it("keeps the full suite after an o-parallel merge", () => {
+    assert.match(implement, /After an o-parallel batch merges, run the full test suite/);
   });
 });
 
-describe("x-fix test policy", () => {
-  const fix = read("x-fix/SKILL.md");
+describe("o-fix test policy", () => {
+  const fix = read("o-fix/SKILL.md");
 
   it("runs the narrowest tests after each fix", () => {
     assert.match(fix, /narrowest tests/);

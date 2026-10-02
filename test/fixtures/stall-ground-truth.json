@@ -4,7 +4,7 @@
     {
       "id": "d290ab66-ec98-41f9-bf12-14c81c703dda",
       "host": "crush",
-      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/xskills",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/oskills",
       "expect": ["user-stuck", "blocking-wait"],
       "quote": "AGAIN you are doingg the same thing - running the app with no time limit and getting stuck for HOUR!!!"
     },
@@ -25,7 +25,7 @@
     {
       "id": "8d01f974-e59a-4b22-9fb3-322c43c67d78",
       "host": "crush",
-      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/xskills",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/oskills",
       "expect": ["user-stuck", "blocking-wait"],
       "quote": "when you run app to check something set some short execution time, you can always make it longer. But very ofter app just keeps [running]"
     },
@@ -46,7 +46,7 @@
     {
       "id": "a39a0aee5732bc76",
       "host": "crush",
-      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-pm",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-skills",
       "expect": ["blocking-wait"],
       "quote": "bash `npm run dev` -> \"Background shell started with ID: 030\" -> job_output {\"wait\":true} -> \"Status: running\""
     }
@@ -55,13 +55,13 @@
     {
       "id": "5fc630b09e305e27",
       "host": "crush",
-      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-pm",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-skills",
       "note": "a short session with real tool calls, no wait and no complaint"
     },
     {
       "id": "9e378a422f11f75b",
       "host": "crush",
-      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-pm",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-skills",
       "note": "54 tool calls, no wait and no complaint"
     },
     {
@@ -73,22 +73,22 @@
     {
       "id": "4e5e4963-c1bc-4091-9231-1d4fb87761cd",
       "host": "claude",
-      "note": "an x-autoreflection session: no wait, no complaint"
+      "note": "an o-autoreflection session: no wait, no complaint"
     },
     {
       "id": "d933acca-1527-4ef9-bf18-5bc798ada05b",
       "host": "claude",
-      "note": "an x-review session: no wait, no complaint"
+      "note": "an o-review session: no wait, no complaint"
     },
     {
       "id": "5fe2b092-3d07-4371-841e-f1cd75bd4418",
       "host": "claude",
-      "note": "an x-research session: no wait, no complaint"
+      "note": "an o-research session: no wait, no complaint"
     },
     {
       "id": "3dcff3cd75ba442e",
       "host": "crush",
-      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-pm",
+      "project": "/home/tkwiatek/Documents/GitHub/lleqsnoom/otter-skills",
       "note": "the user naming the phenomenon while asking for it to be detected: \"i asked it to add some timeout\" and \"i do not need to detect this stalls freezes\" — the session has no wait either"
     }
   ]
