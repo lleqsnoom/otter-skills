@@ -1,7 +1,7 @@
 ---
 name: o-plan
 description: "Plan a feature before coding — turn an idea into a spec the user approves: research the project and the web first, ask short plain questions until the user is sure, weigh the approaches with their trade-offs, then write a layered spec (contract, invariant, test per layer) with guards and a memory file. Use when asked to plan, scope or spec a feature or a rework, or to turn a vague idea into a plan."
-version: 2.4.2
+version: 2.4.3
 author: Community
 tags: [plan, spec, requirements, architecture, clarification, testable, layers, prototype]
 user-invocable: true

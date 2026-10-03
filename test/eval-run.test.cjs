@@ -53,4 +53,17 @@ describe("eval runner", () => {
     assert.equal(result.passed, false);
     assert.match(result.detail, /uncommitted average\(\) is gone/);
   });
+
+  it("reports a host that hit its usage limit as not run, not as a failed skill", async () => {
+    const result = await runWith(`echo "You've hit your session limit · resets 3:40pm" && exit 1`);
+    assert.equal(result.passed, false);
+    assert.equal(result.notRun, true);
+    assert.match(result.detail, /never started: hit your session limit/);
+  });
+
+  it("still fails an agent that exits non-zero for any other reason", async () => {
+    const result = await runWith(`echo "boom" && exit 1`);
+    assert.equal(result.notRun, undefined);
+    assert.match(result.detail, /the agent exited 1/);
+  });
 });
