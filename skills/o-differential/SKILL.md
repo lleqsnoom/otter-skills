@@ -1,7 +1,7 @@
 ---
 name: o-differential
 description: Rate the regression risk of a diff hunk by hunk — what each hunk replaced, which callers it puts at stake, and whether a break would be silent, guarded or loud — mapping the blast radius so a review covers exactly what moved. Use when a change is risky or touches a shared function, when asked which changes could fail silently or break callers, or for a narrow second pass after o-review.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [review, diff, regression, risk, callers, verification]
 user-invocable: true
@@ -86,7 +86,7 @@ in the Callers column instead of reporting it dead.
 - <hunk> — <why its replaced behavior could not be named>
 ```
 
-`<skill>` is this skill's folder.
+`<skill>` is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## Files
 

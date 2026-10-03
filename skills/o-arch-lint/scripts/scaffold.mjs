@@ -36,10 +36,37 @@ export function specifiersIn(text, aliases = []) {
 }
 
 /** JSON with the comments and trailing commas tsconfig allows. */
+/**
+ * JSON with comments and trailing commas, as tsconfig and .eslintrc allow. Comments are removed outside strings
+ * only: a glob such as "src/**\/*.ts" holds both `/*` and `*\/`, and a regex that ignores strings eats the text
+ * between them.
+ */
+export function stripJsonComments(text) {
+  let out = "";
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      out += ch;
+      if (ch === "\\") out += text[++i] ?? "";
+      else if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      out += ch;
+    } else if (ch === "/" && text[i + 1] === "/") {
+      while (i < text.length && text[i] !== "\n") i++;
+      out += "\n";
+    } else if (ch === "/" && text[i + 1] === "*") {
+      const end = text.indexOf("*/", i + 2);
+      i = end === -1 ? text.length : end + 1;
+    } else out += ch;
+  }
+  return out.replace(/,(\s*[}\]])/g, "$1");
+}
+
 function readLenientJson(file) {
   try {
-    const text = fs.readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'])\/\/.*$/gm, "$1").replace(/,(\s*[}\]])/g, "$1");
-    return JSON.parse(text);
+    return JSON.parse(stripJsonComments(fs.readFileSync(file, "utf8")));
   } catch {
     return null;
   }
@@ -109,8 +136,62 @@ export const importMarker = (pathPattern) => `(?:\\bfrom\\s+|\\bimport\\s*\\(\\s
  * The declaration the tree already keeps: one layer per code directory, each allowed the directions its
  * imports take today. The marker covers every relative depth, so a file moved one level deeper still matches.
  */
+/** A glob that names one folder (`src/domain/*`, `src/domain/**`) as that folder; anything richer is not a root. */
+const globRoot = (pattern) => {
+  const folder = String(pattern).replace(/\/\*\*(?:\/\*)?$|\/\*$/, "").replace(/^\.\//, "");
+  return /^[\w.@-]+(?:\/[\w.@-]+)*$/.test(folder) ? folder : null;
+};
+
+/** The boundaries declaration in a JSON ESLint config: `.eslintrc.json`, `.eslintrc`, or package.json's eslintConfig. */
+function eslintBoundaries(root) {
+  for (const [file, pick] of [[".eslintrc.json", (j) => j], [".eslintrc", (j) => j], ["package.json", (j) => j.eslintConfig]]) {
+    const config = fs.existsSync(path.join(root, file)) ? pick(readLenientJson(path.join(root, file)) ?? {}) : null;
+    if (config?.settings?.["boundaries/elements"]) return { file, config };
+  }
+  return null;
+}
+
+/** Each element type's allowed targets: an allow list under default "disallow", every other type minus the deny list otherwise. */
+function boundariesAllowed(types, rule) {
+  const options = Array.isArray(rule) ? rule[1] ?? {} : {};
+  const list = (value) => [value ?? []].flat();
+  const denyByDefault = options.default !== "allow";
+  return Object.fromEntries(types.map((type) => {
+    const rules = (options.rules ?? []).filter((entry) => list(entry.from).includes(type));
+    const allowed = rules.flatMap((entry) => list(entry.allow));
+    const denied = rules.flatMap((entry) => list(entry.disallow));
+    const targets = denyByDefault ? allowed : types.filter((other) => other !== type && !denied.includes(other));
+    return [type, [...new Set(targets)].filter((other) => types.includes(other) && other !== type).sort()];
+  }));
+}
+
+/**
+ * A declaration the project already keeps elsewhere, so it is not declared twice. eslint-plugin-boundaries in a JSON
+ * config becomes the proposal: its elements are the layers and its element-types rule the allowed dependencies.
+ * A JavaScript config or a dependency-cruiser file is named, not read — reading it means running the project's code.
+ */
+export function existingDeclaration(root) {
+  const found = eslintBoundaries(root);
+  const unread = ["eslint.config.js", "eslint.config.mjs", "eslint.config.cjs", ".eslintrc.js", ".eslintrc.cjs", ".dependency-cruiser.js", ".dependency-cruiser.cjs", ".dependency-cruiser.json"].filter((file) => fs.existsSync(path.join(root, file)));
+  if (!found) return { declaration: null, unread };
+  const elements = found.config.settings["boundaries/elements"].map((element) => ({ type: element.type, roots: [element.pattern].flat().map(globRoot).filter(Boolean) })).filter((element) => element.type && element.roots.length);
+  const types = elements.map((element) => element.type);
+  const allowed = boundariesAllowed(types, found.config.rules?.["boundaries/element-types"]);
+  const layers = Object.fromEntries(elements.map((element) => [element.type, { roots: element.roots, import_markers: element.roots.map((folder) => importMarker(`(?:\\.\\.?/)+${folder.split("/").at(-1)}/`)) }]));
+  return { declaration: { source: found.file, layers, allowed_dependencies: allowed }, unread: unread.filter((file) => file !== found.file) };
+}
+
 export function proposeDeclaration({ root, exclude = [] }) {
   const rootAbs = path.resolve(root);
+  const existing = existingDeclaration(rootAbs);
+  const unreadNote = existing.unread.length ? ` Also found ${existing.unread.join(", ")}: a JavaScript config is not executed, so transcribe any layers it declares by hand.` : "";
+  if (existing.declaration) {
+    const { source, ...declared } = existing.declaration;
+    return {
+      note: `Imported from eslint-plugin-boundaries in ${source}: its elements are the layers and its element-types rule the allowed dependencies, so the two declarations agree. Element patterns richer than one folder were left out; add them as roots by hand.${unreadNote}`,
+      ...declared,
+    };
+  }
   const byLayer = readLayers(rootAbs, [...DEFAULT_EXCLUDE, ...exclude]);
   const aliases = readAliases(rootAbs);
   const escape = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -122,7 +203,7 @@ export function proposeDeclaration({ root, exclude = [] }) {
     allowed[layer] = [...new Set(byLayer.get(layer).flatMap((rel) => outgoingLayers(rootAbs, rel, aliases)))].sort();
   }
   return {
-    note: "Proposed from the tree as it is: these directions are the ones a static relative import already takes. An import built at run time (path.join with __dirname), an absolute specifier and a re-export are all invisible here, so an empty list means nothing was observed rather than nothing is imported: widen each entry to what the layer may do before ratifying, and treat a later change to this file as a decision rather than an edit. Once it is ratified, check that the commit takes: `.o-skills/` is ignored in some repos, and `git check-ignore -v .o-skills/config/arch.json` names the rule that does it, so force-add the file or keep the declaration where the repo already tracks its configuration.",
+    note: "Proposed from the tree as it is: these directions are the ones a static relative import already takes. An import built at run time (path.join with __dirname), an absolute specifier and a re-export are all invisible here, so an empty list means nothing was observed rather than nothing is imported: widen each entry to what the layer may do before ratifying, and treat a later change to this file as a decision rather than an edit. Once it is ratified, check that the commit takes: `.o-skills/` is ignored in some repos, and `git check-ignore -v .o-skills/config/arch.json` names the rule that does it, so force-add the file or keep the declaration where the repo already tracks its configuration." + unreadNote,
     layers,
     allowed_dependencies: allowed,
   };

@@ -33,6 +33,17 @@ export function nextRun(runsDir, slug) {
   return `R${pad(Math.max(0, ...used) + 1)}`;
 }
 
+/** The same check the run-folder region makes: a brief in a scratch folder outside any repository is lost with it. */
+function outsideProjectWarning(dirAbs) {
+  const temp = path.resolve(process.env.TMPDIR || process.env.TMP || process.env.TEMP || "/tmp");
+  if (dirAbs !== temp && !dirAbs.startsWith(`${temp}${path.sep}`)) return null;
+  for (let dir = dirAbs; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, ".git"))) return null;
+    if (path.dirname(dir) === dir) break;
+  }
+  return `${dirAbs} is in a temp folder outside any repository, which is cleared and is not the project: save the brief from the project root`;
+}
+
 export const SKELETON = (slug) => `# Brief — ${slug}
 
 ## Do next
@@ -57,6 +68,8 @@ export const SKELETON = (slug) => `# Brief — ${slug}
 export function saveBrief({ slug, dir = null, root = process.cwd(), now = new Date() }) {
   if (!slug || !/^[a-z0-9][a-z0-9-]*$/.test(slug)) throw new Error("--slug is a lower-case kebab-case topic");
   const runDir = dir ? path.resolve(root, dir) : path.join(root, RUNS, `${stamp(now)}-${nextRun(path.join(root, RUNS), slug)}-${slug}`);
+  const warning = outsideProjectWarning(path.resolve(runDir));
+  if (warning) process.stderr.write(`warning: ${warning}\n`);
   fs.mkdirSync(runDir, { recursive: true });
   const file = path.join(runDir, `${nextE(runDir)}-brief.md`);
   fs.writeFileSync(file, SKELETON(slug));

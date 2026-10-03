@@ -24,6 +24,7 @@ import { hostById } from "./hosts/index.mjs";
 import { hostContext, listHostSessions, normalizeSession, parseArgs, selectedHosts } from "./read-session.mjs";
 import { ownerAt, ownerTimeline, requestOf, userTurns } from "./reactions.mjs";
 import { redact } from "./redact.mjs";
+import { outsideProjectWarning } from "./save-reflection.mjs";
 import { skillNamesOnDisk } from "./scan-session.mjs";
 
 export const SCHEMA = "o-autoreflection-issues/1";
@@ -372,6 +373,8 @@ function runBuild(args) {
     }
   }
   const dir = path.resolve(args.out ?? path.join(".o-skills", "runs"));
+  const misplaced = outsideProjectWarning(dir);
+  if (misplaced) process.stderr.write(`warning: ${misplaced}\n`);
   fs.mkdirSync(dir, { recursive: true });
   const base = path.join(dir, "E00-issues-prompt");
   const files = chunk(digests).map((group, i) => writeIfRoom(base, i + 1, buildPrompt(group)));

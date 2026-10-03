@@ -1,7 +1,7 @@
 ---
 name: o-migrate
 description: Plan a framework or dependency upgrade — inventory declared and installed versions, read each crossed major's official upgrade guide, list every breaking change with its URL and where the project uses it, and order the steps one major at a time. Use when asked to upgrade, bump or migrate a package or framework (Express 4 → 5, React 18 → 19).
-version: 2.1.0
+version: 2.1.1
 author: Community
 tags: [migration, upgrade, dependency-management, framework-migration, version-upgrade]
 user-invocable: true
@@ -13,7 +13,7 @@ A migration plan is only as true as its sources. This skill carries no list of b
 change in the plan comes from the official upgrade guide or changelog of the major version it belongs to, and
 names that page by URL. A change you cannot source is not in the plan — say it is unknown instead.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## 1. Inventory — what the project actually runs
 

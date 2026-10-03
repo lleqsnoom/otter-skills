@@ -1,7 +1,7 @@
 ---
 name: o-investigate
 description: Deep root cause analysis for a bug a quick look could not explain — flaky, intermittent, only under load, or regressed since some commit: ranked hypotheses from the evidence, tested with platform tools, git bisect and blame, eliminated until one cause remains, then a fix plan for o-fix. Use when asked why something is flaky or regressed, which commit broke it, or to dig deeper after debugging found nothing.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [debugging, root-cause, hypothesis-testing, git-bisect, triage]
 user-invocable: true
@@ -13,7 +13,7 @@ The deep mode of debugging: when `o-debug`'s first look explains nothing, genera
 platform tools and git history, and eliminate until one root cause remains. This skill finds the cause and
 writes the fix plan; it never edits source files.
 
-`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill. Every script answers `--help` with its commands and flags.
 
 ## Inputs
 

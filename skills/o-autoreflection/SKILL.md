@@ -1,7 +1,7 @@
 ---
 name: o-autoreflection
 description: Turn agent session transcripts into approved fixes to the skills — `o-autoreflection <period>` (24h, 7d, 2w) reads every session of that window across every CLI, extracts the friction, writes a skill-health report and a fix plan, and applies only the fixes picked from a multi-select, with a revert-on-failure ledger; without a period it reflects on the current session. Use for "reflect on this session", "what went wrong above", "retro", "what has been failing across my skills", "heal the skills from that report".
-version: 1.6.0
+version: 1.6.1
 author: Community
 tags: [reflection, retrospective, self-improvement, transcript, session, analysis, batch, healing, skills]
 user-invocable: true
@@ -32,7 +32,7 @@ the turn could only end when the user broke it ("you are stuck on one step for 2
 app with no time limit", "add some timeout"). `blocking-wait` is that wait; `user-stuck` is the user
 saying it. Neither needs the other, and either one is a finding that outranks a failed step.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## When to use
 
@@ -92,6 +92,11 @@ node <skill>/scripts/improve.mjs 240h --issues <run folder>/E00-issues.json,<run
 `--model-cmd` is any command that reads a prompt on stdin and prints the answer (`claude -p`, `codex exec -`,
 `crush run`); each prompt gets 15 minutes. The steps it runs are still there to drive by hand — `--build`, then
 `<model> < <prompt> > <answers>`, then `--read <answers>` (add `--by-skill` for the per-skill answers).
+
+**Stay with the model pass.** `--run` sends its prompts one after another, so a long window can outlast what your
+shell lets one command run (Claude Code stops a foreground command at ten minutes). Then drive the steps by hand,
+one prompt per foreground call. Never background the pass and end your turn: a non-interactive session ends with
+the turn, and the model calls with it.
 
 **Transcripts are redacted before anything is written or sent.** Keys, tokens, passwords, credentials in URLs,
 private keys and long random strings become `[REDACTED:<kind>]` in the prompts, the index and the scan excerpts

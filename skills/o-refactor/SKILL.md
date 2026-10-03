@@ -1,7 +1,7 @@
 ---
 name: o-refactor
 description: Answer "what should I refactor here?" — measure the module, then route each candidate to the skill that owns it: dead code and needless layers to o-unbloat, where code lives and what it is called to o-arch, noisy comments to o-comments, and a long function, a branch chain or a one-call helper to a before/after suggestion written here. Use when asked for refactoring suggestions or where to start cleaning up a module; it never edits code.
-version: 2.0.0
+version: 2.0.1
 author: Community
 tags: [refactoring, code-quality, router, extract-method, clean-code]
 user-invocable: true
@@ -12,7 +12,7 @@ user-invocable: true
 "Refactor this" is four different jobs, and three of them already have a skill. This one measures, decides which
 job each candidate is, and hands it to the skill that owns it. It never edits code.
 
-`<skills>` below is the folder that holds every o-* skill.
+`<skills>` below is the folder that holds every o-* skill. Every script answers `--help` with its commands and flags.
 
 ## Steps
 

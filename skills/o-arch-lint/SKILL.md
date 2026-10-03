@@ -1,7 +1,7 @@
 ---
 name: o-arch-lint
 description: Check a code tree against the architecture it declares — reads .o-skills/config/arch.json and reports every banned directory and file name, every wrong-way import across a declared layer boundary, and every place the declaration and the tree disagree, as file:line with a rule name. Detection only, never writes code, exit 1 on a violation. Use when asked to check layer boundaries, verify dependency direction, find utils/helpers/common sprawl, or prove a repo still matches its declared structure; o-review runs it on every review.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [architecture, lint, boundaries, dependency-direction, naming, enforcement, parity]
 user-invocable: true
@@ -43,6 +43,12 @@ marker too — so a deeper model (a `src/` that holds six layers) is then split 
 import built at run time, an absolute specifier and a re-export are invisible to it, so an empty list means
 nothing was observed rather than nothing is imported. Widen each entry to what the layer may do, then commit it.
 
+**A project that already declares its layers is not asked to declare them twice.** When `.eslintrc.json`,
+`.eslintrc` or `package.json`'s `eslintConfig` carries eslint-plugin-boundaries, its elements become the layers and
+its `element-types` rule the allowed dependencies. A JavaScript config (`eslint.config.js`, `.dependency-cruiser.js`)
+is named in the note but never run, since reading it means executing the project's code: transcribe its layers by
+hand.
+
 **Check that the commit takes.** A declaration under `.o-skills/` is ignored by any repo whose git config
 ignores that tree, and `git check-ignore -v .o-skills/config/arch.json` prints the rule that does it. A
 declaration no clone receives checks nothing, so either force-add it (`git add -f <path>`) or keep it where the
@@ -57,7 +63,7 @@ node <skill>/scripts/arch-check.mjs --root . --explain-coverage
 node <skill>/scripts/arch-check.mjs --self-test
 ```
 
-`<skill>` is this skill's folder. `--root` and the file paths under it are
+`<skill>` is this skill's folder. Every script answers `--help` with its commands and flags. `--root` and the file paths under it are
 resolved from the working directory, so a relative path works from anywhere the script can be reached; there is
 no install root to get right. `--config` defaults to `.o-skills/config/arch.json`, found by walking up from
 `--root`.

@@ -1,7 +1,7 @@
 ---
 name: o-rollback
 description: Revert safely — preview exactly which commits and files a revert touches, get the user's approval for those, then make one revert each. Use when asked to roll back, revert, undo or back out a commit, a merge or a release.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [git-revert, rollback, safety, confirmation, version-control]
 user-invocable: true
@@ -12,7 +12,7 @@ user-invocable: true
 A revert is the one git operation that is easy to aim at the wrong commit. This skill makes the target visible
 first and asks for approval of *those* commits, so what gets reverted is what the user agreed to.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## Procedure
 

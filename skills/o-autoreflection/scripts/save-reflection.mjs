@@ -63,6 +63,26 @@ function mintRunDir(rootAbs, slug, now) {
 }
 
 /**
+ * A run folder in the system temp directory and outside any repository — a session's scratch folder — is cleared
+ * with it, and the user never finds it in the project. Agents are told to put temporary files there, so a run
+ * started from it lands there too. A repository that happens to live in /tmp is still the project.
+ */
+export function outsideProjectWarning(rootAbs) {
+  const temp = path.resolve(process.env.TMPDIR || process.env.TMP || process.env.TEMP || "/tmp");
+  if (rootAbs !== temp && !rootAbs.startsWith(`${temp}${path.sep}`)) return null;
+  for (let dir = rootAbs; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, ".git"))) return null;
+    if (path.dirname(dir) === dir) break;
+  }
+  return `${rootAbs} is in a temp folder outside any repository, which is cleared and is not the project: run this from the project root, so the run lands in its .o-skills/runs/`;
+}
+
+function warnOutsideProject(rootAbs) {
+  const warning = outsideProjectWarning(rootAbs);
+  if (warning) process.stderr.write(`warning: ${warning}\n`);
+}
+
+/**
  * Return the run folder for a slug, choosing in this order:
  * `fresh` mints a new R<nn>, `run` selects that R number, `marker` selects the
  * folder holding that artifact, one match is returned, none mints, and more
@@ -71,6 +91,7 @@ function mintRunDir(rootAbs, slug, now) {
 function resolveRunDir(slug, { root = RUNS_ROOT, now = new Date(), marker = null, fresh = false, run = null } = {}) {
   if (!slug || typeof slug !== "string") throw new Error("slug is required");
   const rootAbs = path.resolve(root);
+  warnOutsideProject(rootAbs);
   fs.mkdirSync(rootAbs, { recursive: true });
 
   if (fresh) return mintRunDir(rootAbs, slug, now);

@@ -27,8 +27,10 @@ function run(script, args = [], options = {}) {
   });
 }
 
+// A project is a repository; a bare temp folder is the scratch folder the run-folder code warns about.
 async function withTmpDir(prefix, fn) {
   const dir = await fsp.mkdtemp(path.join(os.tmpdir(), `oskills-${prefix}-`));
+  require("node:child_process").execFileSync("git", ["init", "-q"], { cwd: dir });
   try {
     await fn(dir);
   } finally {
@@ -261,6 +263,21 @@ describe("o-autoreflection scan-session", async () => {
     assert.equal(own.suspects.length, 0);
     assert.equal(scan.stats.toolFailures, 3);
     assert.equal(scan.stats.repeats, 1);
+  });
+
+  it("reads a redirect after the agent answered as a correction, and not the request that opens with one", () => {
+    const session = read.normalizeSession(
+      transcript([
+        { role: "user", parts: [text("you should research how to stream terrain chunks")] },
+        { role: "assistant", parts: [text("Done: the report is in the scratch folder.")] },
+        { role: "user", parts: [text("you should add it in .o-skills")] },
+      ])
+    );
+    const scan = mod.scanSession(session, { skillNames: [] });
+    const corrections = scan.signals.filter((signal) => signal.kind === "user-correction");
+    assert.equal(corrections.length, 1);
+    assert.equal(corrections[0].evidence.length, 1);
+    assert.equal(corrections[0].evidence[0].excerpt, "you should add it in .o-skills");
   });
 
   it("catches nudges, corrections, prose questions, and unused skills", () => {

@@ -1,7 +1,7 @@
 ---
 name: o-unbloat
 description: Cut code to what the task needs — a YAGNI ladder that removes needless abstractions, wrappers, unused options and dead code, keeps behavior and protective code, and measures the result. Use when asked to unbloat, simplify, or remove over-engineering; o-implement, o-review and o-refactor run it as a pass.
-version: 1.9.0
+version: 1.9.1
 author: Community
 tags: [yagni, kiss, simplify, over-engineering, dead-code, refactoring, code-cleaning]
 user-invocable: true
@@ -12,7 +12,7 @@ user-invocable: true
 Every line must be read, tested and maintained. Before you add code, ask if it needs to exist. Before you keep
 code, ask if it still does.
 
-`<skills>` below is the folder that holds every o-* skill, this one included.
+`<skills>` below is the folder that holds every o-* skill, this one included. Every script answers `--help` with its commands and flags.
 
 ## Two Ways It Runs
 

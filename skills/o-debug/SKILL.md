@@ -1,7 +1,7 @@
 ---
 name: o-debug
 description: Evidence-based debugging — reproduce, hypothesize, fix root cause, verify: a reproduction that goes red on the bug, ranked hypotheses tested until one cause remains, and a fix that never silences it. Use when a crash, stack trace or wrong value has to be debugged.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [debugging, root-cause, reproduction, verification]
 user-invocable: true
@@ -11,7 +11,7 @@ user-invocable: true
 
 Do not suppress errors, disable reporting, or add try/catch that swallows them. Fix the cause and verify with the reproduction.
 
-`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill. Every script answers `--help` with its commands and flags.
 
 ## The short path
 

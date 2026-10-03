@@ -1,7 +1,7 @@
 ---
 name: o-floor
 description: Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .o-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work, a test made easier, a deleted test, or a removed assertion. Detection only. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [quality, floor, constraints, guard, thresholds, suppression, coverage, enforcement, ratchet]
 user-invocable: true
@@ -40,7 +40,7 @@ node <skill>/scripts/floor-guard.mjs --root . --measure      # also run each rul
 node <skill>/scripts/floor-guard.mjs --self-test
 ```
 
-`<skill>` is this skill's folder. `--root` and the paths under it resolve from
+`<skill>` is this skill's folder. Every script answers `--help` with its commands and flags. `--root` and the paths under it resolve from
 the working directory, so a relative path works from anywhere the script can be reached. The base defaults to the
 first of `origin/main`, `origin/master`, `main`, `master` that resolves; the floor file defaults to
 `.o-skills/config/floor.json`, read from the working tree and from the merge base.

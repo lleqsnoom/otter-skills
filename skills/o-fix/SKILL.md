@@ -1,7 +1,7 @@
 ---
 name: o-fix
 description: Resolve issues from fix plans — read, edit, verify, mark complete, issue by issue, never discarding the uncommitted changes around a fix. Use when asked to fix review findings or resolve a fix plan.
-version: 1.4.0
+version: 1.4.1
 author: Community
 tags: [code-quality, debugging, refactoring]
 user-invocable: true
@@ -11,7 +11,7 @@ user-invocable: true
 
 **Prerequisites:** A plan in the shape of `references/plan-format.md` — `E<nn>-review-plan.md` from o-review, `E<nn>-fix-plan.md` from o-debug or o-investigate, or any plan path the user names. Every `- [ ]` line in it is one change to make.
 
-`<skills>` below is the folder that holds this skill's folder and every other o-* skill.
+`<skills>` below is the folder that holds this skill's folder and every other o-* skill. Every script answers `--help` with its commands and flags.
 
 ## The uncommitted work is not yours to drop
 

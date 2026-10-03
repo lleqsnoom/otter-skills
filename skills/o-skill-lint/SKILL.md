@@ -1,7 +1,7 @@
 ---
 name: o-skill-lint
 description: Validate the repo's own skills — frontmatter, referenced scripts and references, stray template tokens, symlink-safe main guards, evals and the README skills table — and measure trigger rank-1 and description collisions. Use when adding or editing a skill, before shipping the repo, or when a skill is not triggering.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [lint, validation, skills, frontmatter, repo-hygiene, discovery]
 user-invocable: true
@@ -97,6 +97,19 @@ here, which goes stale with the next description edit. The misses cluster where 
 vocabulary — `o-arch` against `o-arch-lint`, `o-roast` against `o-essay` — which is the ambiguity the measurement
 exists to expose rather than a defect it can fix. CI runs it at `--min-rank1 80`, below the baseline, so an
 unrelated description edit does not turn the build red; raise the floor as the number improves, never lower it.
+
+### Check routing with a model
+
+The lexical rate is a proxy: it counts shared words, so a description rewritten to say what users mean can lose
+queries to a neighbour that happens to share a word. Before trusting a description change, put the same queries
+to a model that reads the descriptions as a host's router does:
+
+```bash
+node <skill>/scripts/route-check.mjs --model-cmd "claude -p" # one model call per ~90 queries; on demand, not in CI
+```
+
+It reports the same `rank1`, `falseTriggers` and `misses` as `trigger-rate.mjs`. When the two disagree, the
+model's answer is the one a user meets; the lexical rate is the cheap guard that runs on every change.
 
 ## Completion
 

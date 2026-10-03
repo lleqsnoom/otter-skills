@@ -52,4 +52,32 @@ describe("o-ui lint", () => {
     ].join("\n");
     assert.deepEqual(lintText("ok.tsx", fine), []);
   });
+
+  it("reads an opening tag a formatter split over several lines as one tag", async () => {
+    const { lintText } = await import(pathToFileURL(SCRIPT).href);
+    const jsx = [
+      "<p",
+      '  className={clsx("lead", "text-center")}',
+      ">",
+      "  Body",
+      "</p>",
+      "<div",
+      '  className="card"',
+      "  onClick={() => open()}",
+      ">",
+      "<p",
+      "  style={{",
+      '    textAlign: "center",',
+      "  }}",
+      ">",
+    ].join("\n");
+    assert.deepEqual(lintText("m.jsx", jsx).map((v) => [v.rule, v.line]), [["centred-paragraph", 1], ["clickable-div", 6], ["centred-paragraph", 10]]);
+  });
+
+  it("does not take generics, comparisons or arrow functions for an open tag", async () => {
+    const { lintText, logicalLines } = await import(pathToFileURL(SCRIPT).href);
+    const ts = ["const xs: Array<string> = [];", "if (a < b) run();", "const f = <T,>(x: T) => x;", '<button onClick={() => go()}>Go</button>', "const y = 1;"].join("\n");
+    assert.equal(logicalLines(ts).length, 5, "nothing was joined");
+    assert.deepEqual(lintText("ok.tsx", ts), []);
+  });
 });

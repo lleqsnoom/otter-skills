@@ -1,7 +1,7 @@
 ---
 name: o-ui
 description: Design and audit app UIs to be clean, clear, and effective — framework-agnostic method (Vue/React/HTML) with component-selection, row-action, and pre-flight rules. Use when building or auditing a UI's components, forms or tables.
-version: 3.2.0
+version: 3.2.1
 author: Community
 tags: [ui, html, css, usability, readability, minimalism, accessibility, frontend, design]
 user-invocable: true
@@ -150,7 +150,7 @@ in CSS, JSX style objects and Tailwind classes alike, so run the script first an
 node <skill>/scripts/ui-lint.mjs <changed files or src/> [--scale <the project's own sizes>]
 ```
 
-`<skill>` is this skill's folder.
+`<skill>` is this skill's folder. Every script answers `--help` with its commands and flags.
 
 - [ ] Primary task stated, and every element serves it?
 - [ ] Exactly one action with a solid/accent background or bold (600+) text per view (headings excluded)?

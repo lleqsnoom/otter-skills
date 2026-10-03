@@ -45,7 +45,10 @@ export function projectOrThrow(context, id, cwd = process.cwd()) {
     const here = projectAt(context.projects, resolve(cwd));
     if (here) return here;
     if (!known.length) throw new Error('no project given, and this machine reads no repositories');
-    throw new Error(`no project given, and ${cwd} is in none of them: pass project, one of ${known.join(', ')}`);
+    throw new Error(
+      `no project given, and ${cwd} is in none of them — only a repository with a .o-skills/ tree is indexed. ` +
+        `Read its files directly, or pass project, one of ${known.join(', ')}`,
+    );
   }
 
   const project = context.projects.find((candidate) => candidate.id === id);

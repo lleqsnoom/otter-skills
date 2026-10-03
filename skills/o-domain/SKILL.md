@@ -1,7 +1,7 @@
 ---
 name: o-domain
 description: Keep the project's words straight — start or sharpen a glossary of its terms (GLOSSARY.md), write an ADR for each decision that settles, test a definition with edge-case scenarios (is a draft shipment the same as a pending one?), and check what people say a term means against what the code does. Use when asked to start a glossary, write an ADR, or sharpen the terms; when terms mean different things to different people, the team argues about a name, or docs use two words for one concept.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [domain-modeling, glossary, adr, ubiquitous-language, terminology]
 user-invocable: true
@@ -14,7 +14,7 @@ builds and sharpens that vocabulary as files the repo keeps, so the model surviv
 it. Merely *reading* `GLOSSARY.md` for wording is a one-line habit, not this skill — this is for when the
 model itself is changing.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## File structure
 

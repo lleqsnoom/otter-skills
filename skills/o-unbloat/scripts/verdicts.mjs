@@ -5,7 +5,7 @@
 //                          and the measure is in; 1 otherwise
 // Exit 2 = usage error.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -62,6 +62,26 @@ function mintRunDir(rootAbs, slug, now) {
 }
 
 /**
+ * A run folder in the system temp directory and outside any repository — a session's scratch folder — is cleared
+ * with it, and the user never finds it in the project. Agents are told to put temporary files there, so a run
+ * started from it lands there too. A repository that happens to live in /tmp is still the project.
+ */
+export function outsideProjectWarning(rootAbs) {
+  const temp = path.resolve(process.env.TMPDIR || process.env.TMP || process.env.TEMP || "/tmp");
+  if (rootAbs !== temp && !rootAbs.startsWith(`${temp}${path.sep}`)) return null;
+  for (let dir = rootAbs; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, ".git"))) return null;
+    if (path.dirname(dir) === dir) break;
+  }
+  return `${rootAbs} is in a temp folder outside any repository, which is cleared and is not the project: run this from the project root, so the run lands in its .o-skills/runs/`;
+}
+
+function warnOutsideProject(rootAbs) {
+  const warning = outsideProjectWarning(rootAbs);
+  if (warning) process.stderr.write(`warning: ${warning}\n`);
+}
+
+/**
  * Return the run folder for a slug, choosing in this order:
  * `fresh` mints a new R<nn>, `run` selects that R number, `marker` selects the
  * folder holding that artifact, one match is returned, none mints, and more
@@ -70,6 +90,7 @@ function mintRunDir(rootAbs, slug, now) {
 function resolveRunDir(slug, { root = RUNS_ROOT, now = new Date(), marker = null, fresh = false, run = null } = {}) {
   if (!slug || typeof slug !== "string") throw new Error("slug is required");
   const rootAbs = path.resolve(root);
+  warnOutsideProject(rootAbs);
   fs.mkdirSync(rootAbs, { recursive: true });
 
   if (fresh) return mintRunDir(rootAbs, slug, now);
@@ -131,7 +152,15 @@ export function renderTemplate(slug, base) {
 }
 
 // The base is taken here, before the first cut, so no later step has to carry it in a shell variable.
-const headCommit = () => execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+/** The commit the cuts are measured against; a repository with none yet has nothing to measure from. */
+function headCommit() {
+  if (spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { stdio: "ignore" }).status !== 0) {
+    throw new Error("not a git repository: a record measures its cuts against a commit, so start it inside the project");
+  }
+  const head = spawnSync("git", ["rev-parse", "--verify", "--quiet", "HEAD"], { encoding: "utf8" });
+  if (head.status !== 0) throw new Error("this repository has no commit yet, so there is no base to measure the cuts against: commit the current state, then start again");
+  return head.stdout.trim();
+}
 
 export function createVerdicts({ dir = DEFAULT_OUTPUT, slug, base = headCommit(), fresh = false, run = null, now = new Date() } = {}) {
   const runDir = dir === DEFAULT_OUTPUT ? resolveRunDir(slugify(slug), { now, fresh, run }) : dir;
