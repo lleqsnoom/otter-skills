@@ -1,78 +1,70 @@
 #!/usr/bin/env node
-
 /**
- * Validate a conventional commit message and commit it atomically.
- * Usage: node scripts/commit.mjs "<message>"
+ * Validate a conventional commit message and commit the staged change with it, in one step.
+ *
+ * Usage: node scripts/commit.mjs "<subject>" [--body "<one paragraph: why>"]
  *    or: echo "<message>" | node scripts/commit.mjs
- * Exit 0 = committed, exit 1 = validation failed (no commit made).
+ * Exit 0 = committed, 1 = validation or git failed (no commit made), 2 = no message.
+ *
+ * git runs without a shell, so nothing in a message — quotes, `$(…)`, backticks — is ever interpreted.
+ * A body is accepted only for a large staged change; see validate-commit.mjs.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import { pathToFileURL } from "node:url";
+import { validateBody, validateMessage } from "./validate-commit.mjs";
 
-let msg;
-
-if (process.argv.length > 2) {
-  msg = process.argv.slice(2).join(" ");
-} else if (!process.stdin.isTTY) {
-  const chunks = [];
-  process.stdin.on("data", (c) => chunks.push(c));
-  process.stdin.on("end", () => {
-    msg = Buffer.concat(chunks).toString();
-    runCommit(msg);
-  });
+export function parseArgs(argv) {
+  const words = [];
+  let body = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--body") body = argv[++i] ?? "";
+    else words.push(argv[i]);
+  }
+  return { message: words.join(" "), body };
 }
 
-function runCommit(message) {
-  if (!message || !message.trim()) {
-    console.error("ERROR: No commit message provided.");
-    console.error("Usage: node scripts/commit.mjs '<message>'");
+/** Files and changed lines in the staged diff — the size a body has to be earned by. */
+function stagedSize() {
+  const numstat = execFileSync("git", ["diff", "--cached", "--numstat"], { encoding: "utf8" });
+  const rows = numstat.split("\n").filter(Boolean).map((row) => row.split("\t"));
+  const lines = rows.reduce((sum, [added, removed]) => sum + (Number(added) || 0) + (Number(removed) || 0), 0);
+  return { files: rows.length, lines };
+}
+
+const USAGE = `Usage: node commit.mjs "<subject>" [--body "<one paragraph: why>"]
+Validates the message, then commits what is staged. A body is accepted only for a change of 10+ files or 400+ lines.`;
+
+function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
+  const fromArgs = process.argv.length > 2;
+  const { message, body } = fromArgs ? parseArgs(process.argv.slice(2)) : { message: fs.readFileSync(0, "utf8"), body: null };
+  if (!message.trim()) {
+    console.error(`ERROR: no commit message provided.\n${USAGE}`);
     process.exit(2);
   }
 
-  const trimmed = message.trim();
-
-  // Inline validation (mirrors validate-commit.mjs to keep this script self-contained)
-  const VALID_TYPES = [
-    "feat", "fix", "docs", "style", "refactor", "perf",
-    "test", "build", "ci", "chore", "revert",
-  ];
-  const PATTERN = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?:\ .+/;
-
-  if (/\bassisted-by:\s*\S+/i.test(trimmed)) {
-    console.error("ERROR: Commit message must not contain AI attribution (e.g. 'Assisted-by: ...').");
+  const problems = [...validateMessage(message), ...(body === null ? [] : validateBody(body, stagedSize()))];
+  if (problems.length) {
+    for (const problem of problems) console.error(`ERROR: ${problem}`);
     process.exit(1);
   }
 
-  if (trimmed.includes("\n")) {
-    console.error("ERROR: Commit message must be a single line.");
-    process.exit(1);
-  }
-
-  if (trimmed.endsWith(".")) {
-    console.error("ERROR: Commit message must not end with a period.");
-    process.exit(1);
-  }
-
-  if (!PATTERN.test(trimmed)) {
-    console.error(`ERROR: "${trimmed}" is not a valid conventional commit message.`);
-    console.error("");
-    console.error("Expected format: type[(scope)]: description");
-    console.error("Valid types:", VALID_TYPES.join(", "));
-    process.exit(1);
-  }
-
-  // Validation passed — commit atomically
+  const [subject, , footer] = message.trim().split("\n");
+  const parts = [subject, body?.trim(), footer].filter(Boolean).flatMap((part) => ["-m", part]);
   try {
-    execSync(`git commit -m "${trimmed.replace(/"/g, '\\"')}"`, { stdio: "inherit" });
-    console.log(`Committed: ${trimmed}`);
-    process.exit(0);
-  } catch (err) {
+    execFileSync("git", ["commit", ...parts], { stdio: "inherit" });
+  } catch {
     console.error("ERROR: git commit failed.");
     process.exit(1);
   }
+  console.log(`Committed: ${subject}`);
 }
 
-// Execute synchronously if we got CLI args
-if (process.argv.length > 2) {
-  runCommit(msg);
+if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
+  main();
 }

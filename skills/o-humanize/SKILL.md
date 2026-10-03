@@ -1,7 +1,7 @@
 ---
 name: o-humanize
-description: Simplify text, an article, a commit or PR to a B2 reading level — measure sentence length and complexity, cut noise, rewrite, then verify no meaning was lost. Use when asked to humanize, simplify, make easy to read, or plain-language a piece of prose.
-version: 1.0.2
+description: Make prose easier to read — an article, blog post, README, PR description, commit or user-facing message — at a B2 reading level: measure sentence length and complexity, cut noise, rewrite, then verify no fact, number or meaning was lost. Use when asked to humanize, simplify, plain-language or make friendlier a piece of text for people; code is not prose.
+version: 1.1.0
 author: Community
 tags: [writing, readability, simplification, plain-language, cefr, editing, prose]
 user-invocable: true
@@ -79,6 +79,11 @@ node <skill>/scripts/verify.mjs --original draft.md --revised draft.humanized.md
 ```
 Checks: `target-met`, `no-noise-added`, `no-noise-phrases`, `urls-preserved`,
 `code-preserved`, `numbers-preserved`, `meaning-retained`. **Exit 0 = pass.**
+
+**Keep the subject's own words.** A grade formula counts syllables, so it reads "infrastructure" as hard even for
+the engineers it is written for. The original's repeated long words are already scored as ordinary words on both
+sides; name any other term the reader knows with `--domain-terms deployment,idempotent` rather than swapping it
+for a vaguer word to pass the grade. A failed check names what failed — the dropped number, the changed URL.
 On failure, edit and re-run. Completion: exit 0.
 
 ### 6. Report — `scripts/save-report.mjs`

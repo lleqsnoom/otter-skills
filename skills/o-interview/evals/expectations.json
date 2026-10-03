@@ -4,7 +4,8 @@
     "A question that the repo, the run history or the web could answer is never put to the user; a sub-agent looks it up while the interview moves on.",
     "Every question the user is asked carries a recommended answer.",
     "The interview ends with the shared understanding said back to the user, and anything they cannot restate is treated as not settled.",
-    "When the session has to end with questions still open, what is settled goes into an o-brief handoff."
+    "When the session has to end with questions still open, what is settled goes into an o-brief handoff.",
+    "The settled decisions and open questions are kept in E<nn>-interview.md, updated after every round, so they survive the conversation."
   ],
   "source": [
     "Facts are yours, decisions are theirs",

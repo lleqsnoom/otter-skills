@@ -242,7 +242,8 @@ function projectMark(root) {
  */
 const FILE_RANK = [
   [/^E\d+-analysis/i, 0],
-  [/^E\d+-triage/i, 1],
+  // A bug's intake brief is the triage stage under the name o-triage writes now.
+  [/^E\d+-(?:triage|intake)/i, 1],
   [/^E\d+-investigate/i, 2],
   // A legacy epic is the plan under its old name, so the two are one rung rather than two.
   [/^E\d+-(?:plan|epic)/i, 3],

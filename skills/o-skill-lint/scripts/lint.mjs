@@ -58,7 +58,7 @@ export function crossSkillRefs(text) {
 }
 
 // Files that must stay byte-identical across the skills that share them.
-const SHARED_SCRIPTS = ["scripts/check-questions.mjs", "references/questions.md", "references/research-first.md"];
+const SHARED_SCRIPTS = ["scripts/check-questions.mjs", "scripts/error-patterns.mjs", "references/questions.md", "references/research-first.md"];
 
 /**
  * Trees that exist in this repository and nowhere else. `package.json` publishes `bin/`, `lib/`,
@@ -106,6 +106,54 @@ const FRAGILE_MAIN_GUARD_RE = /pathToFileURL\(\s*process\.argv\[1\]/;
 
 export function fragileMainGuards(dir) {
   return scriptFiles(dir).filter((rel) => FRAGILE_MAIN_GUARD_RE.test(fs.readFileSync(path.join(dir, rel), "utf8")));
+}
+
+/**
+ * A runnable script answers `--help` with its usage. One that does not treats the flag as input: a commit script
+ * commits a message called "--help", a launcher launches. Read statically, because running an unknown script to
+ * see what it does with the flag is the risk itself.
+ */
+const MAIN_GUARD_RE = /import\.meta\.url\s*===/;
+const HELP_RE = /["']--help["']|\bargs\.help\b/;
+
+export function scriptsWithoutHelp(dir) {
+  return scriptFiles(dir).filter((rel) => {
+    const text = fs.readFileSync(path.join(dir, rel), "utf8");
+    return MAIN_GUARD_RE.test(text) && !HELP_RE.test(text);
+  });
+}
+
+/**
+ * A count a skill states in words ("eight passes", "three solutions") is a copy of a fact that lives elsewhere, and
+ * it drifts the day the fact changes. A repo lists those facts once in `.o-skills/config/claims.json` —
+ * `{ "pattern", "allowed", "paths", "why" }` — and every mention whose count is not allowed is reported where it
+ * stands. `pattern`'s first group is the count; `evals/` is never read, since a trigger query quotes a user.
+ */
+export function countedClaimProblems(root) {
+  const config = path.join(root, ".o-skills", "config", "claims.json");
+  if (!fs.existsSync(config)) return [];
+  const claims = JSON.parse(fs.readFileSync(config, "utf8"));
+  const textFiles = (rel) => {
+    const abs = path.join(root, rel);
+    if (!fs.existsSync(abs)) return [];
+    if (fs.statSync(abs).isFile()) return [rel];
+    return filesUnder(abs).filter((file) => file.endsWith(".md") && !file.split("/").includes("evals")).map((file) => path.join(rel, file));
+  };
+  const problems = [];
+  for (const claim of claims) {
+    const re = new RegExp(claim.pattern, "gi");
+    const allowed = new Set((claim.allowed ?? []).map((value) => value.toLowerCase()));
+    for (const rel of (claim.paths ?? ["skills", "README.md"]).flatMap(textFiles)) {
+      fs.readFileSync(path.join(root, rel), "utf8").split("\n").forEach((line, i) => {
+        for (const match of line.matchAll(re)) {
+          if (allowed.has(match[1].toLowerCase())) continue;
+          const expected = allowed.size ? [...allowed].join(" or ") : "not a fixed number";
+          problems.push({ skill: "-", rule: "counted-claim", file: `${rel}:${i + 1}`, detail: `"${match[0]}" — the count is ${expected}: ${claim.why}` });
+        }
+      });
+    }
+  }
+  return problems;
 }
 
 /** Every file under a directory, relative to it, so a rule can see `scripts/utils/` as well as `scripts/`. */
@@ -250,6 +298,29 @@ export function copyDrift(skillsDir, names) {
   return violations;
 }
 
+/**
+ * Paths an agent cannot follow outside this repository. `node skills/o-x/...` only resolves from this checkout's
+ * root, and a `<path-to-x>` or `<o-x skill>` placeholder names no convention an agent can expand; the convention
+ * is `<skill>` for the skill's own folder and `<skills>` for the folder holding every skill.
+ */
+const REPO_RELATIVE_COMMAND = /\bnode\s+(?:\.\/)?skills\/o-[a-z0-9-]+\//;
+const STALE_PLACEHOLDER = /<(?:path[- ]to[^>]*|o-[a-z0-9-]+ skill[^>]*|[a-z0-9-]+ skill root)>/;
+
+/** Each placeholder or repo-relative command in a skill's text files, with its file and line. */
+export function pathConventionProblems(dir) {
+  return skillTextFiles(dir).flatMap((rel) =>
+    fs
+      .readFileSync(path.join(dir, rel), "utf8")
+      .split(/\r?\n/)
+      // A rule table row (`| \`rule-name\` | …`) documents a pattern rather than giving a command to run.
+      .flatMap((line, i) => (/^\|\s*`[a-z0-9-]+`\s*\|/.test(line) ? [] : [
+        // A heal plan's `check` runs inside the skills repository itself, where that path is right.
+        ...(REPO_RELATIVE_COMMAND.test(line) && !/"check":|\*\*Check:\*\*/.test(line) ? [{ rule: "repo-relative-path", file: `${rel}:${i + 1}`, detail: "runs a script by a path that only exists in this checkout; use <skill>/scripts/… or <skills>/o-x/scripts/…" }] : []),
+        ...(STALE_PLACEHOLDER.test(line) ? [{ rule: "stale-placeholder", file: `${rel}:${i + 1}`, detail: `${line.match(STALE_PLACEHOLDER)[0]} is not a placeholder an agent can expand; use <skill> or <skills>` }] : []),
+      ])),
+  );
+}
+
 const PASS_CARD = "references/pass.md";
 const PASS_CARD_WORD_LIMIT = 600;
 
@@ -373,6 +444,7 @@ export function lintRepo(root = REPO_ROOT) {
     for (const detail of triggerProblems(dir, name)) {
       violations.push({ skill: name, rule: "triggers-shape", detail });
     }
+    for (const problem of pathConventionProblems(dir)) violations.push({ skill: name, ...problem });
     for (const file of fragileMainGuards(dir)) {
       violations.push({
         skill: name,
@@ -380,6 +452,9 @@ export function lintRepo(root = REPO_ROOT) {
         file,
         detail: "compares import.meta.url with the unresolved argv[1]; through a symlinked install main() never runs",
       });
+    }
+    for (const file of scriptsWithoutHelp(dir)) {
+      violations.push({ skill: name, rule: "no-help", file, detail: "a runnable script that does not answer --help treats the flag as input" });
     }
     for (const file of commonjsScripts(dir, root)) {
       violations.push({
@@ -393,6 +468,7 @@ export function lintRepo(root = REPO_ROOT) {
 
   violations.push(...copyDrift(skillsDir, names));
   violations.push(...passCardProblems(skillsDir, names));
+  violations.push(...countedClaimProblems(root));
 
   return { root, skills: names.length, violations };
 }

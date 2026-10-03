@@ -1,10 +1,10 @@
 {
   "skill": "o-investigate",
   "expected_behavior": [
-    "The triage brief and repro from earlier steps are read first; investigation does not start without them.",
+    "No hypothesis is tested until a reproduction exists as E<nn>-verify in the run folder and was seen to go red; the intake brief is read when there is one.",
     "Before any hypothesis is tested there is a tight repro — one command, already run, that goes red on this bug.",
     "Each hypothesis is marked confirmed, rejected, or not testable with what it would need, and the log moves on rather than stalling.",
-    "The fix plan targets exactly one root cause with a specific file, location and change.",
+    "The fix plan is E<nn>-fix-plan.md in o-fix's plan format: one root cause, every change a checkbox, and no checkbox anywhere else.",
     "The skill writes only its session notes and the fix plan; it never edits source files."
   ],
   "source": [

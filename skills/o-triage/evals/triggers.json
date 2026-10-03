@@ -1,0 +1,16 @@
+{
+  "skill": "o-triage",
+  "queries": [
+    { "query": "a user filed a bug where the app crashes on login, help me write it up", "should_trigger": true },
+    { "query": "intake this bug report from issue 412 before anyone touches the code", "should_trigger": true },
+    { "query": "classify this bug: mobile or backend, crash or wrong data?", "should_trigger": true },
+    { "query": "we got a bug report, figure out what kind of bug it is and what evidence we have", "should_trigger": true },
+    { "query": "turn this vague complaint from support into a proper bug brief", "should_trigger": true },
+    { "query": "triage the new issue about the export button doing nothing", "should_trigger": true },
+    { "query": "find the root cause of this crash in the payment service", "should_trigger": false },
+    { "query": "fix the null pointer in the order handler", "should_trigger": false },
+    { "query": "review my pull request", "should_trigger": false },
+    { "query": "write a plan for the new export feature", "should_trigger": false },
+    { "query": "reproduce this flaky test and fix it", "should_trigger": false }
+  ]
+}

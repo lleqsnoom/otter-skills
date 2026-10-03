@@ -1,7 +1,7 @@
 ---
 name: o-fix
 description: Resolve issues from fix plans — read, edit, verify, mark complete, issue by issue, never discarding the uncommitted changes around a fix. Use when asked to fix review findings or resolve a fix plan.
-version: 1.3.0
+version: 1.4.0
 author: Community
 tags: [code-quality, debugging, refactoring]
 user-invocable: true
@@ -9,7 +9,7 @@ user-invocable: true
 
 # O-Fix — Resolve Issues Iteratively
 
-**Prerequisites:** A fix plan in the run folder under `.o-skills/runs/<stamp>-R<nn>-<slug>/`, from o-debug (`E<nn>-fix-plan.md`), o-review (`E<nn>-review-plan.md`), or manual creation.
+**Prerequisites:** A plan in the shape of `references/plan-format.md` — `E<nn>-review-plan.md` from o-review, `E<nn>-fix-plan.md` from o-debug or o-investigate, or any plan path the user names. Every `- [ ]` line in it is one change to make.
 
 `<skills>` below is the folder that holds this skill's folder and every other o-* skill.
 
@@ -22,7 +22,7 @@ fix, reverse your own edit and nothing else.
 
 ## Workflow
 
-1. Read the most recent `E<nn>-fix-plan.md` or `E<nn>-review-plan.md` in the run folder (`.o-skills/runs/<stamp>-R<nn>-<slug>/`). o-debug writes the first kind; o-review writes the second.
+1. Read the plan the user named, or else the most recent `E<nn>-fix-plan.md` or `E<nn>-review-plan.md` in the run folder.
 2. Run `git status --short` once and note which files already carry uncommitted changes: that is the baseline every fix builds on.
 3. Find the next unchecked `[ ]` issue (CRITICAL → MAJOR → MINOR).
 4. For each issue:

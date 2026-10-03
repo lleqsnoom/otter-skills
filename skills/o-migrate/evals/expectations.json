@@ -5,7 +5,7 @@
     "Every breaking change in the plan cites the official upgrade guide or changelog it came from, by URL; an unsourced change is marked unknown.",
     "Each breaking change lists where the project uses it as file:line, or says it is not used here.",
     "The steps go one major version at a time, with the full test suite green before the next.",
-    "A missing --target/--all or an unreadable package.json exits 1 with a message instead of proceeding."
+    "A missing --target/--all, or a project with no manifest the script reads, exits 1 with a message instead of proceeding."
   ],
   "source": [
     "1. Inventory",

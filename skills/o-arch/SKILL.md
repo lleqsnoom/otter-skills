@@ -1,7 +1,7 @@
 ---
 name: o-arch
-description: Keep a codebase's architecture honest — where a unit lives, what it is called, what its one responsibility is, and which way its dependencies point; names banned (utils, helpers, common, tools, misc, other, shared), composition over inheritance, and the rule of three before extracting. Use when asked to fix a directory layout, a vague or role-shaped name, inheritance growth, where new code belongs, or a layer boundary; o-implement, o-decompose, o-review and o-fix run it as a pass.
-version: 1.1.2
+description: Fix where code lives and which way it depends — a utils or helpers folder everything imports, directories that do not follow features, a layer importing what it should not, domain code tangled with infrastructure, a base class that should be composition. Bans role-shaped names (utils, helpers, common, misc), points dependencies from volatile to stable, and waits for three uses before extracting. Use when asked to restructure directories, sort out boundaries, name a module, or decide where new code belongs; o-implement, o-decompose, o-review and o-fix run it as a pass.
+version: 1.2.0
 author: Community
 tags: [architecture, naming, boundaries, responsibilities, dependency-direction, composition, solid, placement]
 user-invocable: true
@@ -20,6 +20,8 @@ Judge a structure by whether one change stays in one place, not by what the dire
 **Name the improvement in one sentence before proposing it.** If you cannot say what a reader will no longer
 have to hold in their head, there is nothing to propose.
 
+`<skill>` below is this skill's folder.
+
 ## When to use
 
 - "Where should this live?", "what should this be called?", "why is this class like this?".
@@ -35,7 +37,10 @@ Not for these: "should this exist at all" is `o-unbloat`; a specific behaviour-p
 
 **As a pass inside another skill:** read `references/pass.md`; it owns the per-host steps.
 
-**On its own**, when the user asks about placement, naming, boundaries or inheritance: run every step.
+**On its own**, when the user asks about placement, naming, boundaries or inheritance: run every step. When the
+user asked for the change itself ("move these into feature folders", "rename this module"), make it — one move,
+split, rename or repoint at a time, call sites updated and the tests run after each — instead of handing back a
+report. Report-only is the rule for the pass inside another skill, not for a direct request.
 
 ## 1. Naming
 
@@ -45,7 +50,7 @@ fits every module describes none of them.
 | Name | Why it fails | Route it instead |
 |------|--------------|------------------|
 | `utils`, `helpers`, `misc`, `other` | A bag. It has no invariant, so nobody can know what may be added or removed. | The module that owns the behaviour: `pricing.mjs`, `date-range.mjs`, `retry-policy.mjs` |
-| `common`, `shared` | Two features' code in one folder. Every change to either feature now edits a third place. | The feature that owns it, or a module named for the concept both need |
+| `common`, `shared` | Two features' code in one folder. Every change to either feature now edits a third place. | The feature that owns it, or a module named for the concept both need. A workspace package (`packages/shared`) with a stated purpose in its `package.json` description and an owner is a published boundary, not a bag — judge what it holds, not its name |
 | `tools` | A scripts directory wearing a domain name. | `scripts/` for developer tooling, or the command it implements |
 | `Base*`, `Abstract*` | Names the position in a hierarchy, which is the one thing the caller does not need. | The concrete concept, or a composed delegate |
 | `*Manager`, `*Helper`, `*Util`, `*Processor` | A role, not a responsibility. A reader cannot say what it does. | What it holds or decides: `SessionStore`, `RetryPolicy`, `InvoiceTotals` |
@@ -206,71 +211,31 @@ Every step ends on a criterion you can check, so a half-finished run is visible 
    rename is one change.
    **Completion:** each proposal is exactly one of move, split, rename or repoint, and none bundles two.
 7. **Say what you did not do.** A finding too large for the current task is reported, not performed.
-   **Completion:** every row reported instead of performed carries the reason, against the 4h and 2-file cap
-   `o-decompose` uses.
+   **Completion:** every row reported instead of performed carries the reason, against the task-size cap
+   `o-decompose` uses (M: up to 10 files in one module, no contract change).
 8. **Write the record.** A pass inside `o-review` writes its rows into that review's plan under `[Architecture]`.
    A standalone run writes `<run folder>/Enn-arch.md`: a `**Scope:**` line, a `**Declaration:**` line naming the
    declaration it read or `none`, then one row per unit in scope — unit, group, verdict, reason, and the evidence
    that verdict rests on (`file:line`, or `-` for an unrated row). The shape is shown in the worked example above.
-   **Completion:** `node scripts/verdicts.mjs --file <record>` exits 0 on a standalone record. That is the check
+   **Completion:** `node <skill>/scripts/verdicts.mjs --file <record>` exits 0 on a standalone record. That is the check
    rather than a reading: every group named, every verdict one of `ok`, `violated` or `unrated`, every evidence
    cell resolving to a real line, and no `ok` claimed for a group a `none` declaration left unrated. A pass
    inside `o-review` has no such file, and its completion is the rows in that plan.
 
 ## Worked Example
 
-One run, end to end, on a tree small enough to check by eye. The scope is `src/`, the declaration is the one
-`o-arch-lint`'s scaffold proposed and a human widened.
-
-**The pain, in one sentence** (`src/utils/index.mjs:1`): a bag module that holds a date formatter, a retry
-wrapper and two order checks, so nothing it holds is findable and every change to any of them is a change to the
-same address.
-
-**The units judged**, one row each, stop at the first question that fits:
-
-| Unit | Group | Verdict | Reason | Evidence |
-|------|-------|---------|--------|----------|
-| `src/utils/index.mjs` | naming | violated | The name describes no domain concept, so no reader can say what may be added to it | `src/utils/index.mjs:1` |
-| `src/utils/index.mjs` | responsibilities | violated | Two reasons to change: a date format and an order invariant | `src/utils/index.mjs:14` |
-| `src/orders/retry.mjs` | dependencies | violated | The order policy imports the vendor client directly, so a vendor change reaches the rule | `src/orders/retry.mjs:3` |
-| `src/orders/totals.mjs` | naming | ok | Named for the value it computes, and it holds nothing else | `src/orders/totals.mjs:1` |
-| `src/legacy/frozen_export.mjs` | responsibilities | unrated | Excluded by the accepted-violation record in its header; the migration that removes it is owned elsewhere | `src/legacy/frozen_export.mjs:1` |
-| `src/web/report_controller.mjs` | naming | unrated | Named by the framework's router, which will not load it under another name; the parsing behind it is a finding for another task | `src/web/report_controller.mjs:1` |
-
-**The one change proposed.** A move, not a split and not a rename together with it: `formatOrderDate` goes to
-`src/orders/order_date.mjs`, where the code that owns the concept already lives. Its two call sites are listed in
-the row, and the retry wrapper stays until a second caller exists (the rule of three: today there is one).
-
-**One unit it declined to act on.** `src/web/report_controller.mjs` is named for its role, which the naming rule
-would rename and the responsibility rule would split. Both rules lose to `Where These Rules Do Not Apply`: the
-framework's router resolves the file by that name, so the name is the platform's, and the parsing behind it is a
-task rather than a step of this pass. The row says `unrated` and gives the reason, which is the other half of what
-a record is for.
-
-**The record written**, `<run folder>/E01-arch.md`:
-
-```markdown
-# Architecture pass — 2026-09-27
-
-**Scope:** src/
-**Declaration:** .o-skills/config/arch.json
-
-| Unit | Group | Verdict | Reason | Evidence |
-|------|-------|---------|--------|----------|
-...
-```
-
-`node scripts/verdicts.mjs --file <run folder>/E01-arch.md` is what tells you that record is finished: a
-missing group, a verdict that is not one of the three, an evidence cell that does not resolve, or a `dependencies`
-row marked `ok` in a run with no declaration all exit 1 with the row named.
+`references/worked-example.md` runs the whole method once, on a tree small enough to check by eye: a `utils` bag
+module and the units judged one row each. Read it before a first run on an unfamiliar tree.
 
 ## Rules
 
-- Report only. Only `o-fix` applies a finding, and only one it read from a review plan.
+- Inside another skill, report only: `o-fix` applies the finding from the review plan. On a direct request, make
+  the change one move at a time.
 - Never restate a rule a sibling owns: `o-unbloat` decides whether a unit should exist, `o-review` defines the
   responsibility tests, `o-comments` owns commentary. A finding two of them could claim is reported once, by
   whichever owns it.
-- A change that needs more than one task is a finding, not a task. `o-decompose` caps a task at 4h and 2 files.
+- A change that needs more than one task is a finding, not a task. `o-decompose` caps a task at size M — up to 10
+  files in one module, with no contract change.
 - Follow the repo's own style where it differs from an example here, and say so when you do.
 
 ## References
@@ -288,3 +253,4 @@ row marked `ok` in a run with no declaration all exit 1 with the row named.
 - `references/direction.md` — volatile depends on stable, stability measured as fan-in, cycles, what may cross a
   boundary, and mapping third-party types.
 - `references/composition.md` — composition over inheritance, the rule of three, and repairing a wrong abstraction.
+- `references/worked-example.md` — the method run once, end to end, on a small tree.

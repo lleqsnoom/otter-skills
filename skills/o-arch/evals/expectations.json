@@ -4,7 +4,7 @@
     "A dependency always points from the volatile module to the stable one; when a stable module needs a volatile one, the fix is a port defined on the stable side, not the import.",
     "A directory or file named utils, helpers, common, shared, tools, misc or other is reported, with a domain name proposed in its place.",
     "An arch.json exception is never added just to make a wrong-way import pass the checker.",
-    "As a pass inside a review the skill only reports; edits are made by o-fix from the review plan.",
+    "As a pass inside a review the skill only reports; on a direct request it makes the change itself, one move, split, rename or repoint at a time, with the tests run after each.",
     "Questions another skill owns — whether code should exist, or how review findings are graded — are left to that skill rather than answered twice."
   ],
   "source": [

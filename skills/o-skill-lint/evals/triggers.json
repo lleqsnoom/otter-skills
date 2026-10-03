@@ -1,0 +1,16 @@
+{
+  "skill": "o-skill-lint",
+  "queries": [
+    { "query": "lint the skills in this repo", "should_trigger": true },
+    { "query": "check my new skill before I ship it", "should_trigger": true },
+    { "query": "why is my skill not triggering?", "should_trigger": true },
+    { "query": "validate the skill frontmatter and references", "should_trigger": true },
+    { "query": "measure the trigger rank of the skill descriptions", "should_trigger": true },
+    { "query": "find skills whose descriptions collide", "should_trigger": true },
+    { "query": "lint the javascript", "should_trigger": false },
+    { "query": "review the code", "should_trigger": false },
+    { "query": "reflect on this session and fix the skills", "should_trigger": false },
+    { "query": "write a new skill for deployments", "should_trigger": false },
+    { "query": "run the tests", "should_trigger": false }
+  ]
+}

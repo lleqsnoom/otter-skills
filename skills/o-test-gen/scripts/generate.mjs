@@ -1,484 +1,279 @@
 #!/usr/bin/env node
-"use strict";
-
 /**
- * o-test-gen — generates test stub files from source code analysis.
+ * o-test-gen — test stubs for the functions a source file exports, in the project's own test framework.
  *
- * Detects function signatures, error handling patterns, and edge cases,
- * then generates scaffolded test files with TODO comments for manual completion.
+ * Every stub fails until a person or agent writes it: a stub that passes is a test that checks nothing, which is
+ * the exact thing o-floor and o-verify exist to catch. Existing test files are never overwritten.
  *
  * Usage:
- *   node generate.mjs <file-or-dir> [--output tests/unit/ --framework jest|vitest|mocha]
- *
- * Output: Test stub files written to specified directory (default: tests/unit/)
+ *   node generate.mjs <file-or-dir> [--output <dir>] [--framework node|jest|vitest|mocha|pytest] [--dry-run]
+ * Output (stdout): JSON — the framework and where it was detected from, each file written, each file skipped.
+ * Exit: 0 done (including "nothing to generate") · 1 a path does not exist · 2 usage error
  */
 
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
-// ── Framework Detection ───────────────────────────────────────────────
+const JS_EXTENSIONS = [".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx"];
+const SOURCE_EXTENSIONS = [...JS_EXTENSIONS, ".py"];
+const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage", ".o-skills", "__pycache__", ".venv", "venv"]);
+const FRAMEWORKS = ["node", "jest", "vitest", "mocha", "pytest"];
 
-function detectFramework(cwd) {
-  // Check for framework config files
-  const configs = [
-    { file: "jest.config.js", name: "jest" },
-    { file: "jest.config.ts", name: "vitest" },
-    { file: "vitest.config.ts", name: "vitest" },
-    { file: ".mocharc.yml", name: "mocha" },
-    { file: ".mocharc.json", name: "mocha" },
-    { file: "pytest.ini", name: "pytest" },
-  ];
-
-  for (const config of configs) {
-    if (fs.existsSync(path.join(cwd, config.file))) {
-      return config.name;
-    }
+export function parseArgs(argv) {
+  const args = { target: null, output: null, framework: null, dryRun: false };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--output") args.output = argv[++i];
+    else if (argv[i] === "--framework") args.framework = argv[++i];
+    else if (argv[i] === "--dry-run") args.dryRun = true;
+    else if (argv[i] === "--all") continue; // older callers; a directory target already means every file in it
+    else if (!argv[i].startsWith("--")) args.target = argv[i];
+    else throw new Error(`unknown option ${argv[i]}`);
   }
-
-  // Check package.json for test scripts
-  const pkgPath = path.join(cwd, "package.json");
-  if (fs.existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-      if (pkg.dependencies || pkg.devDependencies) {
-        const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-        if ("jest" in deps) return "jest";
-        if ("vitest" in deps) return "vitest";
-        if ("mocha" in deps) return "mocha";
-      }
-    } catch {}
-  }
-
-  // Default to Jest (most common)
-  return "jest";
+  if (!args.target) throw new Error("a file or directory is required");
+  if (args.framework && !FRAMEWORKS.includes(args.framework)) throw new Error(`--framework is one of ${FRAMEWORKS.join(", ")}`);
+  return args;
 }
 
-// ── Source Analysis ───────────────────────────────────────────────────
+const readJson = (file) => {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+};
 
-function extractExports(source, filePath) {
-  const exports = [];
-  const ext = path.extname(filePath).toLowerCase();
+const firstExisting = (root, names) => names.find((name) => fs.existsSync(path.join(root, name))) ?? null;
 
-  if (ext === ".py") {
-    // Python: detect function definitions and classes
-    const funcPattern = /^\s*def\s+(\w+)\s*\(([^)]*)\)/gm;
-    let match;
-    while ((match = funcPattern.exec(source)) !== null) {
-      exports.push({
-        type: "function",
-        name: match[1],
-        params: extractPythonParams(match[2]),
-      });
+/** The JS test framework a project uses, and the file or field that says so. Built-in node:test when nothing does. */
+export function detectJsFramework(root) {
+  const config = (prefix) => firstExisting(root, ["js", "mjs", "cjs", "ts", "mts", "cts"].map((ext) => `${prefix}.${ext}`));
+  const vitest = config("vitest.config");
+  if (vitest) return { framework: "vitest", from: vitest };
+  const jest = config("jest.config");
+  if (jest) return { framework: "jest", from: jest };
+  const mocha = firstExisting(root, [".mocharc.yml", ".mocharc.yaml", ".mocharc.json", ".mocharc.js", ".mocharc.cjs"]);
+  if (mocha) return { framework: "mocha", from: mocha };
+
+  const pkg = readJson(path.join(root, "package.json")) ?? {};
+  const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+  for (const framework of ["vitest", "jest", "mocha"]) if (framework in deps) return { framework, from: `package.json dependency ${framework}` };
+  if (pkg.jest) return { framework: "jest", from: "package.json jest field" };
+  if (/node\s+(--test|-r\s+node:test)/.test(pkg.scripts?.test ?? "")) return { framework: "node", from: "package.json scripts.test" };
+  return { framework: "node", from: "default: no framework found, using the built-in node:test" };
+}
+
+export function detectPyFramework(root) {
+  const marker = firstExisting(root, ["pytest.ini", "conftest.py", "tox.ini"]);
+  if (marker) return { framework: "pytest", from: marker };
+  const pyproject = fs.existsSync(path.join(root, "pyproject.toml")) ? fs.readFileSync(path.join(root, "pyproject.toml"), "utf8") : "";
+  if (/\[tool\.pytest/.test(pyproject)) return { framework: "pytest", from: "pyproject.toml [tool.pytest]" };
+  return { framework: "pytest", from: "default: pytest" };
+}
+
+/** ESM or CommonJS, the way Node would load this file. */
+export function moduleKind(file, root) {
+  const ext = path.extname(file);
+  if ([".mjs", ".mts"].includes(ext)) return "esm";
+  if ([".cjs", ".cts"].includes(ext)) return "cjs";
+  if ([".ts", ".tsx"].includes(ext)) return "esm";
+  return readJson(path.join(root, "package.json"))?.type === "module" ? "esm" : "cjs";
+}
+
+const paramsOf = (text) =>
+  String(text ?? "")
+    .split(",")
+    .map((p) => p.trim().replace(/[=:].*$/s, "").replace(/^\.\.\./, "").trim())
+    .filter((p) => p && /^[A-Za-z_$][\w$]*$/.test(p));
+
+/** Where a local name is defined, so an `export { name }` still gets its parameters. */
+function localFunction(source, name) {
+  const declared = new RegExp(`(?:^|\\n)\\s*(?:async\\s+)?function\\s*\\*?\\s*${name}\\s*\\(([^)]*)\\)`).exec(source);
+  if (declared) return { params: paramsOf(declared[1]) };
+  const arrow = new RegExp(`(?:const|let|var)\\s+${name}\\s*=\\s*(?:async\\s+)?(?:function\\s*\\*?\\s*\\w*\\s*)?\\(([^)]*)\\)`).exec(source);
+  if (arrow) return { params: paramsOf(arrow[1]) };
+  const klass = new RegExp(`(?:^|\\n)\\s*class\\s+${name}\\b`).exec(source);
+  if (klass) return { kind: "class", params: [] };
+  return null;
+}
+
+/** Every function or class a JS/TS file exports — inline, through an export list, or through CommonJS. */
+export function jsExports(source) {
+  const found = new Map();
+  const add = (name, info) => {
+    if (name && !found.has(name)) found.set(name, { name, kind: "function", params: [], ...info });
+  };
+  let m;
+  const inline = /export\s+(default\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)?\s*\(([^)]*)\)/g;
+  while ((m = inline.exec(source))) add(m[2] ?? "default", { params: paramsOf(m[3]), isDefault: Boolean(m[1]) });
+  const arrows = /export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:function\s*\*?\s*\w*\s*)?\(([^)]*)\)/g;
+  while ((m = arrows.exec(source))) add(m[1], { params: paramsOf(m[2]) });
+  const classes = /export\s+(default\s+)?class\s+([A-Za-z_$][\w$]*)/g;
+  while ((m = classes.exec(source))) add(m[2], { kind: "class", isDefault: Boolean(m[1]) });
+  const lists = /export\s*\{([^}]*)\}(?!\s*from)/g;
+  while ((m = lists.exec(source))) {
+    for (const entry of m[1].split(",").map((e) => e.trim()).filter(Boolean)) {
+      const [local, exported = local] = entry.split(/\s+as\s+/).map((s) => s.trim());
+      const info = localFunction(source, local);
+      if (info) add(exported, info);
     }
-
-    const classPattern = /^\s*class\s+(\w+)/gm;
-    while ((match = classPattern.exec(source)) !== null) {
-      exports.push({ type: "class", name: match[1] });
+  }
+  const cjsObject = /module\.exports\s*=\s*\{([^}]*)\}/g;
+  while ((m = cjsObject.exec(source))) {
+    for (const entry of m[1].split(",").map((e) => e.trim()).filter(Boolean)) {
+      const [exported, local = exported] = entry.split(":").map((s) => s.trim());
+      const info = localFunction(source, local);
+      if (info) add(exported, info);
     }
+  }
+  const cjsProps = /(?:module\.)?exports\.([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:function\s*\w*\s*)?\(([^)]*)\)/g;
+  while ((m = cjsProps.exec(source))) add(m[1], { params: paramsOf(m[2]) });
+  return [...found.values()];
+}
+
+export function pyExports(source) {
+  const out = [];
+  let m;
+  const defs = /^def\s+([A-Za-z]\w*)\s*\(([^)]*)\)/gm;
+  while ((m = defs.exec(source))) out.push({ name: m[1], kind: "function", params: m[2].split(",").map((p) => p.trim().replace(/[:=].*$/, "")).filter((p) => p && p !== "self" && p !== "cls") });
+  const classes = /^class\s+([A-Za-z]\w*)/gm;
+  while ((m = classes.exec(source))) out.push({ name: m[1], kind: "class", params: [] });
+  return out;
+}
+
+/** Where tests live in this project: a `test/` or `tests/` folder when it has one, otherwise beside the source. */
+export function testDirFor(file, root, output) {
+  if (output) return path.resolve(root, output);
+  const folder = firstExisting(root, ["test", "tests", "__tests__"]);
+  return folder ? path.join(root, folder) : path.dirname(file);
+}
+
+export function testFileName(file) {
+  const ext = path.extname(file);
+  const base = path.basename(file, ext);
+  return ext === ".py" ? `test_${base}.py` : `${base}.test${ext}`;
+}
+
+const importSpecifier = (fromDir, file) => {
+  const relative = path.relative(fromDir, file).split(path.sep).join("/");
+  const withDot = relative.startsWith(".") ? relative : `./${relative}`;
+  return [".ts", ".tsx", ".mts", ".cts"].includes(path.extname(file)) ? withDot.replace(/\.(ts|tsx|mts|cts)$/, "") : withDot;
+};
+
+const FAILING = {
+  node: (what) => `assert.fail("TODO: ${what}");`,
+  jest: (what) => `throw new Error("TODO: ${what}");`,
+  vitest: (what) => `throw new Error("TODO: ${what}");`,
+  mocha: (what) => `throw new Error("TODO: ${what}");`,
+};
+
+function jsHeader(framework, kind, names, spec, defaultName) {
+  const named = names.filter((n) => n !== defaultName);
+  const lines = [];
+  if (kind === "esm") {
+    if (framework === "node") lines.push('import { describe, it } from "node:test";', 'import assert from "node:assert/strict";');
+    if (framework === "vitest") lines.push('import { describe, it } from "vitest";');
+    if (framework === "jest") lines.push('import { describe, it } from "@jest/globals";');
+    const parts = [defaultName ? defaultName : null, named.length ? `{ ${named.join(", ")} }` : null].filter(Boolean);
+    lines.push(`import ${parts.join(", ")} from "${spec}";`);
   } else {
-    // JavaScript/TypeScript: detect exported functions and classes
-    const funcPattern = /\b(?:export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)|export\s+(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(([^)]*)\)\s*=>)/gm;
-    let match;
+    if (framework === "node") lines.push('const { describe, it } = require("node:test");', 'const assert = require("node:assert/strict");');
+    lines.push(`const { ${named.join(", ")} } = require("${spec}");`);
+  }
+  return lines.join("\n");
+}
 
-    while ((match = funcPattern.exec(source)) !== null) {
-      const name = match[1] || match[3];
-      if (!name) continue;
-      exports.push({
-        type: "function",
-        name,
-        params: extractJSParams(match[2] || match[4]),
-      });
-    }
+export function renderJs({ framework, kind, exportsFound, spec }) {
+  const defaultExport = exportsFound.find((e) => e.isDefault);
+  const defaultName = defaultExport ? (defaultExport.name === "default" ? "subject" : defaultExport.name) : null;
+  const names = exportsFound.map((e) => (e.isDefault ? defaultName : e.name));
+  const fail = FAILING[framework];
+  const blocks = exportsFound.map((e, index) => {
+    const name = names[index];
+    const args = e.params.length ? ` (${e.params.join(", ")})` : "";
+    const cases =
+      e.kind === "class"
+        ? [`constructs ${name} and exercises its main method`]
+        : [`returns the expected result for a typical input${args}`, "handles an invalid or edge-case input"];
+    return [`describe("${name}", () => {`, ...cases.map((c) => `  it("${c}", () => {\n    ${fail(`write this test for ${name}`)}\n  });`), "});"].join("\n");
+  });
+  return `${jsHeader(framework, kind, names, spec, defaultName)}\n\n${blocks.join("\n\n")}\n`;
+}
 
-    // Also detect exported classes
-    const classPattern = /\bexport\s+(?:default\s+)?class\s+(\w+)/gm;
-    while ((match = classPattern.exec(source)) !== null) {
-      exports.push({ type: "class", name: match[1] });
-    }
-
-    // Detect TypeScript interface/type exports
-    const tsPattern = /\bexport\s+(?:interface|type)\s+(\w+)/gm;
-    while ((match = tsPattern.exec(source)) !== null) {
-      exports.push({ type: "type", name: match[1] });
+export function renderPy({ exportsFound, module }) {
+  const lines = [`from ${module} import ${exportsFound.map((e) => e.name).join(", ")}`, ""];
+  for (const e of exportsFound) {
+    for (const c of e.kind === "class" ? ["constructs_and_runs"] : ["typical_input", "invalid_input"]) {
+      lines.push("", `def test_${e.name.toLowerCase()}_${c}():`, `    raise NotImplementedError("TODO: write this test for ${e.name}")`, "");
     }
   }
-
-  return exports;
+  return `${lines.join("\n").replace(/\n{3,}/g, "\n\n\n")}`;
 }
 
-function extractPythonParams(paramStr) {
-  if (!paramStr.trim()) return [];
-  const params = paramStr.split(",").map((p) => p.trim());
-  // Remove 'self' and 'cls' parameters
-  return params.filter((p) => !["self", "cls"].includes(p));
-}
-
-function extractJSParams(paramStr) {
-  if (!paramStr.trim()) return [];
-  const params = paramStr.split(",").map((p) => p.trim());
-  // Extract parameter names (handle destructuring, default values, types)
-  return params.map((p) => {
-    // Remove TypeScript type annotations
-    let cleaned = p.replace(/:\s*[^,=]+/g, "");
-    // Handle destructured parameters: {a, b} -> 'obj'
-    if (cleaned.startsWith("{") || cleaned.startsWith("[")) return "params";
-    // Remove default values: name = defaultValue -> name
-    const eqIdx = cleaned.indexOf("=");
-    if (eqIdx !== -1) cleaned = cleaned.substring(0, eqIdx).trim();
-    return cleaned;
+function sourceFiles(target) {
+  const stat = fs.statSync(target);
+  if (stat.isFile()) return SOURCE_EXTENSIONS.includes(path.extname(target)) ? [target] : [];
+  return fs.readdirSync(target, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory()) return SKIP_DIRS.has(entry.name) ? [] : sourceFiles(path.join(target, entry.name));
+    const file = path.join(target, entry.name);
+    const isTest = /\.(test|spec)\.[^.]+$/.test(entry.name) || /^test_.*\.py$/.test(entry.name);
+    return SOURCE_EXTENSIONS.includes(path.extname(entry.name)) && !isTest ? [file] : [];
   });
 }
 
-function detectErrorPatterns(source) {
-  const patterns = [];
-
-  // Try/catch blocks
-  const tryCatchPattern = /\btry\s*\{/g;
-  let match;
-  while ((match = tryCatchPattern.exec(source)) !== null) {
-    patterns.push({ type: "try-catch", position: match.index });
-  }
-
-  // Throw statements
-  const throwPattern = /\bthrow\s+(?:new\s+\w+|Error\(|reject\()/g;
-  while ((match = throwPattern.exec(source)) !== null) {
-    patterns.push({ type: "throw", position: match.index });
-  }
-
-  // Null/undefined checks (guard clauses)
-  const guardPattern = /\bif\s*\(\s*(?:!|typeof\s+\w+\s*===\s*['\"]undefined['\"]|\w+\s*===?\s*null)/g;
-  while ((match = guardPattern.exec(source)) !== null) {
-    patterns.push({ type: "guard-clause", position: match.index });
-  }
-
-  return patterns;
-}
-
-function detectEdgeCases(source) {
-  const edgeCases = [];
-
-  // Look for TODO/FIXME comments that mention edge cases
-  const commentPattern = /\/\/\s*(?:TODO|FIXME|HACK):\s*([^\n]+)/g;
-  let match;
-  while ((match = commentPattern.exec(source)) !== null) {
-    edgeCases.push(match[1].trim());
-  }
-
-  // Look for boundary conditions in code (e.g., === 0, >= max, <= min)
-  const boundaryPattern = /\b(?:===?\s*0\b|>=?\s*(?:MAX|min|max)\b)/g;
-  while ((match = boundaryPattern.exec(source)) !== null) {
-    edgeCases.push(`boundary: ${match[0].trim()}`);
-  }
-
-  return [...new Set(edgeCases)]; // Deduplicate
-}
-
-// ── Test Generation ───────────────────────────────────────────────────
-
-function generateJestTests(exports, sourcePath, errorPatterns, edgeCases) {
-  const lines = [];
-  const moduleName = path.basename(sourcePath, path.extname(sourcePath));
-
-  lines.push(`import { describe, it, expect } from "jest";`);
-  if (exports.some((e) => e.type === "function")) {
-    lines.push(`const { ${exports.map((e) => e.name).join(", ")} } = require("../src/${moduleName}");`);
-  } else {
-    lines.push(`const ${moduleName} = require("../src/${moduleName}");`);
-  }
-  lines.push("");
-
-  for (const exp of exports) {
-    if (exp.type === "function") {
-      lines.push(`describe("${exp.name}", () => {`);
-      lines.push(`  // TODO: Add test cases based on implementation analysis`);
-      lines.push("");
-
-      // Happy path template
-      const paramList = exp.params.length > 0 ? exp.params.join(", ") : "";
-      lines.push(`  it("should handle valid input", async () => {`);
-      if (exp.params.length > 0) {
-        lines.push(`    // Given: ${exp.params.map((p, i) => `${p}=${i + 1}`).join(", ")}`);
-      }
-      lines.push(`    // Expect: <define expected behavior>`);
-      lines.push(`  });`);
-      lines.push("");
-
-      // Error case template if errors detected
-      if (errorPatterns.some((p) => p.type === "throw" || p.type === "try-catch")) {
-        lines.push(`  it("should throw when invalid input is provided", async () => {`);
-        lines.push(`    // TODO: Verify error handling from implementation`);
-        lines.push(`  });`);
-        lines.push("");
-      }
-
-      // Edge case templates
-      for (const edgeCase of edgeCases) {
-        lines.push(`  it("should handle ${edgeCase.replace(/:/g, "")}", async () => {`);
-        lines.push(`    // TODO: Test edge case: ${edgeCase}`);
-        lines.push(`  });`);
-      }
-
-      lines.push(`});`);
-      lines.push("");
-    } else if (exp.type === "class") {
-      lines.push(`describe("${exp.name}", () => {`);
-      lines.push(`  // TODO: Add test cases for class methods and behavior`);
-      lines.push(`});`);
-      lines.push("");
+export function generate({ target, output = null, framework = null, dryRun = false, root = process.cwd() }) {
+  const written = [];
+  const skipped = [];
+  const detected = { js: detectJsFramework(root), py: detectPyFramework(root) };
+  for (const file of sourceFiles(path.resolve(root, target))) {
+    const source = fs.readFileSync(file, "utf8");
+    const isPy = path.extname(file) === ".py";
+    const exportsFound = isPy ? pyExports(source) : jsExports(source);
+    if (!exportsFound.length) {
+      skipped.push({ source: path.relative(root, file), reason: "exports no function or class this script can see" });
+      continue;
     }
-  }
-
-  return lines.join("\n");
-}
-
-function generateVitestTests(exports, sourcePath, errorPatterns, edgeCases) {
-  const lines = [];
-  const moduleName = path.basename(sourcePath, path.extname(sourcePath));
-
-  lines.push(`import { describe, it, expect } from "vitest";`);
-  if (exports.some((e) => e.type === "function")) {
-    lines.push(`import { ${exports.map((e) => e.name).join(", ")} } from "../src/${moduleName}";`);
-  } else {
-    lines.push(`import * as ${moduleName} from "../src/${moduleName}";`);
-  }
-  lines.push("");
-
-  for (const exp of exports) {
-    if (exp.type === "function") {
-      lines.push(`describe("${exp.name}", () => {`);
-      lines.push(`  // TODO: Add test cases based on implementation analysis`);
-      lines.push("");
-      const paramList = exp.params.length > 0 ? exp.params.join(", ") : "";
-      lines.push(`  it("should handle valid input", async () => {`);
-      if (exp.params.length > 0) {
-        lines.push(`    // Given: ${exp.params.map((p, i) => `${p}=${i + 1}`).join(", ")}`);
-      }
-      lines.push(`    // Expect: <define expected behavior>`);
-      lines.push(`  });`);
-      lines.push("");
-
-      if (errorPatterns.some((p) => p.type === "throw" || p.type === "try-catch")) {
-        lines.push(`  it("should throw when invalid input is provided", async () => {`);
-        lines.push(`    // TODO: Verify error handling from implementation`);
-        lines.push(`  });`);
-        lines.push("");
-      }
-
-      for (const edgeCase of edgeCases) {
-        lines.push(`  it("should handle ${edgeCase.replace(/:/g, "")}", async () => {`);
-        lines.push(`    // TODO: Test edge case: ${edgeCase}`);
-        lines.push(`  });`);
-      }
-
-      lines.push(`});`);
-      lines.push("");
-    } else if (exp.type === "class") {
-      lines.push(`describe("${exp.name}", () => {`);
-      lines.push(`  // TODO: Add test cases for class methods and behavior`);
-      lines.push(`});`);
-      lines.push("");
+    const use = framework ?? (isPy ? detected.py : detected.js).framework;
+    const dir = testDirFor(file, root, output);
+    const testFile = path.join(dir, testFileName(file));
+    if (fs.existsSync(testFile)) {
+      skipped.push({ source: path.relative(root, file), reason: `${path.relative(root, testFile)} already exists — never overwritten` });
+      continue;
     }
-  }
-
-  return lines.join("\n");
-}
-
-function generateMochaTests(exports, sourcePath, errorPatterns, edgeCases) {
-  const lines = [];
-  const moduleName = path.basename(sourcePath, path.extname(sourcePath));
-
-  lines.push(`const { describe, it } = require("mocha");`);
-  lines.push(`const { expect } = require("chai");`);
-  if (exports.some((e) => e.type === "function")) {
-    lines.push(`const { ${exports.map((e) => e.name).join(", ")} } = require("../src/${moduleName}");`);
-  } else {
-    lines.push(`const ${moduleName} = require("../src/${moduleName}");`);
-  }
-  lines.push("");
-
-  for (const exp of exports) {
-    if (exp.type === "function") {
-      lines.push(`describe("${exp.name}", () => {`);
-      lines.push(`  // TODO: Add test cases based on implementation analysis`);
-      lines.push("");
-      const paramList = exp.params.length > 0 ? exp.params.join(", ") : "";
-      lines.push(`  it("should handle valid input", async () => {`);
-      if (exp.params.length > 0) {
-        lines.push(`    // Given: ${exp.params.map((p, i) => `${p}=${i + 1}`).join(", ")}`);
-      }
-      lines.push(`    // Expect: <define expected behavior>`);
-      lines.push(`  });`);
-      lines.push("");
-
-      if (errorPatterns.some((p) => p.type === "throw" || p.type === "try-catch")) {
-        lines.push(`  it("should throw when invalid input is provided", async () => {`);
-        lines.push(`    // TODO: Verify error handling from implementation`);
-        lines.push(`  });`);
-        lines.push("");
-      }
-
-      for (const edgeCase of edgeCases) {
-        lines.push(`  it("should handle ${edgeCase.replace(/:/g, "")}", async () => {`);
-        lines.push(`    // TODO: Test edge case: ${edgeCase}`);
-        lines.push(`  });`);
-      }
-
-      lines.push(`});`);
-      lines.push("");
-    } else if (exp.type === "class") {
-      lines.push(`describe("${exp.name}", () => {`);
-      lines.push(`  // TODO: Add test cases for class methods and behavior`);
-      lines.push(`});`);
-      lines.push("");
+    const content = isPy
+      ? renderPy({ exportsFound, module: path.relative(root, file).replace(/\.py$/, "").split(path.sep).join(".") })
+      : renderJs({ framework: use, kind: moduleKind(file, root), exportsFound, spec: importSpecifier(dir, file) });
+    if (!dryRun) {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(testFile, content);
     }
+    written.push({ source: path.relative(root, file), test: path.relative(root, testFile), framework: use, functions: exportsFound.map((e) => e.name) });
   }
-
-  return lines.join("\n");
+  return { framework: framework ? { framework, from: "--framework" } : detected, dryRun, written, skipped };
 }
 
-function generatePytestTests(exports, sourcePath) {
-  const lines = [];
-  const moduleName = path.basename(sourcePath, ".py").replace(/-/g, "_");
-
-  lines.push(`import pytest`);
-  if (exports.some((e) => e.type === "function")) {
-    lines.push(`from src.${moduleName} import ${", ".join(exports.map((e) => e.name))}`);
-  } else {
-    lines.push(`from src import ${moduleName}`);
-  }
-  lines.push("");
-
-  for (const exp of exports) {
-    if (exp.type === "function") {
-      const paramStr = exp.params.length > 0 ? ", ".join(exp.params) : "";
-      lines.push(`def test_${exp.name}_valid_input(${paramStr}):`);
-      lines.push(`    # TODO: Add implementation analysis and assertions`);
-      lines.push(`    pass`);
-      lines.push("");
-
-      lines.push(`def test_${exp.name}_error_handling():`);
-      lines.push(`    # TODO: Verify error handling from implementation`);
-      lines.push(`    with pytest.raises(Exception):`);
-      lines.push(`        ${exp.name}()`);
-      lines.push("");
-    } else if (exp.type === "class") {
-      lines.push(`class Test${exp.name}:`);
-      lines.push(`    # TODO: Add test cases for class methods and behavior`);
-      lines.push(`    pass`);
-      lines.push("");
-    }
-  }
-
-  return lines.join("\n");
-}
-
-// ── File Discovery ────────────────────────────────────────────────────
-
-const SOURCE_EXTENSIONS = [".js", ".ts", ".jsx", ".tsx", ".py"];
-
-function isSourceFile(filePath) {
-  return SOURCE_EXTENSIONS.includes(path.extname(filePath).toLowerCase());
-}
-
-function discoverFiles(targetPath, results = []) {
-  const resolved = path.resolve(targetPath);
-
-  if (fs.statSync(resolved).isFile()) {
-    if (isSourceFile(resolved)) results.push(resolved);
-    return results;
-  }
-
-  for (const entry of fs.readdirSync(resolved, { withFileTypes: true })) {
-    const fullPath = path.join(resolved, entry.name);
-    if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules" && entry.name !== ".git") {
-      discoverFiles(fullPath, results);
-    } else if (entry.isFile() && isSourceFile(entry.name)) {
-      results.push(fullPath);
-    }
-  }
-
-  return results;
-}
-
-// ── Test Generation Router ────────────────────────────────────────────
-
-function generateTests(exports, sourcePath, framework, errorPatterns, edgeCases) {
-  switch (framework) {
-    case "jest":
-      return generateJestTests(exports, sourcePath, errorPatterns, edgeCases);
-    case "vitest":
-      return generateVitestTests(exports, sourcePath, errorPatterns, edgeCases);
-    case "mocha":
-      return generateMochaTests(exports, sourcePath, errorPatterns, edgeCases);
-    case "pytest":
-      return generatePytestTests(exports, sourcePath);
-    default:
-      return generateJestTests(exports, sourcePath, errorPatterns, edgeCases);
-  }
-}
-
-// ── Main ──────────────────────────────────────────────────────────────
+const USAGE = `Usage: node generate.mjs <file-or-dir> [--output <dir>] [--framework node|jest|vitest|mocha|pytest] [--dry-run]
+Writes one failing stub per exported function into the project's test location; an existing test file is skipped.`;
 
 function main() {
-  const args = process.argv.slice(2);
-  let target = ".";
-  let outputDir = "tests/unit/";
-  let framework = null; // Auto-detect if null
-  let allFiles = false;
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--output" && i + 1 < args.length) {
-      outputDir = args[++i];
-    } else if (args[i] === "--framework" && i + 1 < args.length) {
-      framework = args[++i].toLowerCase();
-    } else if (args[i] === "--all") {
-      allFiles = true;
-    } else if (!args[i].startsWith("--")) {
-      target = args[i];
-    }
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
   }
-
-  // Auto-detect framework from project config
-  const cwd = process.cwd();
-  if (!framework) {
-    framework = detectFramework(cwd);
-    console.error(`Auto-detected test framework: ${framework}`);
+  let args;
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (error) {
+    console.error(`Error: ${error.message}\n${USAGE}`);
+    process.exit(2);
   }
-
-  // Discover source files
-  const files = discoverFiles(target);
-  if (files.length === 0) {
-    console.error(`No source files found in "${path.resolve(target)}"`);
+  if (!fs.existsSync(path.resolve(args.target))) {
+    console.error(`Error: ${args.target} does not exist`);
     process.exit(1);
   }
-
-  // Ensure output directory exists
-  fs.mkdirSync(outputDir, { recursive: true });
-
-  // Generate tests for each file
-  let generated = 0;
-  for (const file of files) {
-    const source = fs.readFileSync(file, "utf-8");
-    const exports = extractExports(source, file);
-
-    if (exports.length === 0) continue;
-
-    const errorPatterns = detectErrorPatterns(source);
-    const edgeCases = detectEdgeCases(source);
-
-    // Determine output filename
-    const relPath = path.relative(cwd, file);
-    const testFileName = `test_${path.basename(file)}.test.js`;
-    const outputPath = allFiles ? path.join(outputDir, testFileName) : path.join(outputDir, path.basename(file).replace(/\.[^.]+$/, ".test.js"));
-
-    // Generate and write test stub
-    const testContent = generateTests(exports, file, framework, errorPatterns, edgeCases);
-    fs.writeFileSync(outputPath, testContent);
-    console.error(`Generated: ${outputPath}`);
-    generated++;
-  }
-
-  console.log(JSON.stringify({ generated, files: files.length, framework }, null, 2));
+  console.log(JSON.stringify(generate(args), null, 2));
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
+  main();
+}

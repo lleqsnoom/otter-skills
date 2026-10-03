@@ -1,0 +1,16 @@
+{
+  "skill": "o-investigate",
+  "queries": [
+    { "query": "this test is flaky and we still have no idea why after a day of debugging", "should_trigger": true },
+    { "query": "it worked last week and regressed somewhere, find which commit broke it", "should_trigger": true },
+    { "query": "dig deep into why the queue stalls only under load", "should_trigger": true },
+    { "query": "the quick debug pass found nothing, do a proper root cause analysis", "should_trigger": true },
+    { "query": "rank the hypotheses for this intermittent timeout and eliminate them one by one", "should_trigger": true },
+    { "query": "bisect the history to find when the memory leak appeared", "should_trigger": true },
+    { "query": "fix the typo in the error message", "should_trigger": false },
+    { "query": "triage this new bug report from a customer", "should_trigger": false },
+    { "query": "review the changes on this branch", "should_trigger": false },
+    { "query": "upgrade express to version 5", "should_trigger": false },
+    { "query": "simplify this function", "should_trigger": false }
+  ]
+}

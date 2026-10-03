@@ -56,7 +56,7 @@ describe("save-plan scope", () => {
 
     assert.match(text, /\*\*Scope:\*\* 2 files changed vs main@[0-9a-f]{7} \(1 committed, 0 staged, 0 unstaged, 1 untracked\)/);
     assert.match(text, /\*\*Total files analyzed:\*\* 2\b/);
-    assert.match(text, /\*\*Functions longer than 20 lines:\*\* 0\b/, "the long function on main is outside the change");
+    assert.match(text, /\*\*Functions longer than 20 lines in code this change touched:\*\* 0\b/, "the long function on main is outside the change");
   });
 
   it("measures the whole repository with --all", () => {
@@ -100,7 +100,25 @@ describe("save-plan scope", () => {
   it("says not measured, never zero, when the change holds no source files", () => {
     const text = plan();
 
-    assert.match(text, /\*\*Functions with complexity > 5:\*\* not measured — no changed source files vs main/);
-    assert.doesNotMatch(text, /\*\*Functions with complexity > 5:\*\* 0\b/);
+    assert.match(text, /\*\*Functions with complexity > 5 in code this change touched:\*\* not measured — no changed source files vs main/);
+    assert.doesNotMatch(text, /\*\*Functions with complexity > 5[^*]*:\*\* 0\b/);
+  });
+
+  it("lists a long function the change edited, and only counts one it walked past", () => {
+    write("old.mjs", `${longFunction("old")}\n${shortFunction("other")}`);
+    git("commit", "-qam", "add other");
+    git("switch", "-q", "main");
+    git("merge", "-q", "feat");
+    git("switch", "-q", "feat");
+    write("old.mjs", `${longFunction("old")}\n${shortFunction("other").replace("x + 1", "x + 2")}`);
+
+    const untouched = plan();
+    assert.match(untouched, /\*\*Functions longer than 20 lines in code this change touched:\*\* 0\b/);
+    assert.match(untouched, /\*\*Pre-existing functions over the bar, untouched:\*\* 1\b/);
+
+    write("old.mjs", `${longFunction("old").replace("x += 3;", "x += 33;")}\n${shortFunction("other")}`);
+    const touched = plan();
+    assert.match(touched, /\*\*Functions longer than 20 lines in code this change touched:\*\* 1\b/);
+    assert.match(touched, /- `old\.mjs:1` old — 27 lines/);
   });
 });

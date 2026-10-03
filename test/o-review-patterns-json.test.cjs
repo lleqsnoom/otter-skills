@@ -21,8 +21,19 @@ const PATTERNS = path.join(ROOT, 'skills', 'o-review', 'scripts', 'analyze-patte
 /** The pipe buffer both `spawnSync` and `execSync` drain through, in bytes. */
 const PIPE_BUFFER = 64 * 1024;
 
+/** A tree that yields more suggestions than one pipe buffer holds, so the flush is actually exercised. */
+function largeTree() {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'patterns-pipe-'));
+  for (let n = 0; n < 250; n += 1) {
+    fs.writeFileSync(path.join(dir, `f${n}.mjs`), 'let a = 1;\nlet b = 2;\nlet c = 3;\nexport { a, b, c };\n');
+  }
+  return dir;
+}
+
 test('the pattern analyzer emits one whole JSON document through a pipe', () => {
-  const run = spawnSync(process.execPath, [PATTERNS, '--all'], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+  const run = spawnSync(process.execPath, [PATTERNS, largeTree()], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
 
   assert.equal(run.status, 0, `the analyzer exited ${run.status}: ${run.stderr}`);
 
@@ -54,3 +65,29 @@ test('an analyzer that finds nothing still answers with a whole document', () =>
   const parsed = JSON.parse(run.stdout);
   assert.ok(Array.isArray(parsed.results));
 });
+
+{
+  const { spawnSync: spawn } = require("node:child_process");
+  const fsx = require("node:fs");
+  const osx = require("node:os");
+  const pathx = require("node:path");
+  const script = pathx.join(__dirname, "..", "skills", "o-review", "scripts", "analyze-patterns.mjs");
+
+  test("analyze-patterns reports no function length — a brace count once called a 7-line function 588 lines long", () => {
+    const dir = fsx.mkdtempSync(pathx.join(osx.tmpdir(), "patterns-"));
+    const file = pathx.join(dir, "a.mjs");
+    fsx.writeFileSync(file, `function keep(fields) {\n  const kept = {};\n  for (const k of fields) { kept[k] = 1; }\n  return kept;\n}\n${"const x = 1;\n".repeat(600)}`);
+    const out = JSON.parse(spawn(process.execPath, [script, file], { encoding: "utf8" }).stdout);
+    const suggestions = (out.results[0] ?? { suggestions: [] }).suggestions;
+    assert.equal(suggestions.some((s) => s.pattern === "long-function"), false);
+  });
+
+  test("analyze-patterns does not suggest inlining an exported function, whose callers live elsewhere", () => {
+    const dir = fsx.mkdtempSync(pathx.join(osx.tmpdir(), "patterns-"));
+    const file = pathx.join(dir, "b.mjs");
+    fsx.writeFileSync(file, "function helper(a) { return a + 1; }\nexport function shout(s) { return s.toUpperCase(); }\nexport const run = () => helper(2);\n");
+    const out = JSON.parse(spawn(process.execPath, [script, file], { encoding: "utf8" }).stdout);
+    const inlined = (out.results[0] ?? { suggestions: [] }).suggestions.filter((s) => s.pattern === "trivial-single-call").map((s) => s.symbol);
+    assert.equal(inlined.includes("shout"), false);
+  });
+}

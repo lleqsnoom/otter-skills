@@ -1,7 +1,7 @@
 ---
 name: o-autoreflection
-description: Turn sessions into approved skill fixes — `o-autoreflection <period>` (24h, 7d, 2w) reads every session transcript of that window across every CLI, extracts the friction, writes one skill-health report and a fix plan, and proposes each fix as one multi-select option, applying only what is picked with a revert-on-failure ledger; without a period it reflects on the current one. Use for "reflect on this session", "what went wrong above", "retro", "analyze my last week of sessions", "what has been failing across my skills", "heal the skills from that report".
-version: 1.5.2
+description: Turn agent session transcripts into approved fixes to the skills — `o-autoreflection <period>` (24h, 7d, 2w) reads every session of that window across every CLI, extracts the friction, writes a skill-health report and a fix plan, and applies only the fixes picked from a multi-select, with a revert-on-failure ledger; without a period it reflects on the current session. Use for "reflect on this session", "what went wrong above", "retro", "what has been failing across my skills", "heal the skills from that report".
+version: 1.6.0
 author: Community
 tags: [reflection, retrospective, self-improvement, transcript, session, analysis, batch, healing, skills]
 user-invocable: true
@@ -84,13 +84,18 @@ stage feeds on — puts one used skill's own `SKILL.md` in the model's hands bes
 skill was in play, and asks which line should say something else.
 
 ```bash
-node <skill>/scripts/hunt-issues.mjs --build --hours 240 --out <run folder>   # writes E00-issues-prompt*.md and E00-skill-<name>-prompt.md
-<model> < <run folder>/E00-issues-prompt-01.md > answers.md                   # any model; the host chooses
-<model> < <run folder>/E00-skill-o-review-prompt.md > answers-o-review.md     # one per skill the window used
-node <skill>/scripts/hunt-issues.mjs --read answers.md --dir <run folder>     # verifies, writes E00-issues.json
-node <skill>/scripts/hunt-issues.mjs --read answers-o-review.md --dir <run folder> --by-skill   # writes E00-skill-issues.json
+# one command: build the prompts, send each to the model, verify every answer
+node <skill>/scripts/hunt-issues.mjs --run --model-cmd "claude -p" --hours 240 --out <run folder>
 node <skill>/scripts/improve.mjs 240h --issues <run folder>/E00-issues.json,<run folder>/E00-skill-issues.json
 ```
+
+`--model-cmd` is any command that reads a prompt on stdin and prints the answer (`claude -p`, `codex exec -`,
+`crush run`); each prompt gets 15 minutes. The steps it runs are still there to drive by hand — `--build`, then
+`<model> < <prompt> > <answers>`, then `--read <answers>` (add `--by-skill` for the per-skill answers).
+
+**Transcripts are redacted before anything is written or sent.** Keys, tokens, passwords, credentials in URLs,
+private keys and long random strings become `[REDACTED:<kind>]` in the prompts, the index and the scan excerpts
+(`scripts/redact.mjs`), so a pasted secret never reaches the model the command calls or the run folder.
 
 Each claim is dropped unless its quote is really in the turn it cites and the theme spans at least two
 sessions; a dropped claim is reported with the rule it broke. The per-skill pass adds two rules of its
@@ -222,27 +227,10 @@ Environment findings route like any other proposal (fix, spec, or tasks), and ca
 
 ## Gates
 
-| Gate | Passes when | Checked by |
-|------|-------------|-----------|
-| `session_loaded` | a transcript was read and has at least one user message and one tool call | `read-session.mjs` reports non-zero counts |
-| `signals_recorded` | `scan-session.mjs` ran and its JSON is in the reflection | `check-reflection.mjs` (empty `Signals` section) |
-| `signals_verified` | every high signal was checked against the real file and kept, re-graded, or dropped | *contract* — the checker sees a verdict, not the reading |
-| `no_open_questions` | every question was asked as a panel and answered | *contract* — `check-questions.mjs` checks the questions, not the session |
-| `proposals_shaped` | each proposal has a `Signal`, `Target`, `Change`, and `Check` line | `check-reflection.mjs` (`proposal-shape`) |
-| `high_signals_answered` | every `high` signal has a keep / re-grade / drop verdict, and a kept one is cited by a proposal | `check-reflection.mjs` (`unanswered-high`, `kept-without-proposal`) |
-| `scan_is_evidence` | the scan reports messages and tool calls, so it is a session and not a stub | `check-reflection.mjs` (`scan-not-evidence`) |
-| `quality_anchored` | every kept quality anchor has a `## Quality` line whose quote is in the transcript and whose skill line exists, and its proposal names a `Watch:` rate | `check-reflection.mjs --transcript` (`quality-unanchored`, `quality-quote`, `quality-skill-line`, `quality-watch`) |
-| `reflection_checked` | `check-reflection.mjs` exits 0 | the exit code |
-| `route_chosen` | the user picked which proposals to pursue | *contract* — recorded in `Routes` |
-| `report_shaped` | every finding cites a session and a message, and every portfolio item is shaped | `check-analysis.mjs` (`no-evidence`, `portfolio-action`) |
-| `skill_delta` | every per-skill proposal quotes a line really in that skill's `SKILL.md` (or declares it new) and cites only sessions where the skill was in play | `hunt-issues.mjs --read --by-skill` (`the quoted line is not in`, `was not in play`) |
-| `plan_shaped` | every item names its target, its issue and its rate; every `auto` item a find and a check; every quality item a `watch` and the `SKILL.md` line it changes | `check-heal.mjs` (`item-issue`, `item-improvement`, `item-find`, `item-check`, `item-skill-md`) |
-| `measure_separated` | no detector, gate or taxonomy is edited in the same plan as a skill it measures | `check-heal.mjs` (`measure-and-measured`, `auto-measure`) |
-| `heal_chosen` | the user picked the fixes, and only those were applied | `heal.mjs --apply` takes the ids, the ledger records them |
-| `proof_or_revert` | every applied edit passed its check or was reverted | `heal.mjs` reverts on a failed check |
-
-The starred rows are contracts, not commands: nothing can verify that you read a file or rendered a
-panel. Keep them honest yourself, and do not let the machine-checked rows imply the others.
+Sixteen gates, from `session_loaded` to `proof_or_revert`, each with what passing means and the script or exit code
+that checks it, are in `references/gates.md`. Three are contracts no script can verify — that each high signal was
+checked against the real file, that every question was asked as a panel, and that the user chose the route. Keep
+those honest yourself; the machine-checked rows do not vouch for them.
 
 ## Panels
 
@@ -318,3 +306,4 @@ options from the artifacts — the report's rankings and the plan's items — no
 - `references/gap-taxonomy.md` — signal kind → the improvement that answers it.
 - `references/quality-judge.md` — how to judge a quality anchor: one narrow question, quoted evidence, a `## Quality` line.
 - `references/questions.md` — how to ask as a panel, and when to stop asking.
+- `references/gates.md` — every gate, what passing means, and what checks it.

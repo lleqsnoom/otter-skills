@@ -6,3 +6,6 @@ board.json
 
 # Obsidian opens test/fixtures/vault as a vault and keeps its workspace there
 test/fixtures/vault/.obsidian/
+
+# Everything under .o-skills/ is per machine: run artifacts, local config, reviews.
+.o-skills/

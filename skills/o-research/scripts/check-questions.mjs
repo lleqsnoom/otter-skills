@@ -6,7 +6,8 @@ import { pathToFileURL } from "node:url";
 export const MAX_WORDS = 20;
 export const PANELS = ["single", "multi", "open", "confirm"];
 export const MIN_OPTIONS = 2;
-export const MAX_OPTIONS = 5;
+// Four is the most options a host question tool renders beside its own free-answer field.
+export const MAX_OPTIONS = 4;
 
 export function parseQuestions(text) {
   const blocks = [];
@@ -95,7 +96,14 @@ function resolveFile(args) {
   throw new Error("--file <path> or --dir <run-dir> is required");
 }
 
+const USAGE = `Usage: node check-questions.mjs (--file <questions.md> | --dir <run folder>)
+Checks every question block is a panel: a type, 2-4 options, a short question. Exit 0 clean, 1 violations, 2 usage.`;
+
 function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const args = parseArgs(process.argv.slice(2));
   try {
     const file = resolveFile(args);

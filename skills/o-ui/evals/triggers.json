@@ -1,0 +1,16 @@
+{
+  "skill": "o-ui",
+  "queries": [
+    { "query": "audit this settings page UI", "should_trigger": true },
+    { "query": "the form looks cluttered, clean up the layout", "should_trigger": true },
+    { "query": "design the table with row actions for the admin screen", "should_trigger": true },
+    { "query": "which component should I use for this filter, dropdown or chips?", "should_trigger": true },
+    { "query": "make the dashboard hierarchy clearer, there are too many loud buttons", "should_trigger": true },
+    { "query": "check the screen against the UI pre-flight checklist", "should_trigger": true },
+    { "query": "prototype three layouts to compare", "should_trigger": false },
+    { "query": "open the app in the browser and take a screenshot", "should_trigger": false },
+    { "query": "review the backend code", "should_trigger": false },
+    { "query": "simplify this paragraph", "should_trigger": false },
+    { "query": "write tests for the form validation", "should_trigger": false }
+  ]
+}

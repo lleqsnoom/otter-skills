@@ -1,0 +1,16 @@
+{
+  "skill": "o-analyze",
+  "queries": [
+    { "query": "should we use postgres or sqlite for this, analyze it with evidence", "should_trigger": true },
+    { "query": "weigh the options for caching the search results", "should_trigger": true },
+    { "query": "analyze whether we should split the monolith", "should_trigger": true },
+    { "query": "what is the best way to handle rate limiting here? compare solutions", "should_trigger": true },
+    { "query": "help me decide between websockets and polling", "should_trigger": true },
+    { "query": "analyze this question and give me a thesis I can check", "should_trigger": true },
+    { "query": "why does this crash with a null pointer", "should_trigger": false },
+    { "query": "write the spec for the feature", "should_trigger": false },
+    { "query": "research the literature on vector databases with citations", "should_trigger": false },
+    { "query": "review my diff", "should_trigger": false },
+    { "query": "break the plan into tasks", "should_trigger": false }
+  ]
+}

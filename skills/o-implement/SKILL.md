@@ -1,14 +1,14 @@
 ---
 name: o-implement
 description: Implement decomposed tasks with TDD — red-green-refactor per task, verified with o-review + o-fix, committed task by task, independent tasks parallelized with o-parallel, gated on every task being done. Use when asked to implement a run's tasks.
-version: 1.6.0
+version: 1.7.0
 author: Community
 tags: [tdd, implementation, test-driven, red-green-refactor, production-code, parallel, ui]
 user-invocable: true
 ---
 
 # O-Implement — Test-Driven Implementation
-**No production code without a failing test first.** Wrote code before the test? Delete it. Rewrite from the test. Exception — confirm with a `confirm` panel (yes/no) first: prototypes, generated code, throwaway scripts.
+**No production code without a failing test first.** Wrote code before the test? Take it out, watch the new test fail for the right reason, then put it back. Exception — confirm with a `confirm` panel (yes/no) first: prototypes, generated code, throwaway scripts.
 
 `<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
 
@@ -29,9 +29,6 @@ node <skill>/scripts/save-plan.mjs --epic <slug>
 ```
 It writes `E<nn>-implement.md`, the run's implementation log, beside the artifact the run was decomposed from (its plan, or a legacy `E<nn>-epic.md`), found by topic. The tasks are the files under `<run folder>/E<nn>-tasks/`.
 
-## Directory Organization
-Place a unit with the code that owns it, and name its directory for a domain concept (`orders/`, `billing/`) rather than a file shape (`models/`, `services/`, `controllers/`). A bag name (`utils`, `common`, `shared`, `helpers`, `tools`, `misc`, `other`) says nothing and is not allowed. One file per concern, imports flow from volatile to stable, never in a cycle. `o-arch`'s pass card (`<skills>/o-arch/references/pass.md`) is the fuller statement; see `references/dir-organization.md` for the shape this repo uses.
-
 ## Comments
 
 Code must document itself. Follow o-comments' pass card (`<skills>/o-comments/references/pass.md`) on every line you write, and strip comments that restate code in REFACTOR. Its rules are not repeated here.
@@ -42,20 +39,16 @@ Write the least code that works. Follow o-unbloat's pass card (`<skills>/o-unblo
 
 ## Architecture
 
-Before GREEN, read `o-arch`'s pass card (`<skills>/o-arch/references/pass.md`): it decides where the new unit goes and what it is called. In REFACTOR it judges the placement, the responsibility split, the dependency direction and the inheritance you wrote. Its rules are not repeated here. If the repo has a `.o-skills/config/arch.json`, `o-arch-lint` is the check that proves the task did not cross a declared boundary.
+Before GREEN, read `o-arch`'s pass card (`<skills>/o-arch/references/pass.md`): it decides where the new unit goes and what it is called — no bag names (`utils`, `common`, `helpers`), imports from volatile to stable. In REFACTOR it judges the placement, responsibility, direction and inheritance you wrote; `references/dir-organization.md` has this repo's shape. With a `.o-skills/config/arch.json`, `o-arch-lint` proves the task crossed no declared boundary.
 
 ## Functional Style
 
-Prefer a functional approach for readability. Side effects make code hard to reason about and test; isolate them at the edges.
+Keep the core pure and the side effects at the edges.
 
-- **Prefer pure functions.** Compute and return values instead of mutating inputs or external state. Given the same inputs, the same result — no hidden state.
-- **Avoid side effects in the middle of logic.** Keep I/O, state mutation, and randomness at the boundaries; keep the core logic pure.
-- **Prefer immutable data.** Return new values (`map`, `filter`, `reduce`) instead of mutating arrays or objects in place.
-- **Prefer expressions over statements.** Chain transformations and use named intermediate values over loops that accumulate into mutable variables.
-- **Pass data explicitly.** Return values rather than writing to shared/global state or relying on closures that hide dependencies.
-- **Side effects are only acceptable where unavoidable** (I/O, DB, network) — and must be clearly named and isolated.
-- **One responsibility per function; keep orchestrators thin.** Each phase (fetch, validate, probe, decrypt) is a named helper that returns data; the orchestrator only composes them. If a function both does a job and reports on it — a `push` closure appending to a shared `results` array inside every branch — the reporting is entangled with each responsibility; collect the report in exactly one place.
-- **One responsibility per class and file too.** A class plays one role — persistence, validation, orchestration — not several. If a class's methods group by role rather than by shared state, split it; keep one file per concern (see Directory Organization).
+- **Pure functions, immutable data.** Compute and return values; do not mutate inputs or shared state. `map`, `filter` and named intermediate values over loops that accumulate into mutable variables.
+- **Side effects only where unavoidable** (I/O, database, network, randomness), clearly named, at the boundary.
+- **Thin orchestrators.** Each phase (fetch, validate, probe, decrypt) is a named helper that returns data; the orchestrator only composes them and collects any report in one place, never a `push` into a shared results list from inside every branch.
+- **One role per function, class and file** — persistence, validation or orchestration, not several.
 
 ## Make the Bad State Impossible
 
@@ -115,6 +108,12 @@ When a task's scope includes UI (HTML/CSS, templates, components, or styles in a
 
 For each task file in `<run folder>/E<nn>-tasks/`:
 
+**Scale to the task.** An XS or S task skips the doubt pass and takes o-review's light review; an XS task also
+skips the `--start` and `--ready` stamps, and step 7's plain `status.mjs` call still records it done. M and L run
+the whole loop. **No test runner** for the language? Stop before RED: propose setting one up as its own task, with a
+`confirm` panel. A change no test can observe first (layout, config, infrastructure) is proven by the *Verified*
+row instead, and the reply says so.
+
 **Narrowest tests** — the test files this task wrote or changed, plus the existing ones that exercise the modules
 the diff changed; you pick them. Steps 1–4 run only these. The full suite runs once per task, at COMMIT. If you
 cannot name them, run the full suite and say why.
@@ -138,13 +137,13 @@ cannot name them, run the full suite and say why.
      in one module · L beyond, or a contract change; tests not counted). When they disagree, say so in the run's
      `memory.md` with both numbers: that record is how the scale gets tuned, so never edit `size` to match the diff.
 5. **SYNC DOCS** — Update the spec (`<run folder>/E00-plan.md`) if it exists; otherwise update living docs (README, comments) directly.
-6. **COMMIT** — **Run the full suite once**; a red suite blocks the commit. **Then the floor guard**: `node <skills>/o-floor/scripts/floor-guard.mjs --root .`. Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <path-to-commit.mjs> "<message>"` from the o-commit skill for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If o-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
+6. **COMMIT** — **Run the full suite once**; a red suite blocks the commit. **Then the floor guard**: `node <skills>/o-floor/scripts/floor-guard.mjs --root .`. Exit 1 means this task lowered the bar — a new suppression, a skipped test, an unfinished stub, a loosened threshold, or an assertion taken out. Fix the code; never fix it by raising the threshold or widening the ignore list, which is the move the guard exists to catch. Exit 2 means it could not run, and that is not a pass — say so. Then run `node <skills>/o-commit/scripts/commit.mjs "<message>"` for every single commit. This is mandatory and non-negotiable. Never run `git commit` manually. If o-commit exits with an error, stop and ask for a corrected message with an `open` panel (free text only) — do not bypass it.
 7. **UPDATE STATUS — the task, then the plan.** Two files, and neither write is optional. First mark where your own
    work ended: `node <skill>/scripts/status.mjs <run folder> --ready <task file>` stamps `ready` once — tests green,
    review clean, committed — before any check a person still owes. `ready − started` is the work, `finished − ready`
    the wait, and only the first says anything about a task's size.
 
-   - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. That checklist carries the task's own criterion plus the five standing rows `o-decompose` wrote in (see Definition of Done below), and both kinds are ticked the same way. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
+   - **The task** — in the task's own file, change `- [ ]` to `- [x]` under `## Definition of Done` for the checks you ran and saw pass. That checklist carries the task's own criterion plus the standing-bar row `o-decompose` wrote in (see Definition of Done below), and both kinds are ticked the same way. A check you skipped, or one deliberately deferred to CI, stays `[ ]`: an unticked box is how the run says the task is not finished, and the layer it belongs to cannot close while it stands.
    - **The plan** — the layers artifact, `<run folder>/E<nn>-plan.md` (or a legacy `E<nn>-epic.md`) — cannot see the task files, so derive it:
      ```bash
      node <skill>/scripts/status.mjs <run folder>
@@ -162,7 +161,7 @@ All tasks `- [x]` and green → close the run:
      Those boxes are the plan's acceptance criteria rather than a count of tasks, so they are ticked on your word and not on arithmetic — and only when no task is still open, because a status the tasks contradict is worse than no status.
    - Write `<run folder>/E<nn>-summary.md`: the plan's `goal:`, one line per completed task, and the test results. It starts with its property block — `type: summary`, `title: "Summary · <run topic>"`, `run`, `plan` linking the plan it closes, and the plan's `topics`.
    - Run `o-roast` on the summary, then `o-humanize` on it; each appends its own `E<nn>` artifact beside it.
-   - Rewrite the summary from the humanized text.
+     Rewrite the summary from the humanized text. A run whose tasks are all XS or S skips both.
    - If the plan carries an `issue:` and the repo has an `origin` remote, offer to post the summary with a `confirm` panel (yes/no); on yes run `gh issue comment <n> -F <summary>`. Never invent an issue number, and never post without the panel.
 
 ## Definition of Done

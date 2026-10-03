@@ -25,9 +25,12 @@ jobs:
       # citation of a skill that no longer exists, a CommonJS script or a skill missing from the README table
       # cannot reach main.
       - run: node skills/o-skill-lint/scripts/lint.mjs
+      # .o-skills/ is not in the repository, so CI has no arch.json: this checks the banned names, and the layer
+      # rules stay local to a machine that declares them.
+      - run: node skills/o-arch-lint/scripts/arch-check.mjs --root .
       # The guard's rules are fixtures; this proves they still describe what it claims to enforce.
       - run: node skills/o-floor/scripts/floor-guard.mjs --self-test
       # The floor sits below the measured baseline (76.6% rank-1 over 145 should-trigger queries) so an
       # unrelated description edit does not turn this red. Raise it as routing improves; never lower it to make
       # a regression pass.
-      - run: node skills/o-skill-lint/scripts/trigger-rate.mjs --min-rank1 70
+      - run: node skills/o-skill-lint/scripts/trigger-rate.mjs --min-rank1 80

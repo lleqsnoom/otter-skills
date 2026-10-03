@@ -1,0 +1,16 @@
+{
+  "skill": "o-debug",
+  "queries": [
+    { "query": "this endpoint throws TypeError: Cannot read properties of undefined, debug it", "should_trigger": true },
+    { "query": "the test fails with a wrong total, find out why and fix it", "should_trigger": true },
+    { "query": "my CLI exits with code 1 and a stack trace, help me fix it", "should_trigger": true },
+    { "query": "debug why the cart shows the wrong price after a discount", "should_trigger": true },
+    { "query": "something returns null where it should not, track it down", "should_trigger": true },
+    { "query": "get a failing reproduction of this crash and then fix the cause", "should_trigger": true },
+    { "query": "intake this bug report and classify it", "should_trigger": false },
+    { "query": "review the diff before I merge", "should_trigger": false },
+    { "query": "plan how we migrate to the new auth provider", "should_trigger": false },
+    { "query": "write tests for the price module", "should_trigger": false },
+    { "query": "explain what this module does", "should_trigger": false }
+  ]
+}

@@ -7,8 +7,6 @@ import { pathToFileURL } from "node:url";
  * Usage: node scripts/suggest-type.mjs [--staged | --unstaged]
  */
 
-const KNOWN_SCOPES = ["src", "lib", "app", "api", "ui", "auth", "db", "test", "docs", "config"];
-
 /**
  * Thresholds for commit type classification.
  */
@@ -22,8 +20,6 @@ const THRESHOLDS = {
   featLargeNetChange: 50,
   featSmallAdded: 20,
   featSmallNetChange: 10,
-  choreNetChange: 10,
-  choreRemoved: 20,
 };
 
 function getDiff(mode) {
@@ -69,22 +65,31 @@ export function parseDiffPaths(diff) {
   return paths;
 }
 
+/** Folders whose children are the real areas: `skills/o-review/…` is the o-review area, not "skills". */
+const CONTAINERS = new Set(["skills", "packages", "apps", "libs", "services", "modules"]);
+
+/** A share of the changed files one area must hold to name the scope. */
+const DOMINANT_SHARE = 0.6;
+
+const areaOf = (file) => {
+  const parts = file.split("/");
+  if (parts.length < 2) return null;
+  return CONTAINERS.has(parts[0]) && parts.length >= 3 ? parts[1] : parts[0];
+};
+
+/**
+ * The area most changed files sit in, or null when no area dominates. A change spread over many areas has no
+ * honest scope, and a scope naming one of them misdescribes the rest.
+ */
 export function suggestScope(diff, changedFiles = null) {
   const files = changedFiles && changedFiles.length ? changedFiles : parseDiffPaths(diff);
-
   if (files.length === 0) return null;
 
-  const scopes = new Set();
-  for (const f of files) {
-    const parts = f.split("/");
-    if (parts.length >= 2) scopes.add(parts[0]);
-  }
-
-  const known = [...scopes].filter((s) => KNOWN_SCOPES.includes(s));
-  if (known.length > 0) return known[0];
-
-  const allDirs = [...new Set(files.map((f) => f.split("/")[0]))];
-  return allDirs.length === 1 ? allDirs[0] : null;
+  const counts = new Map();
+  for (const area of files.map(areaOf).filter(Boolean)) counts.set(area, (counts.get(area) ?? 0) + 1);
+  const [top] = [...counts].sort((a, b) => b[1] - a[1]);
+  if (!top) return null;
+  return top[1] / files.length >= DOMINANT_SHARE ? top[0] : null;
 }
 
 /**
@@ -192,15 +197,6 @@ function isFeatureChange(added, netChange) {
   );
 }
 
-/**
- * Check if changes are chore (config-like net removal without doc patterns).
- */
-function isChoreChange(removed, netChange) {
-  return (
-    netChange < THRESHOLDS.choreNetChange || removed < THRESHOLDS.choreRemoved
-  );
-}
-
 export function suggestType(diff) {
   const { added, removed } = countChanges(diff);
   const { hasTestFile, hasConfigFile, hasDocFile } = classifyFiles(diff);
@@ -212,12 +208,17 @@ export function suggestType(diff) {
   if (isRefactorChange(added, removed)) return "refactor";
   if (matchPatterns(diff)) return "fix";
   if (isFeatureChange(added, netChange)) return "feat";
-  if (isChoreChange(added, removed, netChange)) return "chore";
-
   return "chore";
 }
 
+const USAGE = `Usage: node suggest-type.mjs [--staged | --unstaged]
+Prints a suggested conventional type and scope for the change as JSON.`;
+
 function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const mode = process.argv.includes("--unstaged") ? "unstaged" : "staged";
   const diff = getDiff(mode);
 

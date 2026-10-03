@@ -42,7 +42,7 @@ describe("o-roast score — pure scoring", async () => {
   it("every calibration case is on disk and scores exactly its profile's dimensions", () => {
     const skill = path.join(__dirname, "..", "skills", "o-roast");
     const { cases } = JSON.parse(fs.readFileSync(path.join(skill, "evals", "calibration.json"), "utf8"));
-    const { references } = JSON.parse(fs.readFileSync(path.join(skill, "evals", "calibration-answers.json"), "utf8"));
+    const { references } = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "evals", "o-roast", "calibration-answers.json"), "utf8"));
     for (const profile of Object.keys(mod.PROFILES)) {
       assert.ok(cases.filter((entry) => entry.profile === profile).length >= 2, `${profile}: two cases`);
     }
@@ -57,7 +57,7 @@ describe("o-roast score — pure scoring", async () => {
 
   it("records a second reviewer's blind scores for every case, and explains each disagreement over 1", () => {
     const skill = path.join(__dirname, "..", "skills", "o-roast");
-    const answers = JSON.parse(fs.readFileSync(path.join(skill, "evals", "calibration-answers.json"), "utf8"));
+    const answers = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "evals", "o-roast", "calibration-answers.json"), "utf8"));
     const disputed = new Set(answers.disputes.map((d) => `${d.case}.${d.dimension}`));
     for (const [name, reference] of Object.entries(answers.references)) {
       assert.deepEqual(Object.keys(answers.second[name]).sort(), Object.keys(reference).sort(), name);
@@ -316,7 +316,7 @@ describe("o-roast CLI", async () => {
 
   it("the skill's own instructions never print a calibration answer", () => {
     const skill = path.join(__dirname, "..", "skills", "o-roast");
-    const { references } = JSON.parse(fs.readFileSync(path.join(skill, "evals", "calibration-answers.json"), "utf8"));
+    const { references } = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "evals", "o-roast", "calibration-answers.json"), "utf8"));
     const docs = [path.join(skill, "SKILL.md"), path.join(skill, "references", "rubric.md")].map((file) => fs.readFileSync(file, "utf8").replace(/\s+/g, ""));
     for (const [name, reference] of Object.entries(references)) {
       const answer = Object.entries(reference).slice(0, 4).map(([dimension, score]) => `${dimension}=${score}`).join(",");

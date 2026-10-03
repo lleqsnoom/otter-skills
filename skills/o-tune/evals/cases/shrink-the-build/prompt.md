@@ -1,0 +1,1 @@
+Use the o-tune skill to get the size of dist/out.js, as `node measure.mjs` reports it, down to 900 bytes or less. Only build.mjs may change; src/ and test/ may not. The guard is `node --test`. Cap the loop at 4 experiments. Do not ask me anything.

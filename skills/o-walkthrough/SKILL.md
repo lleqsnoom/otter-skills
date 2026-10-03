@@ -1,7 +1,7 @@
 ---
 name: o-walkthrough
-description: Generate an interactive bash script that walks a human through steps only they can perform — setting up credentials or API keys by hand in a vendor dashboard, provisioning a cloud resource, adding a CI secret, or running a one-off migration or cutover — stage by stage with hidden secret entry and confirmation gates. Use when the remaining steps need a human in a browser or console; never for what can be automated.
-version: 1.0.2
+description: Write an interactive bash script that walks a person through the steps only they can do — clicking through a vendor dashboard for credentials, an API key or a service account, provisioning a cloud resource, adding a CI secret, a one-off cutover — stage by stage with hidden secret entry and confirmation gates. Use when the remaining steps need a human in a browser or console; never for what an agent can do itself.
+version: 1.0.3
 author: Community
 tags: [walkthrough, human-steps, provisioning, credentials, migration]
 user-invocable: true
@@ -20,6 +20,9 @@ stages and author them. Never hand-edit the library above the `STAGES` marker; t
 The script is ephemeral by default: built for one run, deleted when done. Commit it only when the user wants a
 repeatable setup path that should live in the repo. A worked two-stage example with a CI secret and a confirm
 gate is in `references/worked-example.md`.
+
+The script is bash. On Windows, run it in WSL or Git Bash; a stage whose CLI is Windows-only (`az`, `winget`) is
+written as a `say` step the person runs in PowerShell, then a `confirm`.
 
 ## Process
 

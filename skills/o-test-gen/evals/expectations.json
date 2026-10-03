@@ -1,9 +1,11 @@
 {
   "skill": "o-test-gen",
   "expected_behavior": [
-    "The test framework is detected from the project's existing config (jest.config.js, vitest.config.ts and friends), not assumed.",
-    "The stub is generated in the location the project's conventions name (tests/unit/ and the like) with happy path, error, and edge-case placeholders.",
-    "Assertions that need manual completion are left as explicit TODO comments rather than silently passing."
+    "The framework comes from the project's own config and dependencies — Vitest, Jest, Mocha, node:test or pytest — and a project with none gets the built-in node:test, never a guessed Jest.",
+    "Every generated stub fails until someone writes it, and the run says so; no stub passes on its own.",
+    "The test file imports the real source by its relative path and matches its extension and module system, so a stub fails on its TODO, not on an import error.",
+    "An existing test file is never overwritten; it is listed as skipped with the reason.",
+    "Before the work is called done, each stub is a real assertion about behaviour or has been deleted."
   ],
   "source": [
     "Framework Detection",

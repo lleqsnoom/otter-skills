@@ -67,7 +67,7 @@ have - a candidate that turns out to be new scope goes back to the plan, not int
 
 - **Only the candidates whose proposal is not `task` need a panel.** A `single` panel per such candidate,
   with `plan`, `analyze`, `task`, `drop` as the options, plus the free-text answer the host adds. Ask at
-  most three panels per round.
+  most four panels per round.
 - **Never ask in prose** and never bury the question in a paragraph.
 - A candidate that passes every signal as `task` is recorded without a panel. A twenty-panel interrogation
   is not a gate, it is how a run loses its user.

@@ -1,13 +1,13 @@
 {
   "skill": "o-refactor",
   "expected_behavior": [
-    "The skill is analysis-only: it outputs JSON and markdown suggestions and never applies changes automatically.",
-    "o-unbloat's ladder runs before any suggestion, and an extraction that adds a layer must name the second caller or the idea that pays for it.",
-    "The analyzer detects the four named patterns \u2014 extract method, rename variable, replace conditional, inline method \u2014 and reports each with a before/after comparison."
+    "The skill never edits code: it measures, routes, and leaves applying the result to o-fix or the routed skill.",
+    "Every candidate goes to one owner: needless code to o-unbloat, placement and naming to o-arch, comment noise to o-comments, and only in-function restructuring gets a before/after here.",
+    "Measurements come from o-review's tree-sitter scripts, the engine used is named, and every candidate carries a file:line and a reason a reviewer can check.",
+    "Any extraction it proposes is justified by a named second caller or idea, never by tidiness alone."
   ],
   "source": [
-    "Related Skills",
-    "Refactoring Patterns Detected",
+    "Steps",
     "Definition of Done"
   ]
 }

@@ -1,7 +1,7 @@
 ---
 name: o-unbloat
 description: Cut code to what the task needs — a YAGNI ladder that removes needless abstractions, wrappers, unused options and dead code, keeps behavior and protective code, and measures the result. Use when asked to unbloat, simplify, or remove over-engineering; o-implement, o-review and o-refactor run it as a pass.
-version: 1.8.2
+version: 1.9.0
 author: Community
 tags: [yagni, kiss, simplify, over-engineering, dead-code, refactoring, code-cleaning]
 user-invocable: true
@@ -89,8 +89,10 @@ callers, tests). Delete it only when the reason is gone.
    rule), call sites.
 5. **Check callers.** Find every call site before you inline or delete. If code outside the repo uses it,
    report it and keep it.
-6. **Cover it.** If a unit you will cut has no test, write one that pins its current behavior.
-7. **Cut one thing at a time.** Run the tests after each cut. If they fail, revert that cut.
+6. **Cover it.** If the behaviour a cut could change has no test, write one first — at the callers that stay, not
+   on the unit you are about to delete.
+7. **Cut one thing at a time.** Run the tests after each cut. If they fail, reverse your own edit — never
+   `git checkout` or `git restore` the file, which also drops uncommitted work you did not make.
 8. **Measure**:
    ```bash
    node <skill>/scripts/measure.mjs --record RECORD

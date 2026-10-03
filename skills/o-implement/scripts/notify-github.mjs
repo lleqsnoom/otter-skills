@@ -65,7 +65,14 @@ function parseArgs(argv) {
   return out;
 }
 
+const USAGE = `Usage: node notify-github.mjs --run <run folder>
+Prints the GitHub notification the run's progress calls for, as JSON; it sends nothing.`;
+
 function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const args = parseArgs(process.argv.slice(2));
   if (!args.run) {
     process.stderr.write(`${JSON.stringify({ error: "--run <runDir> is required" })}\n`);

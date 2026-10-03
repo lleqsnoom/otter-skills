@@ -1,0 +1,16 @@
+{
+  "skill": "o-review",
+  "queries": [
+    { "query": "review my changes before I open the PR", "should_trigger": true },
+    { "query": "code review this branch against the spec", "should_trigger": true },
+    { "query": "check this diff for bugs, complexity and dead code", "should_trigger": true },
+    { "query": "is this change correct? look for edge cases and security holes", "should_trigger": true },
+    { "query": "review the files I touched in this task", "should_trigger": true },
+    { "query": "do a full review of the new payments module", "should_trigger": true },
+    { "query": "fix the findings in the review plan", "should_trigger": false },
+    { "query": "write the PR description", "should_trigger": false },
+    { "query": "roast this article", "should_trigger": false },
+    { "query": "debug why the build fails", "should_trigger": false },
+    { "query": "plan the next feature", "should_trigger": false }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "skill": "o-refactor",
+  "queries": [
+    { "query": "suggest refactorings for this module", "should_trigger": true },
+    { "query": "what should I refactor in the order service?", "should_trigger": true },
+    { "query": "find the refactoring opportunities in this file", "should_trigger": true },
+    { "query": "this class is messy, where do I start refactoring?", "should_trigger": true },
+    { "query": "measure this module and tell me what to restructure", "should_trigger": true },
+    { "query": "refactor suggestions for the parser, with before and after", "should_trigger": true },
+    { "query": "review my diff", "should_trigger": false },
+    { "query": "cut the unused code and needless wrappers", "should_trigger": false },
+    { "query": "move these files into feature folders", "should_trigger": false },
+    { "query": "fix the bug in the parser", "should_trigger": false },
+    { "query": "rename this variable", "should_trigger": false }
+  ]
+}

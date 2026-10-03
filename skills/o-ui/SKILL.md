@@ -1,7 +1,7 @@
 ---
 name: o-ui
 description: Design and audit app UIs to be clean, clear, and effective — framework-agnostic method (Vue/React/HTML) with component-selection, row-action, and pre-flight rules. Use when building or auditing a UI's components, forms or tables.
-version: 3.1.2
+version: 3.2.0
 author: Community
 tags: [ui, html, css, usability, readability, minimalism, accessibility, frontend, design]
 user-invocable: true
@@ -10,6 +10,10 @@ user-invocable: true
 # O-UI — Design That Works
 
 Build app interfaces (tools, forms, dashboards-lite, internal apps) that a human reads at a glance and uses without thinking. Every rule below is a hard instruction: apply it, then verify it with the check listed under it.
+
+**The project's design system comes first.** Where the project already has tokens — a theme, CSS custom
+properties, a Tailwind config, a component library's scale — use them; the spacing and type scales below are
+the default for a project with none, not a second system laid over an existing one.
 
 **Scope:** any web UI, in plain HTML/CSS or any component framework (Vue/Quasar, React/MUI/Ant, Svelte, etc.). Rules apply to templates, components, and styles equally. Generic component names below (`table`, `select`, `button`) mean "use your framework's equivalent": `q-table`, `MUI DataGrid`, `Ant Table`, etc. **Out of scope:** marketing landing pages, print, native mobile.
 
@@ -50,14 +54,14 @@ set is not finished.
 
 ## Principle 1 — One loud thing
 
-Every screen has exactly one primary action. Give it the most visual weight on the screen (solid background + bold text). No other element may have equal weight.
+Every screen has exactly one primary action. Give it the most visual weight of any control on the screen (solid background + bold text). No other action may have equal weight. Headings are structure, not actions: a bold page title does not compete with the primary button.
 
 **Technique:**
 - Hierarchy is built from three levers: size, weight, color. Use one or two on most elements; use all three only on the primary action.
 - Primary = solid, high-contrast background. Secondary = outline or muted background. Tertiary = text link.
 - Secondary content is de-emphasized by *muting* (lighter weight, grayer color), not by shrinking below readable size.
 
-**Check:** list every element with a solid/accent background or bold (600+) text. There must be exactly one. If more than one, restyle the others to outline or text style.
+**Check:** list every *action* — button or link — with a solid/accent background or bold (600+) text. There must be exactly one. If more than one, restyle the others to outline or text style.
 
 ## Principle 2 — Group by space, not chrome
 
@@ -80,6 +84,8 @@ Do not add color until layout and hierarchy are finished. Verify the hierarchy i
 - One accent, used only where the user can act: primary button, links, focus ring, active state. Saturation below 80%.
 - Text hierarchy via color: dark for primary content, gray for secondary. Two or three text colors total.
 - Contrast: 4.5:1 body text, 3:1 for text 18px+. Color is never the only signal; pair status with text or icon.
+- Dark mode, when the app has one, mirrors the same roles rather than inverting them: a dark gray surface (not
+  `#000`), off-white text, the accent lightened until it meets the same contrast. Check both themes.
 
 **Check:** temporarily set `filter: grayscale(1)` on the page root. If the primary action is no longer distinguishable, increase its weight or spacing instead of changing color.
 
@@ -136,10 +142,18 @@ applying the method above and when running the Pre-Flight Checklist.
 
 ## Pre-Flight Checklist
 
-Run every item. The screen is not done until all pass.
+Run every item. The screen is not done until all pass. Some of them a search settles — removed focus rings,
+`transition: all`, clickable divs, font sizes off the scale, pure black text, justified or centred paragraphs —
+in CSS, JSX style objects and Tailwind classes alike, so run the script first and spend your attention on the rest:
+
+```bash
+node <skill>/scripts/ui-lint.mjs <changed files or src/> [--scale <the project's own sizes>]
+```
+
+`<skill>` is this skill's folder.
 
 - [ ] Primary task stated, and every element serves it?
-- [ ] Exactly one element with a solid/accent background or bold (600+) text per view?
+- [ ] Exactly one action with a solid/accent background or bold (600+) text per view (headings excluded)?
 - [ ] Hierarchy still readable with `filter: grayscale(1)` on the page root?
 - [ ] One accent color, 2-3 neutrals, no pure black on pure white?
 - [ ] Spacing values all on the 4/8/12/16/24/32/48/64 scale?

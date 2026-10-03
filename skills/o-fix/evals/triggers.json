@@ -1,0 +1,16 @@
+{
+  "skill": "o-fix",
+  "queries": [
+    { "query": "work through the review plan and fix every finding", "should_trigger": true },
+    { "query": "resolve the issues in E02-review-plan.md one by one", "should_trigger": true },
+    { "query": "apply the fix plan from the debugging session", "should_trigger": true },
+    { "query": "tick off the review findings as you fix them", "should_trigger": true },
+    { "query": "go fix the comments the reviewer left in the plan", "should_trigger": true },
+    { "query": "address everything in the fix plan, highest severity first", "should_trigger": true },
+    { "query": "review this branch for problems", "should_trigger": false },
+    { "query": "find out why the login fails", "should_trigger": false },
+    { "query": "write a plan for the billing feature", "should_trigger": false },
+    { "query": "commit these changes", "should_trigger": false },
+    { "query": "roll back the last release", "should_trigger": false }
+  ]
+}

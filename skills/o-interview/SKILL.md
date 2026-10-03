@@ -1,7 +1,7 @@
 ---
 name: o-interview
-description: Interview the user to stress-test a decision, design, or idea — poke holes in it, challenge assumptions, surface the edge cases, and ask the hard questions until every branch of the design tree is resolved; work the frontier in rounds, each question carrying a recommended answer, facts fetched by sub-agents and decisions reserved for the user. Use when asked to grill, interview, or pressure-test the user's thinking.
-version: 1.0.2
+description: Grill the user on a decision, design or plan before it is built — stress-test it, poke holes, challenge assumptions and surface what they are not thinking about, in rounds where every question carries a recommended answer; facts are looked up by sub-agents and decisions stay with the user. Use when asked to grill, interview, stress-test or pressure-test the user's approach, or to find what they are missing.
+version: 1.1.0
 author: Community
 tags: [interview, clarification, design-tree, frontier, stress-test]
 user-invocable: true
@@ -19,17 +19,36 @@ Map the topic as a **design tree**: every decision branches into the decisions t
 **frontier** is every question whose prerequisites are already settled — the questions you can ask now without
 guessing at answers you have not heard yet.
 
-**Work it in rounds.** Ask the whole frontier in one round — number each question and give your recommended
-answer beside it — then wait. Each round of answers reshapes the tree: settled decisions push the frontier
+**Work it in rounds.** Ask the frontier in rounds of at most four questions — the most a host's question tool
+shows at once — each a panel with your recommended answer beside it, then wait. Each round of answers reshapes the tree: settled decisions push the frontier
 outward and unblock what depended on them. Recompute, ask the next round. A question that depends on a sibling
 still open this round waits for a later round.
 
 ## Facts are yours, decisions are theirs
 
 A frontier question the filesystem, the repo, the run history, or the web could answer is never asked: dispatch
-a sub-agent to find it and move on. Do not block on it either — only the questions downstream of a running
+a sub-agent to find it and move on (a subagent in Claude Code, a background `codex exec` or `crush run` elsewhere;
+with neither, look it up yourself between rounds). Do not block on it either — only the questions downstream of a running
 sub-agent wait for its report; ask the rest of the frontier now. What remains for the user is genuinely
 theirs: trade-offs, preferences, intent. Put each to them and wait.
+
+## Keep the record as you go
+
+Write `<run folder>/E<nn>-interview.md` — the run the decision belongs to, or a new
+`.o-skills/runs/<YYYY-MM-DD-hhmm>-R01-<topic>/` when there is none — and update it after every round:
+
+```markdown
+# Interview — <topic>
+
+## Settled
+- <decision> — <its one-line reason>
+
+## Open
+- <question> — waits on <what>
+```
+
+The conversation will be compacted or closed; this file is what survives it, and what `o-plan`, `o-domain` or
+`o-brief` start from.
 
 ## Done
 

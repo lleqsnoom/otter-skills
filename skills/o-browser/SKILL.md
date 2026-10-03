@@ -1,7 +1,7 @@
 ---
 name: o-browser
 description: Launch the real Chrome/Chromium with remote debugging and attach the chrome-devtools MCP to the project's app URL — detects the URL from README/config/env, verifies the dev server, and opens the browser so you can drive it without manual setup. Use when asked to open the app in a browser or screenshot it running.
-version: 1.1.2
+version: 1.2.0
 author: Community
 tags: [browser, chrome, chromium, devtools, mcp, frontend, testing, automation, debugging]
 user-invocable: true
@@ -11,6 +11,8 @@ user-invocable: true
 
 Start a real (headed) Chrome/Chromium with the remote debugging port open, open the project's app URL, and let the `chrome-devtools` MCP server attach. This replaces the manual "launch chrome with `--remote-debugging-port`, then ask the agent to connect" prompt.
 
+`<skill>` below is this skill's folder.
+
 ## When to use
 
 - You need to inspect, test, or drive a running web app in a real browser.
@@ -19,21 +21,30 @@ Start a real (headed) Chrome/Chromium with the remote debugging port open, open 
 
 ## Prerequisite: the MCP must point at the same port
 
-The launch script opens remote debugging on `9222` by default. The `chrome-devtools` MCP server must be configured to connect to that port. In Crush (`crush.json`):
+The launch script opens remote debugging on `9222` by default, and the `chrome-devtools` MCP server must connect
+to that port. Register it once for the CLI you use:
 
-```json
-{
-  "mcp": {
-    "chrome-devtools": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp", "--browserUrl", "http://127.0.0.1:9222"]
-    }
-  }
-}
+```bash
+# Claude Code
+claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp --browserUrl http://127.0.0.1:9222
 ```
 
-If your config uses a different `--browserUrl` port, pass the same value to `--port`. The ports must match or the MCP will not attach.
+```toml
+# Codex — ~/.codex/config.toml
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["-y", "chrome-devtools-mcp", "--browserUrl", "http://127.0.0.1:9222"]
+```
+
+```json
+// Crush — crush.json
+{ "mcp": { "chrome-devtools": { "type": "stdio", "command": "npx",
+  "args": ["-y", "chrome-devtools-mcp", "--browserUrl", "http://127.0.0.1:9222"] } } }
+```
+
+If your config uses another port, pass the same value to `--port`. **In Claude Code with the Claude in Chrome
+extension**, that drives the user's own signed-in browser instead; use it when the page needs the user's session,
+and this skill when the run needs an isolated, disposable profile.
 
 ## Procedure
 
@@ -42,7 +53,7 @@ If your config uses a different `--browserUrl` port, pass the same value to `--p
 Run the detector; it scans `.env*`, `package.json` scripts, framework configs (`vite.config`, `angular.json`, `nuxt.config`, ...), `docker-compose.yml`, and `README.md`, then prints ranked candidates:
 
 ```bash
-node skills/o-browser/scripts/detect-url.mjs
+node <skill>/scripts/detect-url.mjs
 ```
 
 Output:
@@ -70,7 +81,7 @@ and never wait on one you started: park it in the background and read its output
 ### 3. Launch the browser
 
 ```bash
-node skills/o-browser/scripts/launch.mjs --url http://localhost:5173
+node <skill>/scripts/launch.mjs --url http://localhost:5173
 ```
 
 Omit `--url` to let it auto-detect. The script:
@@ -94,6 +105,16 @@ Verify the connection, then drive the page:
 
 If `list_pages` returns no browser, the MCP is not pointed at the debug port — fix the `--browserUrl` config (see prerequisite) and retry.
 
+### 5. Stop what you started
+
+When the work is done, stop the browser this skill launched and any dev server you started in the background:
+
+```bash
+node <skill>/scripts/launch.mjs --stop     # only the browser recorded in this skill's profile
+```
+
+A dev server started by you is stopped by its own background job; one that was already running is the user's.
+
 ## Flags
 
 | Flag | Purpose |
@@ -105,6 +126,7 @@ If `list_pages` returns no browser, the MCP is not pointed at the debug port —
 | `--headless` | Launch without a visible window |
 | `--foreground` | Keep the launcher attached instead of detaching |
 | `--dry-run` | Print the command without launching |
+| `--stop` | Stop the browser this script launched from the profile |
 
 ## Troubleshooting
 
@@ -119,5 +141,7 @@ If `list_pages` returns no browser, the MCP is not pointed at the debug port —
 ## Rules
 
 - Never point `--profile-dir` at the user's real Chrome profile.
-- Never kill the user's existing browser processes.
+- Never kill the user's existing browser processes — `--stop` only ends the one recorded in this skill's profile.
+- An app behind a login needs a test account or a seeded session; ask for one with a panel rather than typing
+  the user's own credentials.
 - Report the detected URL and its source so the user can correct it.

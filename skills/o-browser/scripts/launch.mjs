@@ -78,6 +78,28 @@ export function defaultProfileDir() {
   return path.join(os.homedir(), ".o-skills", "chrome-profile");
 }
 
+/** The browser this script launched, recorded in its own profile so `--stop` never touches anyone else's. */
+export const pidFile = (profileDir) => path.join(profileDir, "o-browser.pid.json");
+
+/**
+ * Stop the browser recorded in the profile, and only that one. A pid file whose process is gone is removed and
+ * reported; a profile with no pid file means there is nothing this script started.
+ */
+export function stopBrowser(profileDir, { kill = process.kill.bind(process) } = {}) {
+  const file = pidFile(profileDir);
+  if (!fs.existsSync(file)) return { stopped: false, reason: "nothing launched from this profile" };
+  const { pid, debugPort } = JSON.parse(fs.readFileSync(file, "utf8"));
+  fs.rmSync(file, { force: true });
+  try {
+    // The launcher started it detached, as its own process group: signal the group so its helpers go too.
+    if (process.platform === "win32") kill(pid);
+    else kill(-pid, "SIGTERM");
+    return { stopped: true, pid, debugPort };
+  } catch (error) {
+    return { stopped: false, pid, reason: error.code === "ESRCH" ? "already exited" : error.message };
+  }
+}
+
 export async function cdpReachable(debugPort, timeoutMs = 800) {
   try {
     const res = await fetch(`http://127.0.0.1:${debugPort}/json/version`, {
@@ -118,6 +140,7 @@ function parseArgs(argv) {
     else if (arg === "--headless") opts.headless = true;
     else if (arg === "--foreground") opts.detached = false;
     else if (arg === "--dry-run") opts.dryRun = true;
+    else if (arg === "--stop") opts.stop = true;
     else if (arg === "--help" || arg === "-h") opts.help = true;
   }
   return opts;
@@ -136,6 +159,7 @@ Options:
   --headless           Launch without a visible window
   --foreground         Keep the launcher attached instead of detaching
   --dry-run            Print what would run without launching
+  --stop               Stop the browser this script launched from the profile (never any other)
   --help               Show this help
 `;
 
@@ -155,6 +179,10 @@ async function main() {
   }
 
   const profileDir = opts.profileDir || defaultProfileDir();
+  if (opts.stop) {
+    process.stdout.write(`${JSON.stringify(stopBrowser(profileDir), null, 2)}\n`);
+    return;
+  }
   const browser = resolveChromePath(opts.browser);
   const args = buildChromeArgs({
     debugPort: opts.debugPort,
@@ -215,6 +243,7 @@ async function main() {
   });
 
   if (opts.detached) child.unref();
+  fs.writeFileSync(pidFile(profileDir), JSON.stringify({ pid: child.pid, debugPort: opts.debugPort, startedAt: new Date().toISOString() }));
 
   const appUp = await appReachable(url);
 

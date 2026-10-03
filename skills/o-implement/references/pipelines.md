@@ -17,11 +17,11 @@ the time of writing; the list is the process, not advice.
 
 ## Fix a bug
 
-`o-triage` → `o-investigate` → `o-debug` → `o-reproduce` → `o-verify` → `o-fix`
+`o-triage` → `o-debug` (→ `o-investigate` when the first look explains nothing) → `o-fix` → `o-verify`
 
-- `o-triage` structures the intake; `o-investigate` hunts the root cause by hypothesis.
-- `o-debug` reproduces, fixes the root cause and verifies; `o-reproduce` generates a minimal case.
-- `o-verify` mutants the fix; `o-fix` clears the fix plan.
+- `o-triage` writes the intake brief; `o-debug` builds the reproduction and tests the first hypotheses.
+- `o-investigate` goes deeper with platform tools and git history, and writes the fix plan.
+- `o-fix` clears the fix plan; `o-verify` attacks the fix with property and mutation tests.
 
 ## Ship anything risky
 

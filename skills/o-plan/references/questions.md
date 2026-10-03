@@ -16,8 +16,8 @@ shapes:
 
 | Panel | Shape | Options |
 |-------|-------|---------|
-| `single` | single select with multiple options, plus a free-answer field | 2-5 required |
-| `multi` | multi select with options, plus an open form | 2-5 required |
+| `single` | single select with multiple options, plus a free-answer field | 2-4 required |
+| `multi` | multi select with options, plus an open form | 2-4 required |
 | `open` | open form only (free text) | none |
 | `confirm` | yes/no | none |
 
@@ -42,8 +42,8 @@ rule is on you.
 - **Record it.** Every question and answer goes into `memory.md`; recheck the open list after each
   answer and stop when the list is empty or the user says "you decide".
 - **Work the frontier in rounds.** The frontier is every question whose prerequisites are already settled; ask
-  the whole frontier in one round (each question still its own panel, each carrying its recommended answer), and
-  recompute it after the answers — a question that depends on one still open in this round waits for a later
+  it in rounds of at most four questions — the most a host's question tool shows at once — each its own panel
+  carrying its recommended answer, and recompute the frontier after the answers — a question that depends on one still open in this round waits for a later
   round. Facts are never a question: a frontier question the filesystem, the repo, or the web could answer goes
   to a sub-agent first, and only decisions ride on the user.
 

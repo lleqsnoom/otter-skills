@@ -415,3 +415,22 @@ describe("save-report copies the roasted artifact's topics", () => {
     assert.match(fs.readFileSync(JSON.parse(result.stdout).path, "utf8"), /^topics:\n {2}- "\[\[tags\/domain\/tags\]\]"\n---$/m);
   });
 });
+
+describe("o-roast quick mode", () => {
+  const { pathToFileURL: toUrl } = require("node:url");
+  const scripts = require("node:path").join(__dirname, "..", "skills", "o-roast", "scripts");
+
+  it("writes a quick header without the creative section, and the gate does not ask for calibration or alternatives", async () => {
+    const { renderHeader } = await import(toUrl(require("node:path").join(scripts, "save-report.mjs")).href);
+    const { lintReport } = await import(toUrl(require("node:path").join(scripts, "check-report.mjs")).href);
+    const header = renderHeader({ slug: "spec", type: "spec", quick: true });
+    assert.match(header, /\*\*Mode:\*\* quick/);
+    assert.match(header, /\*\*Calibration:\*\* skipped — quick roast/);
+    assert.doesNotMatch(header, /## Creative alternatives/);
+    const rules = lintReport(header).violations.map((v) => v.rule);
+    assert.equal(rules.includes("alternatives"), false);
+    assert.equal(rules.includes("calibration-line"), false);
+    const full = lintReport(renderHeader({ slug: "spec", type: "spec" })).violations.map((v) => v.rule);
+    assert.ok(full.includes("alternatives"), "a full roast still needs its alternatives");
+  });
+});

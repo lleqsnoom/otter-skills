@@ -87,7 +87,8 @@ function parseTask(name, text) {
   const boxes = dod === -1 ? [] : boxesIn(lines, dod, sectionEnd(lines, dod + 1));
   return {
     name,
-    layer: layerOf(lines),
+    // The body's **Layer:** first; o-decompose's file name (`L<N>-T<M>-<slug>.md`) names it too.
+    layer: layerOf(lines) ?? (/^L(\d+)-T\d+/.test(name) ? Number(name.match(/^L(\d+)-/)[1]) : null),
     done: boxes.filter((box) => box.checked).length,
     total: boxes.length,
     complete: boxes.length > 0 && boxes.every((box) => box.checked),
@@ -421,9 +422,16 @@ function refuseUnknownStamp(tasks, stamps) {
   refuse(`No task ${unknown.task || "(none named)"} in this run — ${unknown.flag} takes a task file name from its tasks folder.`, 2);
 }
 
+const USAGE = `Usage: node status.mjs <run folder> [--start <task file>] [--ready <task file>] [--epic-done] [--dry-run]
+Ticks each layer whose tasks are done, refreshes the plan's Status line, and stamps the named task.`;
+
 function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const args = parseArgs(process.argv.slice(2));
-  if (!args.run) refuse("Usage: node status.mjs <run folder> [--start <task file>] [--ready <task file>] [--epic-done] [--dry-run]", 2);
+  if (!args.run) refuse(USAGE, 2);
 
   const { tasks, layersPath } = runFiles(args.run);
   refuseUnknownStamp(tasks, args.stamps);

@@ -1,0 +1,16 @@
+{
+  "skill": "o-test-gen",
+  "queries": [
+    { "query": "scaffold tests for src/price.mjs", "should_trigger": true },
+    { "query": "generate test stubs for this module", "should_trigger": true },
+    { "query": "this file has no tests, create the test file skeleton", "should_trigger": true },
+    { "query": "write failing test stubs for every exported function", "should_trigger": true },
+    { "query": "set up a test file for the parser in our test framework", "should_trigger": true },
+    { "query": "generate pytest stubs for utils.py", "should_trigger": true },
+    { "query": "fix the failing test", "should_trigger": false },
+    { "query": "implement the task test first", "should_trigger": false },
+    { "query": "review the tests I wrote", "should_trigger": false },
+    { "query": "run a mutation pass over the change", "should_trigger": false },
+    { "query": "debug why the test is flaky", "should_trigger": false }
+  ]
+}

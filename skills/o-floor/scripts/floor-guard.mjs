@@ -15,7 +15,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -109,10 +109,30 @@ export function classifyAddedLine({ file, line, text }) {
   return out;
 }
 
+const ASSERTION = /\b(?:expect|assert|should)\b/;
+
+/**
+ * Removed assertions, net of the ones added to the same test file. A test rewritten with as many assertions as
+ * it lost — or more — lowered nothing; counting removed lines alone reported every test refactor as a violation.
+ * What is left is the net loss, reported on the last removed lines of that file.
+ */
+export function netAssertions(removedFindings, addedLines) {
+  const added = new Map();
+  for (const entry of addedLines) {
+    if (isTestFile(entry.file) && ASSERTION.test(entry.text)) added.set(entry.file, (added.get(entry.file) ?? 0) + 1);
+  }
+  const byFile = new Map();
+  for (const finding of removedFindings) byFile.set(finding.file, [...(byFile.get(finding.file) ?? []), finding]);
+  return [...byFile].flatMap(([file, findings]) => {
+    const net = findings.length - (added.get(file) ?? 0);
+    return net > 0 ? findings.slice(-net).map((finding) => ({ ...finding, detail: `assertion (net ${net} fewer in this file)` })) : [];
+  });
+}
+
 /** The findings a removed line carries: an assertion taken out of a test that still exists. */
 export function classifyRemovedLine({ file, line, text, deletedFiles = [] }) {
   if (!isTestFile(file) || deletedFiles.includes(file)) return [];
-  return /\b(?:expect|assert|should)\b/.test(text) ? [{ rule: "assertion-removed", file, line, detail: "assertion" }] : [];
+  return ASSERTION.test(text) ? [{ rule: "assertion-removed", file, line, detail: "assertion" }] : [];
 }
 
 const ruleIds = (config) => {
@@ -218,7 +238,58 @@ function readWorkingConfig(root, configRel) {
   return { config: JSON.parse(fs.readFileSync(file, "utf8")), file };
 }
 
-export function guard({ root, base, configRel = DEFAULT_CONFIG, ignore: extraIgnore = [] }) {
+const MEASURE_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** The number a rule's tool printed: `{"value": n}` JSON, or else the last number in its output. */
+export function readMeasurement(stdout) {
+  const text = String(stdout ?? "").trim();
+  try {
+    const parsed = JSON.parse(text);
+    if (typeof parsed === "number") return parsed;
+    if (typeof parsed?.value === "number") return parsed.value;
+  } catch {}
+  const numbers = text.match(/-?\d+(?:\.\d+)?/g);
+  return numbers ? Number(numbers[numbers.length - 1]) : null;
+}
+
+const activeException = (config, id, now) =>
+  exceptions(config).some((entry) => entry.rule === id && (!entry.expires || new Date(entry.expires) >= now));
+
+/**
+ * Run each declared rule's `tool` and hold its number against `value`: a declaration nobody measures is a promise,
+ * and this is the check that keeps it. A rule with an active exception is not held; a tool that fails is unmeasured.
+ */
+export function measureFloor(config, root, { run = defaultMeasure, now = new Date() } = {}) {
+  const violations = [];
+  const measured = [];
+  const unmeasured = [];
+  for (const rule of ruleIds(config).values()) {
+    if (typeof rule.tool !== "string" || !rule.tool.trim() || typeof rule.value !== "number") continue;
+    if (activeException(config, rule.id, now)) {
+      measured.push({ id: rule.id, status: "excepted" });
+      continue;
+    }
+    const result = run(rule.tool, root);
+    const value = result.ok ? readMeasurement(result.stdout) : null;
+    if (value === null) {
+      unmeasured.push({ id: rule.id, reason: result.ok ? "the tool printed no number" : result.reason });
+      continue;
+    }
+    measured.push({ id: rule.id, value, target: rule.value, direction: rule.direction ?? null });
+    const unmet = rule.direction === "min" ? value < rule.value : rule.direction === "max" ? value > rule.value : false;
+    if (unmet) violations.push({ rule: "threshold-unmet", file: null, line: null, detail: `${rule.id}: measured ${value} vs ${rule.direction} ${rule.value}` });
+  }
+  return { violations, measured, unmeasured };
+}
+
+function defaultMeasure(command, cwd) {
+  const result = spawnSync(command, { cwd, shell: true, encoding: "utf8", timeout: MEASURE_TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 });
+  if (result.error) return { ok: false, reason: result.error.message };
+  if (result.status !== 0) return { ok: false, reason: `exit ${result.status}` };
+  return { ok: true, stdout: result.stdout };
+}
+
+export function guard({ root, base, configRel = DEFAULT_CONFIG, ignore: extraIgnore = [], measure = false }) {
   const resolved = resolveBase(root, base);
   if (!resolved) throw new Error(`no merge base: none of ${base ? [base] : BASE_CANDIDATES} resolves in ${root}`);
 
@@ -257,10 +328,10 @@ export function guard({ root, base, configRel = DEFAULT_CONFIG, ignore: extraIgn
     if (!scannable(entry.file)) continue;
     violations.push(...classifyAddedLine(entry));
   }
-  for (const entry of parsed.removed) {
-    if (!scannable(entry.file)) continue;
-    violations.push(...classifyRemovedLine({ ...entry, deletedFiles: parsed.deletedFiles }));
-  }
+  const removedAssertions = parsed.removed
+    .filter((entry) => scannable(entry.file))
+    .flatMap((entry) => classifyRemovedLine({ ...entry, deletedFiles: parsed.deletedFiles }));
+  violations.push(...netAssertions(removedAssertions, parsed.added.filter((entry) => scannable(entry.file))));
   for (const file of parsed.deletedFiles) {
     if (isTestFile(file) && scannable(file)) violations.push({ rule: "test-deleted", file, line: null, detail: "test file deleted" });
   }
@@ -276,6 +347,12 @@ export function guard({ root, base, configRel = DEFAULT_CONFIG, ignore: extraIgn
   }
   violations.push(...compareFloors(baseConfig, working.config, configRel));
 
+  // A repo that uses TODO as a working note can turn the bare-TODO check off; stubs and empty catches still count.
+  const allowBareTodo = working.config?.unfinishedWork?.bareTodo === false;
+  const kept = allowBareTodo ? violations.filter((v) => !(v.rule === "unfinished-work" && v.detail === "todo")) : violations;
+  const measurement = measure ? measureFloor(working.config, root) : null;
+  if (measurement) kept.push(...measurement.violations);
+
   const configRated = baseConfig !== null || working.config !== null;
   const touched = new Set([...parsed.added, ...parsed.removed].map((entry) => entry.file).filter((file) => file && scannable(file)));
 
@@ -286,9 +363,10 @@ export function guard({ root, base, configRel = DEFAULT_CONFIG, ignore: extraIgn
     config: working.file,
     ignore,
     filesTouched: touched.size,
-    rated: [...DIFF_RULES, ...(configRated ? CONFIG_RULES : [])],
+    rated: [...DIFF_RULES, ...(configRated ? CONFIG_RULES : []), ...(measurement ? ["threshold-unmet"] : [])],
     unrated: configRated ? [] : CONFIG_RULES,
-    violations,
+    ...(measurement ? { measured: measurement.measured, unmeasured: measurement.unmeasured } : {}),
+    violations: kept,
   };
 }
 
@@ -321,6 +399,7 @@ function usage() {
     "  node floor-guard.mjs --base <ref>    # diff against another base (default: origin/main, main, master)",
     "  node floor-guard.mjs --config <path> # another floor file (default: .o-skills/config/floor.json)",
     "  node floor-guard.mjs --ignore <glob> # skip a path; repeatable, and the config's `ignore` adds to it",
+    "  node floor-guard.mjs --measure       # also run each rule's `tool` and hold its number against `value`",
     "  node floor-guard.mjs --self-test",
     "",
     "Exit: 0 clean · 1 floor violation · 2 could not run",
@@ -344,7 +423,7 @@ function main() {
       return;
     }
     const known = ["--root", "--base", "--config", "--ignore"];
-    const unknown = args.filter((arg, index) => arg.startsWith("--") && !known.includes(arg) && !["--self-test", "--help", "-h"].includes(arg) && !known.includes(args[index - 1]));
+    const unknown = args.filter((arg, index) => arg.startsWith("--") && !known.includes(arg) && !["--self-test", "--measure", "--help", "-h"].includes(arg) && !known.includes(args[index - 1]));
     if (unknown.length) throw new Error(`unknown argument ${unknown[0]}`);
 
     if (args.includes("--self-test")) {
@@ -354,9 +433,10 @@ function main() {
     }
 
     const root = path.resolve(option("--root", process.cwd()));
-    const report = guard({ root, base: option("--base", undefined), configRel: option("--config", DEFAULT_CONFIG), ignore: every("--ignore") });
+    const report = guard({ root, base: option("--base", undefined), configRel: option("--config", DEFAULT_CONFIG), ignore: every("--ignore"), measure: args.includes("--measure") });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-    process.exit(report.violations.length === 0 ? 0 : 1);
+    // A rule whose tool could not run was not checked, and that is never a clean result.
+    process.exit(report.violations.length ? 1 : report.unmeasured?.length ? 2 : 0);
   } catch (err) {
     process.stderr.write(`${JSON.stringify({ error: err.message })}\n`);
     process.exit(2);

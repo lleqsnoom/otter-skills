@@ -1,7 +1,7 @@
 ---
 name: o-release
 description: Write the PR body — the pull request description that shows the change, the evidence, and the danger in one screen: a summary as the smallest visual that makes this branch clear, before and after evidence that it works, and a merge-danger call naming one-way or two-way door and blast radius. Use when writing a PR description, opening a pull request, or asked what to put in the body.
-version: 1.0.1
+version: 1.1.0
 author: Community
 tags: [pull-request, pr-body, review, risk, evidence]
 user-invocable: true
@@ -75,6 +75,21 @@ Use the project's own domain language, not generic filler; the glossary words, i
 
 **Done when:** every section is present, and each Evidence pair is a real run or a real screenshot from this
 branch — a body with an empty section or a claimed-but-unshown behavior is not finished.
+
+## Title and opening the PR
+
+The title is the change in one conventional line, like a commit subject — and when the branch is one commit, it
+is that subject. Write the body to a file and open the PR with it:
+
+```bash
+gh pr create --title "<type(scope): what changes>" --body-file <body.md> [--draft]
+```
+
+Open it as `--draft` while Evidence still has an empty pair; mark it ready when every pair is a real run.
+
+**A change with no visible behaviour** (a refactor, a rename, a dependency bump) still has evidence: the suite
+before and after with the same count, a benchmark or bundle size before and after, or `git diff --stat` showing
+only the files the change claims. Say which one it is, and that behaviour is unchanged by design.
 
 ## Relation to the other skills
 

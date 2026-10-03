@@ -4,7 +4,8 @@
     "If a browser already answers on the debugging port, the skill attaches to it instead of launching a second one.",
     "Chrome is launched with a dedicated profile under ~/.o-skills/chrome-profile, never the user's own profile.",
     "The user's running browser processes are never killed.",
-    "The app URL comes from the README, config or environment, and the dev server is checked before the browser opens."
+    "The app URL comes from the README, config or environment, and the dev server is checked before the browser opens.",
+    "--stop ends only the browser this skill launched from its own profile, and a dev server the agent started is stopped when the work is done."
   ],
   "source": [
     "3. Launch the browser",

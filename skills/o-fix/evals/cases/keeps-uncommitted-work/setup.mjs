@@ -51,33 +51,37 @@ fs.writeFileSync(
 
 **Scope:** src/stats.mjs, test/stats.test.mjs (uncommitted)
 
-## [PRINCIPLE] — dead code
+## [Correctness] — pass 2 of the review
+
+none
+
+## [PRINCIPLE] — pass 3: dead code
 
 - [ ] **Severity:** MINOR
   - **File:** \`src/stats.mjs:7\`
   - **Issue:** \`unused\` is assigned and never read
   - **Suggestion:** delete the line
 
-## [Comments] — pass 3 of the review
+## [Comments] — pass 4 of the review
 
 - [ ] **Severity:** MINOR
   - **File:** \`src/stats.mjs:5\`
   - **Issue:** the comment restates the function name
   - **Suggestion:** delete the comment
 
-## [Bloat] — pass 4 of the review
+## [Bloat] — pass 5 of the review
 
 none
 
-## [Architecture] — pass 5 of the review
+## [Architecture] — pass 6 of the review
 
 none
 
-## [Floor] — pass 6 of the review
+## [Floor] — pass 7 of the review
 
 none
 
-## [Spec] — pass 7 of the review
+## [Spec] — pass 8 of the review
 
 no spec available
 

@@ -1,7 +1,7 @@
 ---
 name: o-arch-lint
 description: Check a code tree against the architecture it declares — reads .o-skills/config/arch.json and reports every banned directory and file name, every wrong-way import across a declared layer boundary, and every place the declaration and the tree disagree, as file:line with a rule name. Detection only, never writes code, exit 1 on a violation. Use when asked to check layer boundaries, verify dependency direction, find utils/helpers/common sprawl, or prove a repo still matches its declared structure; o-review runs it on every review.
-version: 1.0.2
+version: 1.1.0
 author: Community
 tags: [architecture, lint, boundaries, dependency-direction, naming, enforcement, parity]
 user-invocable: true
@@ -37,8 +37,9 @@ node <skill>/scripts/scaffold.mjs --root . --force   # replace an existing decla
 ```
 
 It prints a declaration to stdout and writes it only where nothing would be replaced, or with `--force`. One
-layer per top-level code directory, with the directions the static relative imports already take, so a deeper
-model (a `src/` that holds six layers) is then split by hand. **Read the note it prints before ratifying**: an
+layer per top-level code directory, with the directions the static imports already take — relative ones, and the
+path aliases `tsconfig.json` or `jsconfig.json` declares (`"@domain/*": ["src/domain/*"]`), each alias added as a
+marker too — so a deeper model (a `src/` that holds six layers) is then split by hand. **Read the note it prints before ratifying**: an
 import built at run time, an absolute specifier and a re-export are invisible to it, so an empty list means
 nothing was observed rather than nothing is imported. Widen each entry to what the layer may do, then commit it.
 
@@ -93,7 +94,7 @@ root-level file such as a README or a lockfile is not a layer candidate, and nei
 | `rule` | Fires when |
 |--------|-----------|
 | `naming` | A path segment contains a banned word (`utils`, `date-utils`, `shared`), or a `naming` rule with `applies_to: "*"` or a layer name fails its `must_match` / `must_not_match` regex |
-| `dependency-direction` | A file in one layer matches another layer's `import_markers` and that layer is not in its `allowed_dependencies`, or the declaration itself draws a cycle between layers |
+| `dependency-direction` | A code file in one layer matches another layer's `import_markers` on a line that is not a comment, and that layer is not in its `allowed_dependencies`; or the declaration itself draws a cycle between layers |
 | `boundaries` | A declared layer root is not on disk, or a `naming` rule targets a layer the config never declares — the declaration and the tree have drifted |
 
 ## What it cannot check, and where it can be blind
@@ -102,7 +103,9 @@ root-level file such as a README or a lockfile is not a layer candidate, and nei
   deep, a subclass overriding a method to do nothing: all readable by a person and none of them detectable
   here. `o-arch` reports those under `[Architecture]`; this checker says nothing about them, and the absence of
   a `composition` line means nothing either way.
-- **`import_markers` are regexes the declaration supplies**, matched line by line. An import style the
+- **`import_markers` are regexes the declaration supplies**, matched line by line, in code files only (`.md`,
+  `.json` and other data never count) and never on a comment line. The scaffold writes them to match an import
+  statement — `from`, `import(`, `require(` or a bare `import` — so a quoted path in a fixture is not an import. An import style the
   declaration does not describe (a different relative form, a re-export, an aliased path) is a false negative
   no run can report; an import built at run time (`path.join(__dirname, "..", "src", ...)`) is invisible to any
   line-based check. `unplaced` is the partial answer: a file no layer claims was never checked for direction at
@@ -167,8 +170,16 @@ keys can follow when the boundaries are agreed.
   `must_not_match` are basename regexes; `message` is what a reader sees when it fires.
 - `banned_names` replaces the built-in seven. A name is banned when a listed word stands alone inside it, so
   `utils`, `date-utils` and `string_utils` all hit while `utilities` does not.
+- `naming_exempt` — path prefixes the banned-name rule skips: a workspace package such as `packages/shared` with a
+  stated purpose and an owner is a published boundary, and writing the exemption down keeps that a visible
+  decision. Every other rule still applies inside it.
+- `code_extensions` — extensions added to the built-in code list the direction check reads.
 - `exclude` adds to the built-in list (`node_modules`, `.git`, `dist`, `.astro`, `vendor`, `.venv`, `.o-skills`). A path
   is skipped when it contains any fragment.
+
+**Already using dependency-cruiser or eslint-plugin-boundaries?** Keep it: it parses imports properly, which this
+checker deliberately does not. Declare only `naming` here (and `naming_exempt`), so `dependency-direction` stays
+unrated rather than duplicating the other tool's rules.
 
 ## Completion
 

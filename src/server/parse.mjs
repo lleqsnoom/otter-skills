@@ -94,6 +94,8 @@ const ARTIFACT_KINDS = [
   [/^E\d+-epic/i, 'plan'],
   [/^E\d+-tasks/i, 'tasks'],
   [/^E\d+-triage/i, 'triage'],
+  // o-triage's bug brief; `E<nn>-triage.md` is o-decompose's task ledger, and both belong to the triage column.
+  [/^E\d+-intake/i, 'triage'],
   [/^E\d+-repro/i, 'repro'],
   [/^E\d+-investigate/i, 'investigate'],
   [/^E\d+-review/i, 'review'],

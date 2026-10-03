@@ -1,7 +1,7 @@
 ---
 name: o-search
-description: Search every repository this machine reads, by exact identifier or by meaning, through the otter-skills MCP server — declarations and text straight from the files, related tasks, documents and code from the project's index. Use before grepping for a symbol, when the file that owns a behaviour is unknown, or when the question spans repositories.
-version: 0.2.0
+description: Find code across every repository this machine reads — where a symbol is defined, every place that calls it, which file owns a behaviour, the task or document about it — by exact identifier or by meaning, through the otter-skills MCP server. Use for "where is X defined", "find every call to Y", "which file handles Z", before grepping the codebase, or when the question spans repositories.
+version: 0.2.1
 author: Community
 tags: [search, semantic, mcp, code-search, embeddings]
 user-invocable: true
@@ -13,6 +13,12 @@ Reach for this before `grep` when you do not know the file, before `glob` when y
 name, and whenever the question is "where does X happen" rather than "where is the string X".
 
 ## Prerequisite
+
+**Both install routes bring the server.** `npm run install` registers the checkout's copy. The Claude Code plugin
+starts its own and installs the packages into the plugin's data directory on its first start: the exact tools
+(`find_symbols`, `search_code`, `read_code`) work within seconds, while the semantic index's packages (about
+1.8 GB with the embedding runtime) install in the background. Until they land, `search_knowledge` and
+`find_related` answer that the index is unavailable — use the exact tools, and say the fuzzy search was not run.
 
 The `otter-skills` MCP server must be registered with the CLI you are running in (`npm run install` in the
 otter-skills checkout writes the entry; its tools show up as `search_code`, `search_knowledge` and the rest,
@@ -64,6 +70,7 @@ to search another.
 | `no project given, and <dir> is in none of them` | Pass `project`, one of the ids the message lists. |
 | `unknown project <id>: known ids are …` | Use one of those ids; `list_projects` shows what each one is. |
 | `The index is unavailable, so this answer cannot come from it.` | The fuzzy tools cannot run here — on a first run with no network the embedding model is not cached yet. The exact tools still work: fall back to `search_code`, `find_symbols` and `read_code`. |
+| The first fuzzy call is slow | It downloads the embedding model (a few hundred MB, once per machine) and then indexes the project. Later calls reuse both. |
 | `not in the index: <path>` | `find_related` was given a path the index does not hold (untracked, binary, or outside the project). Check the path, or use `search_knowledge` with a description. |
 
 ## What it does not do

@@ -1,0 +1,16 @@
+{
+  "skill": "o-rollback",
+  "queries": [
+    { "query": "roll back the last commit", "should_trigger": true },
+    { "query": "revert the release we shipped this morning", "should_trigger": true },
+    { "query": "undo the last two commits safely", "should_trigger": true },
+    { "query": "revert commit 3f2a9c1", "should_trigger": true },
+    { "query": "the deploy broke prod, revert the change that caused it", "should_trigger": true },
+    { "query": "back out the merge from yesterday", "should_trigger": true },
+    { "query": "commit my changes", "should_trigger": false },
+    { "query": "discard my uncommitted edits", "should_trigger": false },
+    { "query": "debug why prod broke", "should_trigger": false },
+    { "query": "write the release notes", "should_trigger": false },
+    { "query": "review the last commit", "should_trigger": false }
+  ]
+}

@@ -180,7 +180,20 @@ function topicsOf(file) {
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
   const at = parts.lastIndexOf(".o-skills");
-  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+  if (at === -1 || !vaultEnabled(parts.slice(0, at + 1).join(path.sep))) return null;
+  return parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/**
+ * Obsidian's links, topics and tag notes are written unless the repo turns them off with
+ * `.o-skills/config/vault.json` → `{ "enabled": false }`. Fields the scripts read (type, size, status) stay either way.
+ */
+function vaultEnabled(oSkillsRoot) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(oSkillsRoot, "config", "vault.json"), "utf8")).enabled !== false;
+  } catch {
+    return true;
+  }
 }
 
 /** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
@@ -219,7 +232,7 @@ function propertyBlock(runDir, reviewed, number) {
   ].join("\n");
 }
 
-export function renderHeader({ slug, type = "generic", date = new Date(), artifact = slug, reviewer = null, reviewerModel = null, author = null, previous = null, runDir = null }) {
+export function renderHeader({ slug, type = "generic", date = new Date(), artifact = slug, reviewer = null, reviewerModel = null, author = null, previous = null, runDir = null, quick = false }) {
   const block = runDir ? propertyBlock(runDir, fs.existsSync(artifact) ? artifact : null, critiquesIn(runDir) + 1) : "";
   return block + [
     `# Roast — ${slug}`,
@@ -229,9 +242,12 @@ export function renderHeader({ slug, type = "generic", date = new Date(), artifa
     `**Reviewer:** ${reviewer ?? "self | independent"} — ${reviewerModel ?? "<model id, or human>"}`,
     ...(author ? [`**Author:** ${author}`] : []),
     `**Profile:** ${type}`,
+    ...(quick ? ["**Mode:** quick — claims, findings and a scored total; no calibration and no creative section"] : []),
     "**Total:** ? / 100",
     "**Completeness:** ?",
-    `**Calibration:** ? — score ${calibrationCases(type).map((entry) => entry.name).join(" or ")} blind, run score.mjs --calibrate, paste its line (or: skipped — <reason>)`,
+    quick
+      ? "**Calibration:** skipped — quick roast"
+      : `**Calibration:** ? — score ${calibrationCases(type).map((entry) => entry.name).join(" or ")} blind, run score.mjs --calibrate, paste its line (or: skipped — <reason>)`,
     "",
     ...renderSince(previous),
     "## Central claim",
@@ -252,10 +268,7 @@ export function renderHeader({ slug, type = "generic", date = new Date(), artifa
     "",
     "<!-- one bullet per scored dimension: - **name (n/5)**: evidence (a claim whose Backs names this dimension, a quote from the artifact, or a file:line) and why not higher -->",
     "",
-    "## Creative alternatives",
-    "",
-    "<!-- three or more numbered items, each tagged `reframe`, `addition` or `restructure` -->",
-    "",
+    ...(quick ? [] : ["## Creative alternatives", "", "<!-- three or more numbered items, each tagged `reframe`, `addition` or `restructure` -->", ""]),
     "## Improvement proposals",
     "",
     "<!-- numbered; each names where, and the delta: raises `logic` 3→4 -->",
@@ -263,7 +276,7 @@ export function renderHeader({ slug, type = "generic", date = new Date(), artifa
   ].join("\n");
 }
 
-export function createReport({ dir = DEFAULT_OUTPUT, slug, type = "generic", date = new Date(), fresh = false, run = null, artifact = slug, reviewer = null, reviewerModel = null, author = null } = {}) {
+export function createReport({ dir = DEFAULT_OUTPUT, slug, type = "generic", date = new Date(), fresh = false, run = null, artifact = slug, reviewer = null, reviewerModel = null, author = null, quick = false } = {}) {
   const previous = previousRoast(artifact);
   const runDir = dir === DEFAULT_OUTPUT ? resolveRunDir(slugify(slug), { now: date, fresh, run }) : dir;
   fs.mkdirSync(runDir, { recursive: true });
@@ -271,7 +284,7 @@ export function createReport({ dir = DEFAULT_OUTPUT, slug, type = "generic", dat
   if (fs.existsSync(file)) {
     return { path: file, created: false };
   }
-  fs.writeFileSync(file, renderHeader({ slug, type, date, artifact, reviewer, reviewerModel, author, previous, runDir }));
+  fs.writeFileSync(file, renderHeader({ slug, type, date, artifact, reviewer, reviewerModel, author, previous, runDir, quick }));
   return { path: file, created: true, previous: previous?.file ?? null };
 }
 
@@ -289,6 +302,7 @@ function usage() {
     "  --reviewer <who>  self (a model of your family wrote, edited or is judging it, a fresh agent included) or independent (another model family, or a human)",
     "  --model <id>      The model that judges (your own id, or the independent one's; human for a person)",
     "  --author <id>     The model (or human) that wrote the artifact, when known; the gate refuses an independent reviewer of its family",
+    "  --quick           A quick roast: claims, findings and a scored total, without calibration or creative alternatives",
     "  --output <dir>    Output directory (default: the run folder under .o-skills/runs/)",
     "  --new-run         Start a second run for this artifact",
     "  --run <nn>        Join run R<nn> when the artifact has more than one",
@@ -308,6 +322,7 @@ function main() {
   let reviewer = null;
   let reviewerModel = null;
   let author = null;
+  let quick = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--help" || args[i] === "-h") {
@@ -327,6 +342,8 @@ function main() {
       reviewerModel = args[++i];
     } else if (args[i] === "--author" && i + 1 < args.length) {
       author = args[++i];
+    } else if (args[i] === "--quick") {
+      quick = true;
     } else if (args[i] === "--new-run") {
       newRun = true;
     } else if (args[i] === "--run" && i + 1 < args.length) {
@@ -348,7 +365,7 @@ function main() {
   }
 
   try {
-    const result = createReport({ dir: output, slug, type, fresh: newRun, run, artifact: artifact ?? slug, reviewer, reviewerModel, author });
+    const result = createReport({ dir: output, slug, type, fresh: newRun, run, artifact: artifact ?? slug, reviewer, reviewerModel, author, quick });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } catch (err) {
     process.stderr.write(`${JSON.stringify({ error: err.message })}\n`);

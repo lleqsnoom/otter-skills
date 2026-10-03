@@ -1,7 +1,7 @@
 ---
 name: o-investigate
-description: Hypothesis-driven root cause analysis — generate ranked hypotheses from evidence, test systematically with platform tools and git history, eliminate candidates until one root cause remains, output fix plan for o-fix. Use when asked why something is flaky, regressed or broken and the first look explains nothing.
-version: 1.0.2
+description: Deep root cause analysis for a bug a quick look could not explain — flaky, intermittent, only under load, or regressed since some commit: ranked hypotheses from the evidence, tested with platform tools, git bisect and blame, eliminated until one cause remains, then a fix plan for o-fix. Use when asked why something is flaky or regressed, which commit broke it, or to dig deeper after debugging found nothing.
+version: 1.1.0
 author: Community
 tags: [debugging, root-cause, hypothesis-testing, git-bisect, triage]
 user-invocable: true
@@ -9,115 +9,86 @@ user-invocable: true
 
 # O-Investigate — Hypothesis-Driven Root Cause Analysis
 
-Generate hypotheses, test them with platform tools and git history, and eliminate until one root cause remains.
+The deep mode of debugging: when `o-debug`'s first look explains nothing, generate hypotheses, test them with
+platform tools and git history, and eliminate until one root cause remains. This skill finds the cause and
+writes the fix plan; it never edits source files.
 
 `<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
 
-## Prerequisites
+## Inputs
 
-These files must exist from prior steps in the debugging pipeline:
+- **A reproduction** — `<run folder>/E<nn>-verify.<ext>`, the command that goes red on this bug. `o-debug`
+  Step 1 builds it; if the run has none, build one first the same way (`<skills>/o-debug/SKILL.md`, and the
+  recipes in `<skills>/o-debug/references/reproduction-recipes.md`). No hypothesis is tested without a loop: if
+  the repro is slow, loosely asserted or flaky, tighten it first with `<skills>/o-debug/references/feedback-loops.md`.
+- **The intake brief**, when there is one — `<run folder>/E<nn>-intake.md` from `o-triage`: platform, bug type,
+  symptoms, evidence. Without one, ask for the platform and the symptom in one panel round.
 
-- `<run folder>/E<nn>-triage.md` — produced by `o-triage`. Contains Platform + Bug Type + Symptoms + Evidence fields.
-- `<run folder>/E<nn>-repro-<platform>.js` — produced by `o-reproduce` or `o-debug`. The reproduction script that triggers the bug locally.
+## Workflow
 
-If either file is missing, stop and offer to run them with a `confirm` panel (yes/no). Do not proceed without them.
-
-The loop comes before the hypotheses: the repro must be a **tight** pass/fail signal that goes red on this bug — one command, already run. If it is slow, loosely asserted, or flaky, tighten it first (faster, sharper assertion, more deterministic; for a flaky bug raise the reproduction rate until it is debuggable) using `o-debug`'s `references/feedback-loops.md`. No hypothesis is tested without a loop.
-
-## Workflow (5 Steps)
-
-### 0. Read Input Context
-
-Read `<run folder>/E<nn>-triage.md` to extract:
-- **Platform** — determines which investigation tools to use
-- **Bug Type** — guides hypothesis categories
-- **Evidence Available** — stack-trace, logs, console-output, device-access
-- **Symptoms** — one-line observable behavior
-
-### 1. Generate Ranked Hypotheses
-
-Run `hypothesize.mjs` with the error text from triage evidence to get a ranked list:
+### 1. Generate ranked hypotheses
 
 ```bash
-node <skill>/scripts/hypothesize.mjs --error "<error text>" [--context .]
+node <skill>/scripts/hypothesize.mjs --error "<error text>"
 ```
 
-The script outputs JSON array of `{rank, id, description, test, likelihood}`. If no patterns match, proceed with manual hypothesis generation based on code context and stack traces — do not abort.
+It prints `{rank, id, description, test, likelihood}` from the pattern library it shares with o-debug. An empty
+list means no known pattern matched — write the hypotheses from the code, the trace and the symptom. Add your
+own either way: the script only knows error messages, not this codebase.
 
-### 2. Narrow with Git History
+### 2. Narrow with git history
 
-Use git commands to find when the bug was introduced:
-
-| Command | When to Use |
+| Command | When to use |
 |---------|-------------|
-| `git log --oneline -20` | Recent changes near symptoms timeframe |
-| `git blame <file>:<line>` | Who changed this specific line and when |
-| `git bisect start; git bisect bad HEAD; git bisect good <known-good-commit>` | "It worked yesterday" — binary search for introducing commit |
-| `git diff <commit1> <commit2>` | See what changed between two points |
+| `git log --oneline -20 -- <path>` | recent changes near the symptom |
+| `git log -S '<identifier>'` | when a name or value appeared or disappeared |
+| `git blame -L <start>,<end> <file>` | who changed the failing lines, and in which commit |
+| `git bisect start; git bisect bad HEAD; git bisect good <sha>` then `git bisect run <repro command>` | "it worked last week" — the reproduction finds the commit for you |
 
-If the repo has no commits (fresh init), note this limitation and proceed with other investigation methods.
+### 3. Use the platform's tools
 
-### 3. Route Investigation Tools by Platform
+Pick the tools for the brief's platform from `<skills>/o-triage/scripts/route.mjs`:
 
-Read the triage brief's **Platform** field and use corresponding tools from o-triage's routing table (`<skills>/o-triage/scripts/route.mjs`):
+| Platform | Tools |
+|----------|-------|
+| web | chrome-devtools MCP (`evaluate_script`, `list_network_requests`, `list_console_messages`), Lighthouse |
+| backend / cli / library | the reproduction under a debugger (`node --inspect-brk`, `python -m pdb`, `dlv`), `strace`, flame graphs |
+| desktop / mobile / tv | the platform's logger and profiler (`adb logcat`, Xcode Instruments, the vendor's dev tools) |
+| infra | the pipeline's own logs, `kubectl describe` / `logs`, the provider's audit trail |
+| gaming | the engine's profiler (Unity Profiler, Unreal Insights), RenderDoc |
 
-| Platform | Tools (from triage brief) | Concrete Actions |
-|----------|---------------------------|-----------------|
-| Web | chrome-devtools-mcp, lighthouse, network-capture | Use `mcp_chrome_devtools_*` tools: `evaluate_script`, `take_snapshot`, `list_network_requests`, `get_console_messages` |
-| Backend | node-inspect, gdb-lldb, strace, flame-graphs | Run `node --inspect repro-*.js`, attach GDB/strace to running process |
-| Mobile | react-native-debugger, xcode-instruments, android-studio-profiler | Use adb logcat, Xcode Instruments, React Native Debugger |
-| TV | vendor-dev-tools | Vendor-specific debugging bridge |
-| Gaming | unity-profiler, unreal-insights, renderdoc, gpu-frame-debugger | Unity Profiler, Unreal Insights (`unrealcommandline -profiler`), RenderDoc |
+### 4. Test each hypothesis
 
-### 4. Test Each Hypothesis Systematically
-
-For each ranked hypothesis:
-1. Run the designed isolation test from `hypothesize.mjs` output
-2. Observe results against the reproduction script behavior
-3. Mark `[x] Confirmed` or `[ ] Rejected` in `<run folder>/E<nn>-investigate.md`
-4. Eliminate candidates until exactly one root cause remains
-
-If a hypothesis cannot be tested without additional information, mark it as `[ ] Not testable — requires: <what's needed>` and continue to next.
-
-### 5. Write Fix Plan for o-fix
-
-Produce `<run folder>/E<nn>-investigate.md` in this exact format (compatible with `o-fix` parser):
+For each hypothesis, run the test that tells it apart from the others, against the reproduction. Log the result
+in `<run folder>/E<nn>-investigate.md` as a plain bullet — **no checkboxes**, so o-fix never mistakes a
+hypothesis for a change:
 
 ```markdown
-# Debug Fix Plan — <session-id>
-
-## Root Cause
-<one-sentence description of the confirmed root cause>
-
-## Evidence
-- <what led to this conclusion, referencing tested hypotheses>
-
-## Fix Instructions
-### File: <path-to-file>
-**Issue:** <description of the bug in this file>
-**Location:** <line numbers or function name>
-**Fix:** <specific change needed — code diff or clear description>
-
----
-## Hypothesis Log
-- [x] Confirmed: <hypothesis 1> — test result: <evidence>
-- [ ] Rejected: <hypothesis 2> — test result: <why it was eliminated>
+## Hypothesis log
+- Confirmed — undefined-reference: `user.profile` is unset on the SSO path (`auth/sso.mjs:41`), seen in the debugger
+- Rejected — race: the failure reproduces with the handlers run one at a time
+- Not testable — cache staleness: needs production cache contents; asked the user for a dump
 ```
 
-The `Fix Instructions` section must target **exactly one root cause** with a specific file, location, and change. Never produce ambiguous or multi-file fixes.
+Stop when exactly one cause remains confirmed. Two confirmed causes means the hypotheses overlap: split them and
+test again.
 
-## Constraints (MANIFESTO)
+### 5. Write the fix plan
 
-1. **Never applies fixes** — uses `edit` only for writing session docs and fix plans. Source files are never modified by this skill.
-2. **Never masks errors** — do not run the reproduction script with modifications that could suppress the original error. Test hypotheses without hiding symptoms.
-3. **Every hypothesis must be tested or explicitly noted** — no skipped candidates. If untestable, document what's needed and continue.
-4. **One root cause per plan** — the fix plan targets a single confirmed root cause with one file location.
-5. **Preserve downstream format** — the fix plan MUST conform to o-fix parser expectations. Do not deviate from the documented output structure.
+Write `<run folder>/E<nn>-fix-plan.md` in o-fix's plan format (`<skills>/o-fix/references/plan-format.md`): a
+`## Root cause` paragraph with its evidence, then `## Fixes` with one `- [ ]` item per change. One root cause per
+plan; when that cause needs a coordinated change in more than one file, list each file in the item.
 
-## Anti-Patterns to Avoid
+## Constraints
 
-- Skipping hypothesis testing because "it seems obvious"
-- Applying fixes inline instead of writing a fix plan for o-fix
-- Using web DevTools for backend issues or vice versa — route by platform
-- Generating hypotheses without evidence (stack traces, logs, reproduction results)
-- Accepting the first plausible cause without systematic elimination
+1. **Never applies fixes.** Write only the session notes and the fix plan; source files are o-fix's to change.
+2. **Never masks the error.** Do not run the reproduction with changes that hide the original failure.
+3. **Every hypothesis is tested or logged as not testable** with what it would need.
+4. **One root cause per plan.** A second cause found along the way gets its own plan.
+
+## Anti-Patterns
+
+- Calling a cause "obvious" and skipping its test
+- Fixing inline instead of writing the plan for o-fix
+- Hypotheses with no evidence behind them — no trace, no log, no reproduction result
+- Stopping at the first plausible cause without eliminating the rest

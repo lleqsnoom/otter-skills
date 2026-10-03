@@ -4,7 +4,8 @@
     "A comment that only restates the code it sits on is deleted.",
     "A comment that survives says why: a non-obvious choice, the source of a magic value, an invariant, or what breaks if the code changes.",
     "A comment that a better name would make unnecessary is replaced by the better name.",
-    "A block that needs a paragraph of explanation is extracted into a named function, and the tests are run afterwards to show behaviour did not change."
+    "A block that needs a paragraph of explanation is extracted into a named function, and the tests are run afterwards to show behaviour did not change.",
+    "Directives, license headers, shebangs and doc comments a tool consumes are never removed as noise."
   ],
   "source": [
     "What a Good Comment Explains",

@@ -1,10 +1,11 @@
 {
   "skill": "o-commit",
   "expected_behavior": [
-    "The commit message is a single line in the form type(scope): description, in imperative mood, with no body; the only allowed extra is a BREAKING CHANGE footer after one blank line.",
+    "The commit message is one conventional subject in imperative mood; a body is accepted only for a large change (10+ files or 400+ changed lines) as one short paragraph of why, and the only other extra is a BREAKING CHANGE footer.",
     "The message never mentions an AI tool or model and carries no co-author or sign-off lines.",
     "The commit is made by running commit.mjs, never by handing the user a git commit command; when the script rejects the message, the agent shows the error and asks for a corrected one.",
-    "A breaking change is marked with ! before the colon, or with the single footer when it needs a sentence."
+    "A breaking change is marked with ! before the colon, or with the single footer when it needs a sentence.",
+    "Nothing in a message is run as a command: commit.mjs passes it to git without a shell."
   ],
   "source": [
     "Rules"

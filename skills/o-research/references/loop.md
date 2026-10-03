@@ -26,8 +26,8 @@ produced either by a command or by the agent's own judgment.
 | command | `"<cmd>"` | the command's JSON | the command's `score` | the command's `pass` |
 | agent | `agent` (+ `--criteria <n\|file>`) | `--coverage <k/n>` | `k/n` | `k === n` (all met) |
 
-- **command is preferred** whenever a command can score the goal; it runs through
-  `evaluate.mjs` with a hard timeout.
+- **command** is o-tune's mode — a number a command prints, tuned one change at a time; o-tune's
+  `scripts/evaluate.mjs` runs it with a hard timeout. o-research uses the agent mode.
 - **agent** is for goals with no scoreable command — a topic to research, sources
   to compile, gaps to close. You define N criteria and judge coverage each
   iteration. The recorded evaluator string is

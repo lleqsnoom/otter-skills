@@ -6,13 +6,14 @@
  * Merged from o-refactor to unify with o-review analysis pipeline.
  *
  * Patterns detected:
- *   1. Extract Method: functions >20 lines with compound verb names
+ *   1. Extract Method: compound verb names (`loadAndValidate`) — a function's length is analyze-complexity.mjs's
+ *      measurement, read from the syntax tree; a brace count here cannot find where a function ends
  *   2. Rename Variable: single-letter or Hungarian-notation variables
  *   3. Replace Conditional: if/else chains with 4+ branches on same variable
  *   4. Inline Method: trivial methods called from exactly one location
  *
  * Usage:
- *   node analyze-patterns.mjs <file-or-dir> [--thresholds lines,branches]
+ *   node analyze-patterns.mjs <file-or-dir> [--thresholds branches]
  *   node analyze-patterns.mjs --all
  *
  * Output: JSON to stdout with suggestions grouped by file.
@@ -25,20 +26,19 @@ import { findSourceFiles } from "./file-discovery.mjs";
 // ── Thresholds ────────────────────────────────────────────────────────
 
 const DEFAULT_THRESHOLDS = {
-  extractMethodLines: 20,
   replaceConditionalBranches: 4,
 };
 
+/** `--thresholds <branches>`; the older `<lines>,<branches>` form still parses, and its line count is ignored. */
 function parseArgs(argv) {
   const args = argv.slice(2);
   const fileArgs = [];
-  let thresholds = { ...DEFAULT_THRESHOLDS };
+  const thresholds = { ...DEFAULT_THRESHOLDS };
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--thresholds" && i + 1 < args.length) {
-      const parts = args[++i].split(",").map(Number);
-      if (parts.length >= 1) thresholds.extractMethodLines = parts[0];
-      if (parts.length >= 2) thresholds.replaceConditionalBranches = parts[1];
+      const parts = args[++i].split(",").map(Number).filter(Number.isFinite);
+      if (parts.length) thresholds.replaceConditionalBranches = parts[parts.length - 1];
     } else if (!args[i].startsWith("--")) {
       fileArgs.push(args[i]);
     }
@@ -83,47 +83,6 @@ function detectCompoundVerbs(source) {
       symbol: name,
       description: `Function "${name}" has a compound verb name suggesting multiple responsibilities.`,
     });
-  }
-
-  return suggestions;
-}
-
-// ── Long Functions ────────────────────────────────────────────────────
-
-function detectLongFunctions(source, maxLines) {
-  const suggestions = [];
-  const funcPattern = /\b(?:function\s+(\w+)|async\s+function\s+(\w+)|export\s+(?:default\s+)?(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{)/g;
-
-  let match;
-  while ((match = funcPattern.exec(source)) !== null) {
-    const name = match[1] || match[2] || match[3];
-    if (!name) continue;
-
-    const headerEnd = match.index + match[0].length;
-    let depth = 1;
-    let pos = headerEnd;
-
-    while (pos < source.length && depth > 0) {
-      if (source[pos] === "{") depth++;
-      else if (source[pos] === "}") depth--;
-      pos++;
-    }
-
-    const bodyStart = match.index;
-    let lineCount = 0;
-    for (let i = bodyStart; i < pos && i < source.length; i++) {
-      if (source[i] === "\n") lineCount++;
-    }
-
-    if (lineCount >= maxLines) {
-      suggestions.push({
-        type: "extract-method",
-        pattern: "long-function",
-        symbol: name,
-        lines: lineCount + 1,
-        description: `Function "${name}" is ${lineCount + 1} lines long (>${maxLines}). Consider extracting smaller units.`,
-      });
-    }
   }
 
   return suggestions;
@@ -224,6 +183,16 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** An exported function has callers this file cannot see, so its call count here says nothing about inlining it. */
+function isExported(source, name) {
+  const word = escapeRegex(name);
+  return (
+    new RegExp(`export\\s+(?:default\\s+)?(?:async\\s+)?(?:function\\s*\\*?\\s*|const\\s+|let\\s+|class\\s+)${word}\\b`).test(source) ||
+    new RegExp(`export\\s*\\{[^}]*\\b${word}\\b[^}]*\\}`).test(source) ||
+    new RegExp(`(?:module\\.)?exports(?:\\.${word}\\b|\\s*=\\s*\\{[^}]*\\b${word}\\b)`).test(source)
+  );
+}
+
 function detectTrivialMethods(source) {
   const suggestions = [];
   const trivialPattern = /\b(?:async\s+)?(?:function\s+(\w+)\s*\([^)]*\)\s*\{[^{}]*\}|(\w+)\s*\([^)]*\)\s*[:=]\s*\{[^{}]*\})/g;
@@ -240,7 +209,7 @@ function detectTrivialMethods(source) {
       if (callMatch.index !== match.index) callCount++;
     }
 
-    if (callCount <= 1) {
+    if (callCount <= 1 && !isExported(source, name)) {
       suggestions.push({
         type: "inline-method",
         pattern: "trivial-single-call",
@@ -267,7 +236,6 @@ function analyzeFile(filePath, thresholds) {
 
   const suggestions = [];
   suggestions.push(...detectCompoundVerbs(source));
-  suggestions.push(...detectLongFunctions(source, thresholds.extractMethodLines));
   suggestions.push(...detectSingleLetterVars(source));
   suggestions.push(...detectHungarianNotation(source));
   suggestions.push(...detectConditionalChains(source, thresholds.replaceConditionalBranches));

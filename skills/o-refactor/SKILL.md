@@ -1,56 +1,50 @@
 ---
 name: o-refactor
-description: Automated refactoring suggestions (extract method, rename, replace conditional) — analyzes code against SOLID principles and outputs actionable before/after comparisons. Use when asked for refactoring suggestions without applying them.
-version: 1.1.2
+description: Answer "what should I refactor here?" — measure the module, then route each candidate to the skill that owns it: dead code and needless layers to o-unbloat, where code lives and what it is called to o-arch, noisy comments to o-comments, and a long function, a branch chain or a one-call helper to a before/after suggestion written here. Use when asked for refactoring suggestions or where to start cleaning up a module; it never edits code.
+version: 2.0.0
 author: Community
-tags: [refactor, solid, extract-method, rename-variable, replace-conditional, polymorphism]
+tags: [refactoring, code-quality, router, extract-method, clean-code]
 user-invocable: true
 ---
 
-# O-Refactor — Automated Refactoring Analyzer
+# O-Refactor — Which Refactor, and Whose
 
-Analyzes source code and suggests specific refactorings based on SOLID principles, complexity metrics, and naming conventions. Outputs actionable suggestions with before/after comparisons.
+"Refactor this" is four different jobs, and three of them already have a skill. This one measures, decides which
+job each candidate is, and hands it to the skill that owns it. It never edits code.
 
-## Related Skills
+`<skills>` below is the folder that holds every o-* skill.
 
-- **o-review** — Comprehensive code review that analyzes complexity, duplication, and engineering principles. Use `o-review` first to generate metrics, then use this skill for specific refactoring suggestions.
-- **o-unbloat** — Run its ladder before suggesting any refactoring. Prefer deleting and inlining over extracting: a suggestion that adds a layer (interface, factory, wrapper, new file) must name the second caller or the idea that pays for it. Suggestions to remove speculative abstractions, pass-through wrappers, unused options, and dead code come first.
-- This skill (`o-refactor`) is analysis-only — it outputs JSON/markdown suggestions but does not apply changes automatically.
+## Steps
 
-## Scripts
+1. **Measure** the target (a path, or the files the branch changed):
 
-All scripts self-resolve via `__dirname` — run from any working directory:
+   ```bash
+   node <skills>/o-review/scripts/analyze-complexity.mjs <file-or-dir>   # length, complexity, parameters per function
+   node <skills>/o-review/scripts/analyze-patterns.mjs <file-or-dir>     # compound names, long if/else chains,
+                                                                         # trivial single-call helpers
+   ```
 
-```bash
-# Analyze single file or directory for refactoring opportunities
-node <skill>/scripts/analyzer.mjs <file-or-dir> [--thresholds 20,5,3]
+   Say which engine `analyze-complexity` used (`summary.language`); the regex fallback has approximate lines.
+2. **Read before routing.** A metric points; it does not decide. Open each flagged function and confirm the
+   smell is real — a long function that is one flat table of data is not an extraction.
+3. **Route each candidate** by the table below, and write the result as one list: `file:line`, the candidate,
+   the skill it goes to, and one sentence of why.
 
-# Output structured JSON to stdout
-# Exit code 0 = analysis complete (may find issues)
-# Exit code 1 = fatal error (file not found, parse failure)
-```
+| The candidate is… | It goes to |
+|---|---|
+| Code that need not exist: dead code, a pass-through wrapper, an unused option, a one-implementation interface | **o-unbloat** — its ladder decides keep or cut |
+| In the wrong place or badly named: a `utils` file, a feature split across folders, a wrong-way import, a role-shaped name, an inheritance chain | **o-arch** |
+| A comment that restates the code, or a block that needs a paragraph to explain | **o-comments** |
+| A long function doing two jobs, a 4+ branch chain on one value, a one-call helper that adds no name | **here** — a before/after suggestion |
 
-`<skill>` is this skill's folder; its scripts find their own files from there, so run them from any directory.
-
-## Refactoring Patterns Detected
-
-### 1. Extract Method
-Functions >20 lines doing 2+ distinct operations. Signal: compound verb names like `loadAndValidate`, `processAndSendEmail`.
-
-### 2. Rename Variable
-Single-letter names (`x`, `i`, `tmp`) or Hungarian notation (`strName`, `nCount`).
-
-### 3. Replace Conditional with Polymorphism
-Long if/else chains on type checks — signal: 4+ branches checking same variable. A branch that handles a state
-no caller can produce is not a case to add: suggest narrowing the type so the branch disappears (o-implement's
-*Make the Bad State Impossible*), and keep the branch where the value crosses a trust boundary.
-
-### 4. Inline Method
-Trivial single-line methods called from exactly one location.
+4. **Write the in-function suggestions** (the last row) as: the pattern (extract, replace the chain with a table,
+   inline), a before snippet, an after snippet, and what a reader no longer has to hold in their head. A
+   suggestion that adds a function or file names the second caller or the idea that pays for it.
+5. **Rank** the list by leverage, the most complexity removed for the least change first, and stop. Applying
+   any of it is `o-fix`'s job from a plan the user approved, or the routed skill's when the user asks for it.
 
 ## Definition of Done
 
-- [ ] SKILL.md exists with YAML frontmatter and description
-- [ ] `scripts/analyzer.mjs` detects all four refactoring patterns
-- [ ] Outputs structured suggestions in JSON format (stdout) and human-readable markdown (stderr for review)
-- [ ] Passes `node bin/install.js list` as valid skill
+- Both scripts ran on the target, and the engine is named.
+- Every candidate has a `file:line`, a route, and a reason a reviewer can check.
+- No code was changed.

@@ -220,3 +220,21 @@ test('a dry run registers no MCP entry', () => {
   assert.match(result.stdout, /would register otter-skills mcp with 1 of 2 agents/);
   assert.equal(fs.readFileSync(claudeConfig(home), 'utf8'), before, 'nothing is written');
 });
+
+test('a link to a skill this checkout no longer has is pruned, and a stranger\'s dangling link is not', () => {
+  const home = scratchHome(true);
+  const agents = path.join(home, '.agents', 'skills');
+  const mirror = path.join(home, '.claude', 'skills');
+  fs.mkdirSync(agents, { recursive: true });
+  fs.mkdirSync(mirror, { recursive: true });
+  fs.symlinkSync(path.relative(agents, path.join(SOURCE, 'o-retired')), path.join(agents, 'o-retired'));
+  fs.symlinkSync(path.relative(mirror, path.join(agents, 'o-retired')), path.join(mirror, 'o-retired'));
+  fs.symlinkSync(path.relative(mirror, path.join(agents, 'someone-elses')), path.join(mirror, 'someone-elses'));
+
+  const result = run(home);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /pruned .*o-retired/);
+  assert.equal(fs.existsSync(path.join(agents, 'o-retired')) || fs.lstatSync(path.join(agents, 'o-retired'), { throwIfNoEntry: false }) !== undefined, false);
+  assert.equal(fs.lstatSync(path.join(mirror, 'o-retired'), { throwIfNoEntry: false }), undefined, 'the mirror link went with it');
+  assert.ok(fs.lstatSync(path.join(mirror, 'someone-elses')).isSymbolicLink(), 'a link this checkout never made stays');
+});

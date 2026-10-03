@@ -3,7 +3,7 @@
   "expected_behavior": [
     "A term enters GLOSSARY.md only once it can be used in a sentence, with what it is and the nearest neighbour it must not be confused with.",
     "Two words used for one concept are flagged and resolved to one, and the glossary records the choice.",
-    "When a decision settles, it is written as the next numbered ADR with its context, decision and consequences.",
+    "When a decision settles, it is written as the next numbered ADR in the directory the repo already uses, with a status, the context, the decision and the consequences.",
     "A definition is checked against what the code actually does, and a mismatch is reported as a finding rather than smoothed over.",
     "Other skills read the glossary; changes to the vocabulary are made here, not in their files."
   ],

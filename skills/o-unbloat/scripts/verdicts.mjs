@@ -221,7 +221,14 @@ function fail(message, code) {
   process.exit(code);
 }
 
+const USAGE = `Usage: node verdicts.mjs new --slug <topic> [--new-run] [--run <nn>]
+       node verdicts.mjs check --file <E<nn>-unbloat.md>`;
+
 function main(args) {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const [command, ...rest] = args;
   if (command === "new") {
     const slug = flag(rest, "--slug");

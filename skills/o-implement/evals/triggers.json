@@ -1,0 +1,16 @@
+{
+  "skill": "o-implement",
+  "queries": [
+    { "query": "implement the tasks in this run, test first", "should_trigger": true },
+    { "query": "build the tasks o-decompose wrote, one commit each", "should_trigger": true },
+    { "query": "start coding the L1 tasks with TDD", "should_trigger": true },
+    { "query": "implement task L0-T1 red green refactor", "should_trigger": true },
+    { "query": "work through every task in the run and commit as you go", "should_trigger": true },
+    { "query": "write the code for the decomposed tasks", "should_trigger": true },
+    { "query": "break this spec into tasks", "should_trigger": false },
+    { "query": "plan the feature before we build it", "should_trigger": false },
+    { "query": "review the code I just wrote", "should_trigger": false },
+    { "query": "run these three tasks in parallel worktrees", "should_trigger": false },
+    { "query": "fix the failing test in auth", "should_trigger": false }
+  ]
+}

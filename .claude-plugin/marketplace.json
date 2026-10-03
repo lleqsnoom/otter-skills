@@ -11,6 +11,15 @@
       "description": "The o-* skill suite: plan, implement, review, fix, research and project management over .o-skills runs.",
       "author": {
         "name": "lleqsnoom"
+      },
+      "mcpServers": {
+        "otter-skills": {
+          "command": "node",
+          "args": [
+            "${CLAUDE_PLUGIN_ROOT}/scripts/mcp-plugin.mjs",
+            "${CLAUDE_PLUGIN_DATA}"
+          ]
+        }
       }
     }
   ]

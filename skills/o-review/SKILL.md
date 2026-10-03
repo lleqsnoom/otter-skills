@@ -1,7 +1,7 @@
 ---
 name: o-review
-description: Review code against engineering principles — small functions, SOLID, KISS, DRY — and against the originating spec, with automated AST-based complexity analysis across 30+ languages. Runs the comments (o-comments), bloat (o-unbloat), architecture (o-arch + o-arch-lint) and quality-floor (o-floor) passes inside every review and writes one fix plan for o-fix. Use when asked to review code.
-version: 2.5.0
+description: Review a change before it merges — is it correct (edge cases, error paths, untrusted input, security), is it simple (small functions, SOLID, KISS, DRY), does it match its spec — with AST complexity counts for the code the change touched. Runs the comments, bloat, architecture and quality-floor passes inside every review and writes one fix plan for o-fix. Use when asked to review code, a diff, a branch, a module or the changes before a PR.
+version: 2.6.0
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
 user-invocable: true
@@ -9,27 +9,35 @@ user-invocable: true
 
 # O-Review — Code Review Against Engineering Principles
 
-A review is seven passes over the same scope, and all seven write their findings into one plan file. Passes 3–6
-are child skills run **inside** this review — they are not follow-ups to recommend afterwards.
+A review is eight passes over the same scope, and all eight write their findings into one plan file. Passes 4–7
+are child skills run **inside** this review — they are not follow-ups to recommend afterwards. Correctness comes
+second, right after the numbers: a wrong result outranks every finding about how the code is shaped.
 
 `<skills>` below is the folder that holds every o-* skill, this one included.
 
-## The Seven Passes
+## The Eight Passes
 
 | # | Pass | Runs | Writes |
 |---|------|------|--------|
 | 1 | **Metrics** | `save-plan.mjs` — complexity, duplication, refactor patterns | the counts at the top of the plan |
-| 2 | **Principles** | this skill's rules and `references/principles.md` | `[PRINCIPLE]` sections |
-| 3 | **Comments** | **o-comments**, run as a pass (report only) | `[Comments]` |
-| 4 | **Bloat** | **o-unbloat**, run as a pass — its ladder and table (report only) | `[Bloat]` |
-| 5 | **Architecture** | **o-arch**, run as a pass, plus **o-arch-lint**'s `arch-check.mjs` | `[Architecture]` |
-| 6 | **Floor** | **o-floor**'s `floor-guard.mjs` on the diff | `[Floor]` |
-| 7 | **Spec** | this skill's spec-resolution rules below | `[Spec]` |
+| 2 | **Correctness** | this skill's correctness and security questions below | `[Correctness]` |
+| 3 | **Principles** | this skill's rules and `references/principles.md` | `[PRINCIPLE]` sections |
+| 4 | **Comments** | **o-comments**, run as a pass (report only) | `[Comments]` |
+| 5 | **Bloat** | **o-unbloat**, run as a pass — its ladder and table (report only) | `[Bloat]` |
+| 6 | **Architecture** | **o-arch**, run as a pass, plus **o-arch-lint**'s `arch-check.mjs` | `[Architecture]` |
+| 7 | **Floor** | **o-floor**'s `floor-guard.mjs` on the diff | `[Floor]` |
+| 8 | **Spec** | this skill's spec-resolution rules below | `[Spec]` |
 
-A plan missing `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]` or `[Spec]` is **incomplete, not clean**: passes
-3–7 run
-on every review, including a re-run, and each says plainly when it found nothing. Every pass reports; applying
-the fixes is `o-fix`'s job.
+A plan missing `[Correctness]`, `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]` or `[Spec]` is **incomplete,
+not clean**: every pass writes its heading on every review, including a re-run, and says plainly when it found
+nothing. Every pass reports; applying the fixes is `o-fix`'s job.
+
+## Light Review
+
+A change of at most about 50 changed lines, with no new interface, schema or public contract — or a task sized XS
+or S — gets a **light review**: Metrics, Correctness, Floor and Spec run in full, and the Principles, Comments,
+Bloat and Architecture headings each say `skipped — light review (<n> changed lines)`. Say at the top of the plan
+that it is a light review and why. Anything a light review notices that looks structural earns the full one.
 
 ## Two Ways It Runs
 
@@ -59,16 +67,33 @@ inside one file, not copies across files.
 
 ## What To Do
 
-When invoked, determine the user's scope (single file, directory, or full project) and run all seven passes below
-into the one plan file. Do not ask the user what to do, and do not stop after the metrics.
+When invoked, determine the user's scope (single file, directory, or full project), decide full or light review
+from its size, and run the passes below into the one plan file. When the repo keeps a `GLOSSARY.md`, read it first
+and write findings in its terms. Do not ask the user what to do, and do not stop
+after the metrics.
 
 1. **Metrics pass — create the plan with all analyses**: `node <skill>/scripts/save-plan.mjs --slug <topic>` — this runs complexity analysis (AST-based via tree-sitter), duplication check, AND refactor pattern detection in one step. It writes `E<nn>-review-plan.md` into the run folder and prints the full path. When the review is of one task (as o-implement's VERIFY step runs it), pass `--reviews <task file>`: the plan's property block then links the task it reviewed, so Obsidian shows the review hanging off it.
-2. **Principles pass** — write the complexity, SOLID, KISS, DRY and SRP findings into the plan as `[PRINCIPLE]` sections, using the format below.
-3. **Comments pass (part of the review, using o-comments)** — apply the rules in o-comments' pass card (`<skills>/o-comments/references/pass.md`) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Report only — `o-fix` makes the edits.
-4. **Bloat pass (part of the review, using o-unbloat)** — apply the ladder and table in o-unbloat's pass card (`<skills>/o-unbloat/references/pass.md`) to every reviewed file, in the card's o-review mode. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. A branch for a state the types or the internal callers rule out is reported here too, with the narrower representation named as the fix (o-unbloat's *Bloat, Unless…* row; the rule is *Make the Bad State Impossible* in o-implement's `SKILL.md`) — MAJOR when a caller must handle a failure the type could have excluded, MINOR when the check is only redundant, and never flagged where the input crosses a trust boundary. Never flag what o-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are o-fix's job.
-5. **Architecture pass (part of the review, using o-arch and o-arch-lint)** — apply the rules in o-arch's pass card (`<skills>/o-arch/references/pass.md`) to every reviewed file, in the card's o-review mode: all five groups, report only. Then run `node <skills>/o-arch-lint/scripts/arch-check.mjs --root .`. Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are o-fix's job.
-6. **Floor pass (part of the review, using o-floor)** — run `node <skills>/o-floor/scripts/floor-guard.mjs --root .`. It compares the quality floor declared at the merge base with the one on disk and reports the moves that lower the bar — a weakened threshold, a dropped rule, a new or extended exception, a silenced checker, unfinished work, a test made easier, a deleted test, or an assertion removed from a test that still exists. Report each under a `[Floor]` heading with its `rule`, `file` and `line`, and copy the guard's `rated` and `unrated` lists in verbatim: a repo with no `.o-skills/config/floor.json` is reported as unrated rather than as clean. Exit 2 is **not** a clean result — say the guard could not run and why. Report only: the fixes are o-fix's job.
-7. **Spec pass** — ask one question of the whole change: does the diff faithfully implement the originating spec,
+2. **Correctness pass** — read the changed code for whether it is *right*, before how it is shaped, and report
+   under `[Correctness]`:
+   - **Logic** — does each changed path compute what it claims, including the boundaries (empty input, zero,
+     one, the maximum, off-by-one at both ends)?
+   - **Error paths** — what happens when a call fails, a value is missing, or input is malformed; is anything
+     swallowed, retried forever, or left half-written?
+   - **State and concurrency** — shared mutable state, ordering assumptions, races between async steps,
+     resources opened and never closed.
+   - **Security** — untrusted input reaching a shell, a query, a path, a template or `eval`; secrets in code or
+     logs; a permission or ownership check missing on a new path.
+   - **Compatibility** — a changed signature, return shape, default or persisted format that existing callers
+     or stored data still depend on.
+
+   A finding that produces a wrong result, loses data or opens a security hole is CRITICAL; a likely-but-unproven
+   one is MAJOR with the input that would show it. Name the test that would catch each finding.
+3. **Principles pass** — write the complexity, SOLID, KISS, DRY and SRP findings into the plan as `[PRINCIPLE]` sections, using the format below.
+4. **Comments pass (part of the review, using o-comments)** — apply the rules in o-comments' pass card (`<skills>/o-comments/references/pass.md`) to every reviewed file. Report comment issues under a `[Comments]` heading in the plan: comments that restate code, obvious comments, and paragraph-long explanations that should be a named function. Report only — `o-fix` makes the edits.
+5. **Bloat pass (part of the review, using o-unbloat)** — apply the ladder and table in o-unbloat's pass card (`<skills>/o-unbloat/references/pass.md`) to every reviewed file, in the card's o-review mode. Report findings under a `[Bloat]` heading in the plan, each naming the ladder rung it fails and the unbloated version: speculative abstractions (one-implementation interfaces, single-use factories, pass-through wrappers) are MAJOR; dead code, unused options, and re-implemented stdlib are MINOR. A branch for a state the types or the internal callers rule out is reported here too, with the narrower representation named as the fix (o-unbloat's *Bloat, Unless…* row; the rule is *Make the Bad State Impossible* in o-implement's `SKILL.md`) — MAJOR when a caller must handle a failure the type could have excluded, MINOR when the check is only redundant, and never flagged where the input crosses a trust boundary. Never flag what o-unbloat's *Never Cut* list or a *Keep it if* exception protects. Report only: the cuts are o-fix's job.
+6. **Architecture pass (part of the review, using o-arch and o-arch-lint)** — apply the rules in o-arch's pass card (`<skills>/o-arch/references/pass.md`) to every reviewed file, in the card's o-review mode: all five groups, report only. Then run `node <skills>/o-arch-lint/scripts/arch-check.mjs --root .`. Report findings under an `[Architecture]` heading: a bag name, a crossed boundary, a misplaced responsibility or a wrong-way import is MAJOR. Give the heading one row per unit the pass judged, naming the group, the verdict, the reason and a `file:line`, and copy the checker's `rated` and `unrated` lists in so a green run over an undeclared tree is not read as full coverage. Report only: the moves are o-fix's job.
+7. **Floor pass (part of the review, using o-floor)** — run `node <skills>/o-floor/scripts/floor-guard.mjs --root .`. It compares the quality floor declared at the merge base with the one on disk and reports the moves that lower the bar — a weakened threshold, a dropped rule, a new or extended exception, a silenced checker, unfinished work, a test made easier, a deleted test, or an assertion removed from a test that still exists. Report each under a `[Floor]` heading with its `rule`, `file` and `line`, and copy the guard's `rated` and `unrated` lists in verbatim: a repo with no `.o-skills/config/floor.json` is reported as unrated rather than as clean. Exit 2 is **not** a clean result — say the guard could not run and why. Report only: the fixes are o-fix's job.
+8. **Spec pass** — ask one question of the whole change: does the diff faithfully implement the originating spec,
    ticket, or task? Resolve the spec source in this order: (1) task or issue references in the commit messages;
    (2) a path the user passed to the review; (3) a plan or task artifact in the run folder (`E00-plan.md`, a task
    file under `E<nn>-tasks/`); (4) none of these — ask the user, and on "there isn't one" report `no spec
@@ -76,7 +101,7 @@ into the one plan file. Do not ask the user what to do, and do not stop after th
    it states is met, nothing is built that the spec does not ask for, and nothing the spec requires is silently
    deferred. A requirement the diff does not meet is MAJOR; an unrequested behavior change is MAJOR; a deferred
    item with no record in the plan is MAJOR. Report findings under `[Spec]` in the finding format below.
-8. **Unmeasured analyses** — an analysis script that failed is not a zero; carry `save-plan.mjs`'s "Analysis incomplete" note into the plan rather than reporting a clean result.
+9. **Unmeasured analyses** — an analysis script that failed is not a zero; carry `save-plan.mjs`'s "Analysis incomplete" note into the plan rather than reporting a clean result.
 
 The complexity script never installs anything on its own: when a grammar it needs is missing it prints the `npm install -g …` command and falls back to the regex engine for those files. Ask the user before running that command, or before rerunning with `--install-grammars`. Each script prints JSON, and the keys mislead on first read — `functions` is nested inside a file, and `duplicatedBlocks` is a **count**, not the list:
 
@@ -101,33 +126,24 @@ For language-specific review criteria, see `references/lang-typescript.md` (Type
 
 ## Related Skills
 
-These are the passes this review runs, and where their findings go. Read each skill's pass card before running its
-pass (the paths are in the steps above); this skill never restates their rules.
+Each pass's rules live in its own skill's pass card; this skill never restates them.
 
-- **o-comments** — Run as pass 3 of every review (report only). Comment noise, obvious comments, and
-  paragraph-long explanations that should be a named function are findings under `[Comments]`; `o-fix` applies
-  them, and applying one never changes behavior.
-- **o-unbloat** — Run as pass 4 of every review (report only, in the o-review mode of o-unbloat's pass card). It finds code that does not need to exist: speculative abstractions, pass-through wrappers, unused
-  options, dead code, re-implemented stdlib. Findings go under `[Bloat]`; `o-fix` applies them per o-unbloat's
-  *Keep it if* and *Never Cut* rules.
-- **o-arch** with **o-arch-lint** — Run as pass 5 of every review (report only, in the o-review mode of o-arch's
-  pass card: all five groups). o-arch judges where a unit lives, what it is called, what its one responsibility is and which
-  way its dependencies point; o-arch-lint checks the same tree against `.o-skills/config/arch.json` and reports
-  `file:line` violations. Findings go under `[Architecture]`; `o-fix` applies them.
-- **o-floor** — Run as pass 6 of every review. `floor-guard.mjs` reports the moves that lower the declared quality
-  floor, and the `rated`/`unrated` lists that say which half of the bar was actually checked. Findings go under
-  `[Floor]`; `o-fix` applies them.
-- **o-fix** — Reads this plan and edits source files to resolve every finding from every pass, including the
-  comment, bloat and architecture rows.
-- **o-refactor** — Analysis-only refactoring suggestions (extract method, rename variables, replace conditionals)
-  on flagged files. It runs o-unbloat's ladder before suggesting anything, and applies nothing.
-- **o-debug** — For runtime errors or behavioral issues that require hypothesis-driven investigation rather than static code analysis.
+| Skill | Pass | Heading | Fixed by |
+|---|---|---|---|
+| o-comments | 4 | `[Comments]` | o-fix, without changing behaviour |
+| o-unbloat | 5 | `[Bloat]` | o-fix, by its *Keep it if* and *Never Cut* rules |
+| o-arch + o-arch-lint | 6 | `[Architecture]` | o-fix |
+| o-floor | 7 | `[Floor]` | o-fix |
+
+- **o-fix** reads this plan and resolves every finding, from every pass.
+- **o-differential** is the narrow second pass over a risky diff; **o-second-opinion** is a review from a fresh context.
+- **o-debug** takes a runtime failure that needs a reproduction rather than reading.
 
 ## Common Rationalizations
 
 | Excuse | Reality |
 |--------|---------|
-| "The diff is small — I'll read it and say LGTM." | A verdict without the passes is a rubber stamp. The plan is the evidence; a missing `[Comments]`, `[Bloat]` or `[Architecture]` heading makes it incomplete, not clean. |
+| "The diff is small — I'll read it and say LGTM." | A small diff gets a light review, not none: Correctness, Floor and Spec still run, and every heading is written. |
 | "Those passes found nothing here, so I'll leave the heading out." | A pass that found nothing writes `none`. A missing heading is indistinguishable from a pass that never ran. |
 | "This file is already huge, I'll just review the diff." | Then say so and ask for a split. Reviewing around a structural problem is how it gets buried; the size is itself a finding. |
 | "Ten nits and one structural problem — I'll list them in order." | Lead with leverage: correctness and structure first. If there is one structural problem and ten nits, the structural problem *is* the review. |
@@ -139,15 +155,18 @@ pass (the paths are in the steps above); this skill never restates their rules.
 
 | Level | Meaning | Action |
 |-------|---------|--------|
-| CRITICAL | Violates SRP or introduces bug risk | Must fix before merge |
-| MAJOR | Clear SOLID/KISS/DRY violation | Should fix |
+| CRITICAL | Wrong behaviour, data loss, or a security hole — shown, or shown how to trigger | Must fix before merge |
+| MAJOR | A likely bug not yet shown, or a clear SOLID/KISS/DRY/responsibility violation | Should fix |
 | MINOR | Style or minor optimization | Nice to have |
 
-**CRITICAL SRP note:** a function that interleaves phases (fetch, validate, probe, decrypt) with inline reporting (`push` to a shared results array inside each branch) is an orchestrator-with-interleaved-reporting violation — always CRITICAL. Verify with the two extract tests in `references/principles.md` (one-sentence test, reporting test).
+Structure is never CRITICAL on its own: a design problem is a MAJOR until it produces a wrong result. A function
+that interleaves phases (fetch, validate, probe, decrypt) with inline reporting (`push` to a shared results array
+inside each branch) is the commonest MAJOR — verify it with the two extract tests in `references/principles.md`
+(one-sentence test, reporting test).
 
 ## The Standing Bar
 
-The six code passes judge the code; the Spec pass judges what they cannot see. The standing bar judges whether the
+The seven code passes judge the code; the Spec pass judges what they cannot see. The standing bar judges whether the
 change is *finished*, and it is the same bar
 for every change: see *Definition of Done* in `o-implement`'s `SKILL.md`. Read it before writing the verdict, and
 say in the plan which rows you could check and which you could not. A review that reports only its own passes has
@@ -162,7 +181,13 @@ Produce a review and save it into the run folder. Use `save-plan.mjs` to create 
 node <skill>/scripts/save-plan.mjs --slug <topic>
 ```
 
-The script prints the full path. It already carries every pass heading, each with a pending line. Open it with your file tools and replace each pending line using this format — all seven passes get their own section, and the pass headings below are written even when a pass found nothing:
+A function counts as this review's only when the change wrote one of its lines; one the change walked past is a
+single pre-existing count, never a finding, so a small change to an old file is not buried in its history. The
+script lists the touched ones under **Over the bar** with `file:line` for the [PRINCIPLE] pass. A repo sets its own
+bar in `.o-skills/config/review.json` (`maxComplexity`, `maxLength`, `maxParams`); the skill's 5, 20 and 3 are the
+default.
+
+The script prints the full path. It already carries every pass heading, each with a pending line. Open it with your file tools and replace each pending line using this format — all eight passes get their own section, and the pass headings below are written even when a pass found nothing or a light review skipped it:
 
 ```markdown
 # Code Review — Fix Plan
@@ -170,13 +195,26 @@ The script prints the full path. It already carries every pass heading, each wit
 **Date:** YYYY-MM-DD-hhmm
 **Scope:** 3 files changed vs main@1a2b3c4 (2 committed, 0 staged, 1 unstaged, 0 untracked)
 **Files analyzed:** N
-**Functions with complexity > 5:** N
-**Functions longer than 20 lines:** N
+**Functions with complexity > 5 in code this change touched:** N
+**Functions longer than 20 lines in code this change touched:** N
+**Pre-existing functions over the bar, untouched:** N — not findings of this review; `--all` lists them
 **Duplicated blocks found:** N
+**Review:** full | light — <why>
 
 ---
 
-## [PRINCIPLE] — Brief description
+## [Correctness] — pass 2 of the review
+
+Write `none` when the pass found nothing.
+
+- [ ] **Severity:** CRITICAL / MAJOR
+  - **File:** `path/to/file.js:42`
+  - **Issue:** The wrong result, lost data or hole, and the input that shows it
+  - **Suggestion:** The fix, and the test that would have caught it
+
+---
+
+## [PRINCIPLE] — pass 3: brief description
 
 - [ ] **Severity:** CRITICAL / MAJOR / MINOR
   - **File:** `path/to/file.js:42`
@@ -185,7 +223,7 @@ The script prints the full path. It already carries every pass heading, each wit
 
 ---
 
-## [Comments] — pass 3 of the review
+## [Comments] — pass 4 of the review
 
 Write `none` when the pass found nothing. A missing heading is incomplete, not clean.
 
@@ -196,7 +234,7 @@ Write `none` when the pass found nothing. A missing heading is incomplete, not c
 
 ---
 
-## [Bloat] — pass 4 of the review
+## [Bloat] — pass 5 of the review
 
 - [ ] **Severity:** MAJOR / MINOR
   - **File:** `path/to/file.js:12`
@@ -206,7 +244,7 @@ Write `none` when the pass found nothing. A missing heading is incomplete, not c
 
 ---
 
-## [Architecture] — pass 5 of the review
+## [Architecture] — pass 6 of the review
 
 | Unit | Group | Verdict | Why | Where |
 |------|-------|---------|-----|-------|
@@ -217,7 +255,7 @@ tree is not full coverage.
 
 ---
 
-## [Floor] — pass 6 of the review
+## [Floor] — pass 7 of the review
 
 Write `none` when the guard found nothing. A guard that could not run (exit 2) is not `none` — say so.
 
@@ -231,7 +269,7 @@ a much weaker statement than a green run over a declared one.
 
 ---
 
-## [Spec] — pass 7 of the review
+## [Spec] — pass 8 of the review
 
 Write `none` when the pass found nothing, and `no spec available` when no spec source resolved.
 
@@ -250,21 +288,20 @@ Write `none` when the pass found nothing, and `no spec available` when no spec s
 
 Apply fixes manually based on review findings. Track progress by updating checkboxes `[ ]` → `[x]`.
 
-A plan without a `[Comments]` section is **incomplete, not clean**: the comments pass is step 3 of every
-review, including a re-run, and its findings belong under that heading (say so plainly when it found
-nothing). `[Bloat]`, `[Architecture]`, `[Floor]` and `[Spec]` are the same: steps 4, 5, 6 and 7 run on every review,
-so a plan missing any of those headings is incomplete rather than clean. On a re-run, carry each earlier finding forward as
+A plan without a `[Correctness]`, `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]` or `[Spec]` section is
+**incomplete, not clean**: every pass writes its heading on every review, including a re-run and a light review,
+and says plainly when it found nothing or was skipped. On a re-run, carry each earlier finding forward as
 resolved or still open, and list pre-existing findings apart from the ones this branch introduced, so the counts
 describe the change under review.
 
 ## After the Review — Where Findings Get Fixed
 
-Do not recommend the passes as follow-up work: passes 3–6 already ran inside this review and their findings are
+Do not recommend the passes as follow-up work: passes 4–7 already ran inside this review and their findings are
 in the plan. This table routes the fixes, not the passes.
 
 | Review finding | What to run next | Why |
 |----------------|------------------|-----|
-| Any issue that needs fixing (complexity, SOLID, duplication, `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]`) | `o-fix` | Reads your plan and edits source files to resolve every finding, including the comment, bloat, architecture and floor rows |
+| Any issue that needs fixing (`[Correctness]`, complexity, SOLID, duplication, `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]`) | `o-fix` | Reads your plan and edits source files to resolve every finding, including the comment, bloat, architecture and floor rows |
 | Structural refactoring suggestions without applying changes | `o-refactor` | Analysis-only — produces before/after comparisons but doesn't edit code |
 | Behavioral bugs or runtime errors that need investigation | `o-debug` | Hypothesis-driven debugging — reproduce, isolate root cause, then fix with o-fix |
 

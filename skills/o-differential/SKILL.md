@@ -1,7 +1,7 @@
 ---
 name: o-differential
-description: Review a change the narrow way — read the diff hunk by hunk, pair each with the behavior it replaced, and rate regression risk for every caller the change puts at stake, so a review focuses on what actually moved instead of re-reading the whole module. Use when a change is risky to reason about end to end, when it touches a shared function, or when a wide o-review needs a narrow second pass over the diff.
-version: 1.0.2
+description: Rate the regression risk of a diff hunk by hunk — what each hunk replaced, which callers it puts at stake, and whether a break would be silent, guarded or loud — mapping the blast radius so a review covers exactly what moved. Use when a change is risky or touches a shared function, when asked which changes could fail silently or break callers, or for a narrow second pass after o-review.
+version: 1.1.0
 author: Community
 tags: [review, diff, regression, risk, callers, verification]
 user-invocable: true
@@ -40,13 +40,24 @@ For every hunk, one row:
 - **breaking** — the caller contract changed: a signature, a return shape, a thrown error.
 
 A row without a caller is a gap: a changed region nobody calls is dead code, and that is its
-own finding.
+own finding — unless it is an entry point or an export. A CLI command, a route or event handler, a test, and
+an exported function of a library have their callers outside the code you can search; write which one it is
+in the Callers column instead of reporting it dead.
 
 ## Procedure
 
-1. Collect the diff, the pre-change source, and the spec.
-2. For each hunk, name what it replaced, then search the tree for every caller of the changed
-   region and list them with `file:line`.
+1. Collect the diff, the pre-change source, and the spec. Start the table from the script:
+
+   ```bash
+   node <skill>/scripts/hunks.mjs --base main --table     # or --base HEAD for uncommitted work; JSON without --table
+   ```
+
+   It lists every hunk with the range it replaced, the symbol it sits in, and that symbol's callers — in its own
+   file, and in the files that import its module when it is exported (by `export`/`pub`, a public Python name or a
+   capitalised Go name). Added code is split one row per declaration, and untracked files are included as new code.
+   The Risk and Why columns are yours.
+2. For each hunk, name what it replaced (read the old range), then check the listed callers and add any the
+   script cannot see — a call built at run time, a caller in another repository — with `file:line`.
 3. Rate each hunk's risk by the three-way table and write the reason in one line.
 4. Record the table in the run folder as `E<nn>-differential.md` and route: `silent` rows and
    unmapped hunks become findings for `o-fix`; a table with only `guarded` rows unblocks ship.
@@ -75,7 +86,11 @@ own finding.
 - <hunk> — <why its replaced behavior could not be named>
 ```
 
+`<skill>` is this skill's folder.
+
 ## Files
+
+- `scripts/hunks.mjs` — the hunk list, the enclosing symbols and their callers, as JSON or as the table skeleton.
 
 - `evals/expectations.json` — the risk discipline as checkable claims.
 - `evals/triggers.json` — labelled queries for trigger testing.

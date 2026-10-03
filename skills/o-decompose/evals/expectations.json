@@ -2,7 +2,7 @@
   "skill": "o-decompose",
   "expected_behavior": [
     "Every candidate gets a recorded verdict — task, plan, analyze or dropped — with a reason, before any task file is written.",
-    "Each task file is sized against the task rules and its definition of done includes that the diff touches only the task's files.",
+    "Each task file is sized against the task rules, and its definition of done carries the task's own check, how it was seen working, and one standing-bar row.",
     "verify exits 0 only when every candidate has a verdict, every child run exists, and the task files match the task verdicts.",
     "A candidate inside a child run that needs its own plan is treated as a sign the parent spec was too coarse, not as a third level of runs."
   ],

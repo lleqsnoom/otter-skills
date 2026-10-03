@@ -1,0 +1,16 @@
+{
+  "skill": "o-parallel",
+  "queries": [
+    { "query": "run these five tasks in parallel", "should_trigger": true },
+    { "query": "fan out the independent tasks to separate agents", "should_trigger": true },
+    { "query": "parallelize the task folder with worktrees", "should_trigger": true },
+    { "query": "spin up background agents for each task and merge the results", "should_trigger": true },
+    { "query": "run the batch of fixes concurrently, each in its own worktree", "should_trigger": true },
+    { "query": "use claude workers to implement these tasks at the same time", "should_trigger": true },
+    { "query": "implement this one task test first", "should_trigger": false },
+    { "query": "break the plan into tasks", "should_trigger": false },
+    { "query": "review the merged changes", "should_trigger": false },
+    { "query": "commit everything", "should_trigger": false },
+    { "query": "debug the flaky test", "should_trigger": false }
+  ]
+}

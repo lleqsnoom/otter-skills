@@ -81,7 +81,7 @@ different gate than a blog post.
 `o-roast` fixes facts and logic; `o-humanize` rewrites *language*. Simplifying a
 sentence a roast just corrected can **quietly restore the wrong claim** — the
 rewrite reads cleanly and passes the readability check while undoing the fix.
-(`blog-post-authoring` documents the same trap.) So the order is fixed:
+So the order is fixed:
 
 1. roast until the content is right,
 2. then humanize,

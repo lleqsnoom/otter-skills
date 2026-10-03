@@ -1,9 +1,11 @@
 {
   "skill": "o-rollback",
   "expected_behavior": [
-    "Any uncommitted change makes the script refuse with exit 1 and a clean-tree message before touching anything.",
+    "Any uncommitted change makes a real revert refuse with exit 1 before touching anything; a dry run still previews and says the tree must be clean first.",
     "--dry-run prints a JSON plan and creates no revert commit, so the impact is shown before the action.",
-    "A revert is committed only after explicit confirmation \u2014 the literal REVERT \u2014 and commits through o-commit when available."
+    "A revert runs only after the user approved the exact commits the dry run listed; without a terminal the script refuses unless --yes comes with --expect-sha naming those commits.",
+    "--last 1 targets the most recent commit, and --last N the N most recent, newest first; a merge commit needs --mainline.",
+    "Each reverted commit gets its own conventional revert commit made through o-commit's script, with no shell in between."
   ],
   "source": [
     "Safety Checks",
