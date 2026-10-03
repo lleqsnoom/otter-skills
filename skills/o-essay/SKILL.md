@@ -1,7 +1,7 @@
 ---
 name: o-essay
 description: Write an article end-to-end on a fixed loop — o-analyze thesis, o-roast critique, o-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim.
-version: 1.0.4
+version: 1.0.5
 author: Community
 tags: [writing, article, essay, blog, editorial, loop, pipeline, drafting, prose]
 user-invocable: true

@@ -1,7 +1,7 @@
 ---
 name: o-tune
 description: Tune a measurable number toward a target — bundle size, page load time, latency, a test's pass rate, a prompt's judge score — one atomic change per experiment to code, config or a prompt, each scored by a command and kept only when the numbers improve; reverted changes are restored from a snapshot, and a hard cap stops the loop. Use when asked to optimize, tune, or drive a metric (latency, size, load time) down or up until it reaches a target.
-version: 1.0.1
+version: 1.0.2
 author: Community
 tags: [optimize, tune, metric, experiment-loop, benchmark, performance]
 user-invocable: true
@@ -61,7 +61,8 @@ never asks for them to be skipped. For research toward cited coverage of questio
    ```
 
    Run it from the project root, so the run lands in the project's `.o-skills/runs/` and not in a scratch folder
-   (`start` warns when it does). `node <skill>/scripts/state.mjs --help` lists every command and flag.
+   (`start` warns when it does; start again from the project root rather than moving the folder). `--root` names the
+   folder that holds run folders, not the project root. `node <skill>/scripts/state.mjs --help` lists every flag.
 
 2. **Baseline:** run the evaluator once and record it — `record --dir <dir> --baseline <score|file>`.
 3. **Each experiment:**

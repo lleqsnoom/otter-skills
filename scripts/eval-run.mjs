@@ -94,9 +94,17 @@ function runAgent(fixture, prompt, transcript) {
     maxBuffer: 64 * 1024 * 1024,
   });
   fs.writeFileSync(transcript, `${result.stdout ?? ""}\n--- stderr ---\n${result.stderr ?? ""}`);
-  if (result.error) return `the agent could not run: ${result.error.message}`;
-  return result.status === 0 ? null : `the agent exited ${result.status}`;
+  if (result.error) return { problem: `the agent could not run: ${result.error.message}` };
+  if (result.status === 0) return { problem: null };
+  const limit = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.match(USAGE_LIMIT);
+  return limit ? { problem: `the agent never started: ${limit[0]}`, notRun: true } : { problem: `the agent exited ${result.status}` };
 }
+
+/**
+ * A host that refuses to run — a usage or rate limit — says nothing about the skill, so a case it stops is reported
+ * as not run, never as failed: a FAIL there sends someone hunting a bug in a skill that was never exercised.
+ */
+const USAGE_LIMIT = /hit your (?:session|usage|weekly|daily) limit[^\n]*|usage limit (?:reached|exceeded)[^\n]*|rate limit(?:ed| exceeded)[^\n]*/i;
 
 /** One case, start to finish: a fresh fixture, the agent, the check. Returns what the check said. */
 export function runCase(entry, { keep = false } = {}) {
@@ -109,7 +117,9 @@ export function runCase(entry, { keep = false } = {}) {
   if (setup.status !== 0) return { ...entry, passed: false, detail: `setup failed: ${setup.stderr.trim()}`, fixture };
   installSkills(fixture);
 
-  const agentProblem = runAgent(fixture, fs.readFileSync(path.join(entry.dir, "prompt.md"), "utf8"), transcript);
+  const agent = runAgent(fixture, fs.readFileSync(path.join(entry.dir, "prompt.md"), "utf8"), transcript);
+  if (agent.notRun) return { ...entry, passed: false, notRun: true, detail: agent.problem, fixture, transcript };
+  const agentProblem = agent.problem;
   const check = node("check.mjs", { OTTER_EVAL_TRANSCRIPT: transcript });
   const passed = check.status === 0;
   const detail = [agentProblem, check.stdout.trim(), check.stderr.trim()].filter(Boolean).join("\n");
@@ -132,12 +142,16 @@ function main() {
   const results = cases.map((entry) => {
     process.stderr.write(`eval-run: ${entry.skill}/${entry.name} ...\n`);
     const result = runCase(entry, args);
-    process.stderr.write(`eval-run: ${result.passed ? "PASS" : "FAIL"} ${entry.skill}/${entry.name}\n${result.passed ? "" : `${result.detail}\n`}`);
+    const verdict = result.passed ? "PASS" : result.notRun ? "NOT RUN" : "FAIL";
+    process.stderr.write(`eval-run: ${verdict} ${entry.skill}/${entry.name}\n${result.passed ? "" : `${result.detail}\n`}`);
     return result;
   });
-  const summary = results.map(({ skill, name, passed, detail, fixture, transcript }) => ({ case: `${skill}/${name}`, passed, detail, fixture, transcript }));
-  process.stdout.write(`${JSON.stringify({ passed: results.filter((r) => r.passed).length, total: results.length, results: summary }, null, 2)}\n`);
-  if (results.some((r) => !r.passed)) process.exitCode = 1;
+  const summary = results.map(({ skill, name, passed, notRun, detail, fixture, transcript }) => ({ case: `${skill}/${name}`, passed, ...(notRun ? { notRun } : {}), detail, fixture, transcript }));
+  const notRun = results.filter((r) => r.notRun).length;
+  process.stdout.write(`${JSON.stringify({ passed: results.filter((r) => r.passed).length, notRun, total: results.length, results: summary }, null, 2)}\n`);
+  // 1 a case failed · 2 none failed but some never ran · 0 every case passed.
+  if (results.some((r) => !r.passed && !r.notRun)) process.exitCode = 1;
+  else if (notRun) process.exitCode = 2;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {

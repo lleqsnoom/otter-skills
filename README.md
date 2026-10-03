@@ -204,3 +204,7 @@ the trigger-rate floor. None of that runs an agent.
 Claude Code on its `prompt.md` with every skill installed, and checks what the agent left behind with
 `check.mjs`. It spends tokens, so it runs on demand, not in CI — `npm run eval -- --skill o-fix` runs one skill's
 cases, `--keep` keeps the fixture for inspection, and `OTTER_EVAL_AGENT_CMD` swaps in another agent command.
+A case the host refused to start — a usage or rate limit — is reported as NOT RUN, not as a failure.
+
+`node skills/o-skill-lint/scripts/route-check.mjs --model-cmd "claude -p"` asks a model which skill each trigger
+query should load: the meaning-level check beside the lexical trigger rate, also on demand.
