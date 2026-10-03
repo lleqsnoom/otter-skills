@@ -1,7 +1,7 @@
 ---
 name: o-parallel
 description: Run several coding tasks at the same time — each in its own git worktree with its own background agent (Claude Code, Codex, Crush or any CLI) holding the parent's project rights, then merge the committed results back or leave them on branches for review. Use when asked to run tasks in parallel, fan out a task folder to workers, or parallelize independent tasks.
-version: 1.3.0
+version: 1.3.1
 author: Community
 tags: [parallel, agents, background, worktree, concurrency, dispatch]
 user-invocable: true
@@ -11,7 +11,7 @@ user-invocable: true
 
 Runs independent coding tasks concurrently. Each task is executed in an isolated git worktree by a full agent process — Claude Code, Codex, Crush, or any CLI you name — holding the same project rights as you. Committed results are merged back into your current branch, or left on review branches with `--no-merge`. Use it to parallelize o-decompose output, batch fixes, or multi-file refactors.
 
-`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill. Every script answers `--help` with its commands and flags.
 
 ## Requirements
 
@@ -31,7 +31,7 @@ node <skill>/scripts/parallel.mjs --tasks <task-dir> [options]
 | `--parallel N` | 4 | Max concurrent agents |
 | `--retries N` | 1 | Extra attempts per task after the first failure (each starts from a clean worktree, with escalating backoff) |
 | `--timeout-min N` | 30 | Kill an agent (and its whole process group) after N minutes. Every agent run is time-bounded; never run unbounded. |
-| `--agent crush\|claude\|codex` | the first of these on PATH | Worker preset: `crush run <prompt>`, `claude -p <prompt> --permission-mode acceptEdits` (file tools, git and the package manager allowed), or `codex exec --full-auto <prompt>` |
+| `--agent crush\|claude\|codex` | the first of these on PATH | Worker preset: `crush run <prompt>`, `claude -p <prompt> --permission-mode acceptEdits` (file tools, git, the package manager, and the build tools the project's own files name — `make`, `cargo`, `go`, `python`/`pytest`, `mvn` and the like), or `codex exec --full-auto <prompt>` |
 | `--agent-cmd "<cmd>"` | — | Any other worker: a shell command where `{prompt}` stands for the prompt (passed through `$OTTER_PROMPT`, never parsed by the shell) |
 | `--no-merge` | off | Leave each finished task on its `xp/<slug>` branch for review instead of merging it |
 | `--rights inherit\|none` (alias `--no-rights`) | inherit | `inherit` copies your untracked project config into each worktree (Crush's `crush.json` family, Claude Code's `.claude/settings.local.json`) so the worker holds the same rights as you; `none` leaves the worker on its tracked and global config only |

@@ -14,6 +14,9 @@ export const NEUTRAL = ["cd", "echo", "export", "set", "true", "printf", "pwd"];
 
 /** A user message starting with one of these corrects the agent. */
 const CORRECTION_RE = /^(no|nope|wrong|not quite|actually|i said|i meant|that's not|thats not|stop|don't|dont|again|still)\b[,\s]/i;
+// A redirect corrects without saying "no": "you should add it in .o-skills", "why did you…", "it should be in…".
+// Only counted once the agent has answered, so a request that opens with "you should" is not read as a correction.
+const REDIRECT_RE = /^(you should|you shouldn'?t|you need to|you forgot|you missed|you didn'?t|why did you|why didn'?t you|it should|this should|that should|it belongs)\b/i;
 
 /** A user message this short, and this bare, is a nudge: the agent stopped early. */
 const REPROMPT_RE = /^(continue|go on|try again|retry|proceed|keep going|next|again)\b[.!]?$/i;
@@ -442,7 +445,9 @@ function addFailure(failures, { failure, part, call, index, suspects }) {
 function scanUserMessages(messages) {
   const corrections = [];
   const reprompts = [];
+  let answered = false;
   for (const message of messages) {
+    if (message.role === "assistant") answered = true;
     if (message.role !== "user") continue;
     const text = message.parts
       .filter((part) => part.type === "text")
@@ -451,7 +456,7 @@ function scanUserMessages(messages) {
       .trim();
     if (!text) continue;
     const words = text.split(/\s+/).filter(Boolean);
-    if (CORRECTION_RE.test(text) && words.length > 2) {
+    if ((CORRECTION_RE.test(text) || (answered && REDIRECT_RE.test(text))) && words.length > 2) {
       corrections.push({ message: message.index, tool: null, excerpt: excerpt(text) });
     } else if (words.length <= REPROMPT_MAX_WORDS && REPROMPT_RE.test(text)) {
       reprompts.push({ message: message.index, tool: null, excerpt: excerpt(text) });

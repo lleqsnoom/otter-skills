@@ -1,7 +1,7 @@
 ---
 name: o-review
 description: Review a change before it merges — is it correct (edge cases, error paths, untrusted input, security), is it simple (small functions, SOLID, KISS, DRY), does it match its spec — with AST complexity counts for the code the change touched. Runs the comments, bloat, architecture and quality-floor passes inside every review and writes one fix plan for o-fix. Use when asked to review code, a diff, a branch, a module or the changes before a PR.
-version: 2.6.1
+version: 2.6.2
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
 user-invocable: true
@@ -13,7 +13,7 @@ A review is eight passes over the same scope, and all eight write their findings
 are child skills run **inside** this review — they are not follow-ups to recommend afterwards. Correctness comes
 second, right after the numbers: a wrong result outranks every finding about how the code is shaped.
 
-`<skills>` below is the folder that holds every o-* skill, this one included.
+`<skills>` below is the folder that holds every o-* skill, this one included. Every script answers `--help` with its commands and flags.
 
 ## The Eight Passes
 

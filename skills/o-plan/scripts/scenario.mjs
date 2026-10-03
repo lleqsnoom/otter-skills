@@ -81,7 +81,8 @@ export function createState({ slug, goal = null, input = null, topics = [], root
     skill: SKILL,
     slug,
     goal,
-    input,
+    // Relative to the run, so a run that is moved or committed still finds what it was planned from.
+    input: input ? path.relative(runDirAbs, path.resolve(input)).split(path.sep).join("/") : null,
     topics,
     createdAt: when,
     updatedAt: when,
@@ -346,7 +347,7 @@ function persist(dir, state, { fromIndex, writeReport }) {
   fs.mkdirSync(dir, { recursive: true });
   if (writeReport) {
     const text = reportTextFor(dir, state);
-    const head = `${propertyBlock("plan", `Plan · ${runSlug(dir)}`, dir, { input: state.input }, state.topics)}# Plan — ${state.slug}\n`;
+    const head = `${propertyBlock("plan", `Plan · ${runSlug(dir)}`, dir, { input: state.input ? path.resolve(dir, state.input) : null }, state.topics)}# Plan — ${state.slug}\n`;
     const body = upsertScenario(text || head, renderGraphMermaid(state));
     fs.writeFileSync(path.join(dir, state.report), body);
   }

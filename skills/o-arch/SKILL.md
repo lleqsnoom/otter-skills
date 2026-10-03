@@ -1,7 +1,7 @@
 ---
 name: o-arch
 description: Fix where code lives and which way it depends — a utils or helpers folder everything imports, directories that do not follow features, a layer importing what it should not, domain code tangled with infrastructure, a base class that should be composition. Bans role-shaped names (utils, helpers, common, misc), points dependencies from volatile to stable, and waits for three uses before extracting. Use when asked to restructure directories, sort out boundaries, name a module, or decide where new code belongs; o-implement, o-decompose, o-review and o-fix run it as a pass.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [architecture, naming, boundaries, responsibilities, dependency-direction, composition, solid, placement]
 user-invocable: true
@@ -20,7 +20,7 @@ Judge a structure by whether one change stays in one place, not by what the dire
 **Name the improvement in one sentence before proposing it.** If you cannot say what a reader will no longer
 have to hold in their head, there is nothing to propose.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## When to use
 

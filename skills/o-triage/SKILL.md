@@ -1,7 +1,7 @@
 ---
 name: o-triage
 description: Intake for a new bug — read the report or the filed issue, ask a few targeted questions, and classify the bug's platform (web, mobile, backend, CLI…), type (crash, wrong data, slow…), symptoms and evidence before anyone reads the code; then write the intake brief the debugging skills start from. Use when a bug report or issue comes in and needs writing up, classifying or triaging.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [triage, classification, debugging, intake, diagnostic]
 user-invocable: true
@@ -13,7 +13,7 @@ Classify the bug before any investigation begins, so the debugging that follows 
 gave rather than from a guess about the code. **No source reads during intake:** reading the code now biases the
 classification toward what the code makes easy to suspect.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## 1. Read what was reported
 

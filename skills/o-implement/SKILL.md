@@ -1,7 +1,7 @@
 ---
 name: o-implement
 description: Implement decomposed tasks with TDD — red-green-refactor per task, verified with o-review + o-fix, committed task by task, independent tasks parallelized with o-parallel, gated on every task being done. Use when asked to implement a run's tasks.
-version: 1.7.0
+version: 1.7.1
 author: Community
 tags: [tdd, implementation, test-driven, red-green-refactor, production-code, parallel, ui]
 user-invocable: true
@@ -10,7 +10,7 @@ user-invocable: true
 # O-Implement — Test-Driven Implementation
 **No production code without a failing test first.** Wrote code before the test? Take it out, watch the new test fail for the right reason, then put it back. Exception — confirm with a `confirm` panel (yes/no) first: prototypes, generated code, throwaway scripts.
 
-`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill. Every script answers `--help` with its commands and flags.
 
 ## Before the first task: read the ledger a decomposition left
 

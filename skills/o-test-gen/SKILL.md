@@ -1,7 +1,7 @@
 ---
 name: o-test-gen
 description: Generate test stubs from implementation — analyzes source code and creates scaffolded tests with happy path, error cases, and edge case placeholders. Use when asked to scaffold specs for untested functions.
-version: 1.1.0
+version: 1.1.1
 author: Community
 tags: [testing, test-generation, scaffolding, coverage, tdd]
 user-invocable: true
@@ -13,7 +13,7 @@ Scaffold one test file per source file, in the project's own framework, with a t
 test for every exported function. **Every stub fails until it is written**: a generated test that passes checks
 nothing, and `o-floor` and `o-verify` exist to catch exactly that. The stubs are a to-do list the suite enforces.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## Run it
 

@@ -1,7 +1,7 @@
 ---
 name: o-comments
 description: Comment management — add only precise, meaningful comments and remove noisy or obvious ones; refactor overly commented code into self-explanatory functions instead of describing it. Use when asked to fix noisy, obvious or missing comments; runs as a pass inside o-review and o-implement.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [comments, code-cleaning, self-documenting-code, readability, refactoring]
 user-invocable: true

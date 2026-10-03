@@ -1,7 +1,7 @@
 ---
 name: o-verify
 description: After o-fix or an implementation, attack the change instead of trusting it — property-based tests over the changed functions (fast-check, hypothesis, proptest) and a mutation pass over the diff (Stryker, mutmut, cargo-mutants), gated on survivors-equals-zero-or-explained. Use when asked to verify a fix beyond its tests, run a mutation pass, catch silent regressions before ship, or prove a change cannot break quietly.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [verification, property-based-testing, mutation-testing, survivors, gate, quality]
 user-invocable: true
@@ -23,7 +23,7 @@ none is worth writing.
 The script never edits code, thresholds, or tests: it runs commands and reads reports. The property tests are
 yours to write first — step 2 below — because a property nobody reasoned about verifies nothing.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## When to use
 

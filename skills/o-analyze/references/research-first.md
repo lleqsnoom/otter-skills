@@ -8,7 +8,8 @@ Never ask the user something you can find yourself. Spend the first pass of ever
    `<skills>/o-search/SKILL.md` describes (`<skills>` is the folder holding every o-* skill): `search_knowledge`
    by meaning when you know the behaviour but not the file that owns it, `find_symbols` or `search_code` when
    you already have the identifier. It is the fastest way to find the file a question lives in, and it spans
-   repositories a local grep cannot reach.
+   repositories a local grep cannot reach. It covers only repositories with a `.o-skills/` tree; in one without,
+   go straight to the project's files.
 2. **The project.** Read the files, symbols, tests, and git history that touch the problem, and the
    repo's `GLOSSARY.md` when it has one. Cite the exact location (`path/to/file.js:42`).
 3. **The web.** Fetch official docs and prior art. Cite the URL. Prefer primary sources.

@@ -1,7 +1,7 @@
 ---
 name: o-browser
 description: Launch the real Chrome/Chromium with remote debugging and attach the chrome-devtools MCP to the project's app URL — detects the URL from README/config/env, verifies the dev server, and opens the browser so you can drive it without manual setup. Use when asked to open the app in a browser or screenshot it running.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [browser, chrome, chromium, devtools, mcp, frontend, testing, automation, debugging]
 user-invocable: true
@@ -11,7 +11,7 @@ user-invocable: true
 
 Start a real (headed) Chrome/Chromium with the remote debugging port open, open the project's app URL, and let the `chrome-devtools` MCP server attach. This replaces the manual "launch chrome with `--remote-debugging-port`, then ask the agent to connect" prompt.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## When to use
 

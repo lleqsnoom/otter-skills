@@ -1,7 +1,7 @@
 ---
 name: o-decompose
 description: Decompose an approved plan (or an older run's epic) into layer-based task files, triaging every candidate first — each is decided as a task in this run, a run of its own (o-plan), an analysis (o-analyze), or dropped; outputs <run folder>/E<nn>-triage.md and <run folder>/E<nn>-tasks/ for o-implement. Use when asked to break or split a spec into tasks or tickets, turn a plan's layers into task files, or cut a roadmap into small tasks.
-version: 3.1.0
+version: 3.1.1
 author: Community
 tags: [decompose, tasks, layers, triage, verdict, child-run, definition-of-done, DOD, test-plan, atomic, estimation, self-contained, incremental]
 user-invocable: true
@@ -11,7 +11,7 @@ user-invocable: true
 
 One task file per sub-step, organized by layer. Each task is a self-contained, testable increment that builds on the previous one. Before any file is written, every candidate is **triaged**: a candidate that hides its own contract gets a run of its own instead of a task in this one. Pipeline order: `o-plan → o-decompose → o-implement`.
 
-`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill.
+`<skill>` below is this skill's folder, and `<skills>` the folder that holds it and every other o-* skill. Every script answers `--help` with its commands and flags.
 
 ## When to use
 

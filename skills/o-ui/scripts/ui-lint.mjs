@@ -57,15 +57,49 @@ function fontSizes(line) {
   return sizes.map(Number);
 }
 
+/** The most lines one opening tag is joined across; a tag still open after that is not a tag. */
+const MAX_TAG_LINES = 20;
+
+/** Whether `text` holds a `<tag` whose closing `>` has not come yet, reading past `=>` and `{…}` expressions. */
+function openTag(text) {
+  const tags = [...text.matchAll(/<[A-Za-z][\w.-]*(?=[\s/>]|$)/g)];
+  if (!tags.length) return false;
+  const start = tags.at(-1).index;
+  let depth = 0;
+  for (let i = start + 1; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "{") depth++;
+    else if (ch === "}") depth = Math.max(0, depth - 1);
+    else if (ch === ">" && depth === 0 && text[i - 1] !== "=") return false;
+  }
+  return true;
+}
+
+/**
+ * The source as the rules read it: an opening tag split over several lines — `<p` on one line, its `className`,
+ * `clsx(…)` or `style={{ … }}` on the next, as a formatter writes JSX — joined into one, at its first line number.
+ */
+export function logicalLines(text) {
+  const lines = text.split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const first = i;
+    let joined = lines[i];
+    while (openTag(joined) && i + 1 < lines.length && i - first < MAX_TAG_LINES) joined += ` ${lines[++i].trim()}`;
+    out.push({ line: first + 1, text: joined });
+  }
+  return out;
+}
+
 export function lintText(file, text, { scale = DEFAULT_SCALE } = {}) {
   const ctx = { hasFocusVisible: /:focus-visible|focus-visible:/.test(text) };
   const violations = [];
-  text.split("\n").forEach((line, index) => {
-    for (const { rule, test, detail } of RULES) if (test(line, ctx)) violations.push({ rule, file, line: index + 1, detail });
+  for (const { line: number, text: line } of logicalLines(text)) {
+    for (const { rule, test, detail } of RULES) if (test(line, ctx)) violations.push({ rule, file, line: number, detail });
     for (const px of fontSizes(line)) {
-      if (!scale.includes(px)) violations.push({ rule: "off-scale-font-size", file, line: index + 1, detail: `${px}px is not on the type scale ${scale.join("/")}` });
+      if (!scale.includes(px)) violations.push({ rule: "off-scale-font-size", file, line: number, detail: `${px}px is not on the type scale ${scale.join("/")}` });
     }
-  });
+  }
   return violations;
 }
 

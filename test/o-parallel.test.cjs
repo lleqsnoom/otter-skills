@@ -83,4 +83,15 @@ describe("o-parallel dependencies", () => {
     });
     assert.equal(waitExitCode(finished), 0);
   });
+
+  it("lets a Claude worker run the build tools the project's own files name", async () => {
+    const { projectBuildTools, agentInvocation } = await load();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "oparallel-build-"));
+    fs.writeFileSync(path.join(root, "Cargo.toml"), "[package]\n");
+    fs.writeFileSync(path.join(root, "Makefile"), "all:\n");
+    assert.deepEqual(projectBuildTools(root).sort(), ["cargo", "make"]);
+    const args = agentInvocation({ agent: "claude", prompt: "P", buildTools: projectBuildTools(root) }).args;
+    assert.ok(args.includes("Bash(cargo:*)") && args.includes("Bash(make:*)") && args.includes("Bash(npm:*)"));
+    assert.deepEqual(projectBuildTools(fs.mkdtempSync(path.join(os.tmpdir(), "oparallel-none-"))), []);
+  });
 });

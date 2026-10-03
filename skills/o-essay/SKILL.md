@@ -1,7 +1,7 @@
 ---
 name: o-essay
 description: Write an article end-to-end on a fixed loop — o-analyze thesis, o-roast critique, o-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim.
-version: 1.0.3
+version: 1.0.4
 author: Community
 tags: [writing, article, essay, blog, editorial, loop, pipeline, drafting, prose]
 user-invocable: true
@@ -29,7 +29,7 @@ matters. For papers/research use `o-roast --profile research` (a later `--type`)
 `{ actual, expected, pass }`, so any stop can be re-derived from the stats alone:
 `node state.mjs verify --dir <dir>` exits 0 iff the stop is justified.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## When to use
 

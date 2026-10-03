@@ -1,7 +1,7 @@
 ---
 name: o-analyze
 description: Answer a question or decision with no bug in it — which option, which approach, X or Y — by researching the project and the web first, asking short plain questions until the user is sure, then writing a thesis with cited evidence and a mechanical check, weighing the options with their trade-offs, and routing to a fix or tasks. Use when asked to analyze a problem, decide between options, or compare solutions with evidence; a failing bug goes to o-debug.
-version: 1.2.0
+version: 1.2.1
 author: Community
 tags: [analysis, troubleshooting, diagnosis, problem-solving, investigation]
 user-invocable: true
@@ -11,7 +11,7 @@ user-invocable: true
 
 Guide the user through understanding their problem, formulating a thesis with evidence, proposing solutions, and routing to the right action (fix or task creation). This is an interactive conversation skill — it asks questions, clarifies ambiguities, and only proceeds when confident.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## When to use
 

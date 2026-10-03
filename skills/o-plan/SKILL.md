@@ -1,7 +1,7 @@
 ---
 name: o-plan
 description: Plan a feature before coding — turn an idea into a spec the user approves: research the project and the web first, ask short plain questions until the user is sure, weigh the approaches with their trade-offs, then write a layered spec (contract, invariant, test per layer) with guards and a memory file. Use when asked to plan, scope or spec a feature or a rework, or to turn a vague idea into a plan.
-version: 2.4.0
+version: 2.4.1
 author: Community
 tags: [plan, spec, requirements, architecture, clarification, testable, layers, prototype]
 user-invocable: true
@@ -11,7 +11,7 @@ user-invocable: true
 
 Do not write any code until the spec is approved by the user. Pipeline order: `o-plan → o-decompose → o-implement`.
 
-`<skill>` below is this skill's folder.
+`<skill>` below is this skill's folder. Every script answers `--help` with its commands and flags.
 
 ## When to use
 
@@ -133,6 +133,10 @@ Write an `invariant:` as a property of the design, not as a check that catches i
 representation makes the bad state impossible to build — a narrowed type, a parsed value, a schema constraint,
 a hidden transition — rather than what the code does when it occurs. A bad state the design does not exclude is
 a state `o-implement` has to handle; the rule is *Make the Bad State Impossible* in its `SKILL.md`.
+
+Name the edge values the contract must decide — empty, zero, negative, `NaN` or `null`, out of range, a duplicate —
+and give each one a result, or say which type rules it out. An edge the spec leaves unnamed is a question for the
+clarify step, not a guess the implementer makes alone.
 
 Decision tree for classification: input/output → contract, system property → invariant, acceptance criterion → test, performance/security → constraint, postponed → deferred. If none match → clarify first. **No question → no section.**
 

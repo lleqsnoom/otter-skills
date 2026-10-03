@@ -1,0 +1,1 @@
+Use the o-autoreflection skill to reflect on the session exported in session.json (it is already normalized: pass it with --file). This is report-only: write the reflection and do not edit any skill. Do not ask me anything; if a step would need my answer, record it as an open question in the reflection.

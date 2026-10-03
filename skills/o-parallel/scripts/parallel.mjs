@@ -56,14 +56,40 @@ export const AGENT_PRESETS = {
   crush: { command: "crush", args: (prompt) => ["run", prompt], configs: PARENT_CONFIG_NAMES },
   claude: {
     command: "claude",
-    args: (prompt) => [
+    args: (prompt, buildTools = []) => [
       "-p", prompt, "--permission-mode", "acceptEdits",
       "--allowedTools", "Read", "Edit", "Write", "Glob", "Grep", "Bash(git:*)", "Bash(node:*)", "Bash(npm:*)", "Bash(npx:*)", "Bash(pnpm:*)", "Bash(yarn:*)",
+      ...buildTools.map((tool) => `Bash(${tool}:*)`),
     ],
     configs: [".claude/settings.local.json"],
   },
   codex: { command: "codex", args: (prompt) => ["exec", "--full-auto", prompt], configs: [] },
 };
+
+/**
+ * The build and test commands a project's own files name, beyond the JavaScript set every worker gets: a Claude
+ * worker may run only what --allowedTools lists, so a Rust or Make project would otherwise hand it a task it
+ * cannot build or test.
+ */
+const BUILD_FILES = [
+  [["Makefile", "makefile", "GNUmakefile"], ["make"]],
+  [["Cargo.toml"], ["cargo"]],
+  [["go.mod"], ["go"]],
+  [["pyproject.toml", "requirements.txt", "setup.py"], ["python", "python3", "pytest", "pip", "uv", "poetry"]],
+  [["Gemfile"], ["bundle", "ruby", "rake"]],
+  [["pom.xml"], ["mvn"]],
+  [["build.gradle", "build.gradle.kts"], ["gradle", "./gradlew"]],
+  [["deno.json", "deno.jsonc"], ["deno"]],
+  [["bun.lockb", "bun.lock"], ["bun"]],
+  [["CMakeLists.txt"], ["cmake", "ctest"]],
+  [["composer.json"], ["composer", "php"]],
+  [["mix.exs"], ["mix"]],
+];
+
+export function projectBuildTools(root) {
+  const present = (name) => existsSync(join(root, name));
+  return [...new Set(BUILD_FILES.flatMap(([files, tools]) => (files.some(present) ? tools : [])))];
+}
 
 /** On PATH, without a shell: `command -v` would need one, so each directory is checked instead. */
 function onPath(command, pathVar = process.env.PATH ?? "") {
@@ -79,13 +105,13 @@ export function defaultAgent(has = onPath) {
  * The process a worker runs as. `--agent-cmd` is a shell template where `{prompt}` stands for the prompt; the
  * prompt itself travels in $OTTER_PROMPT, so nothing in it is ever parsed by the shell.
  */
-export function agentInvocation({ agent = "crush", agentCmd = "", prompt }) {
+export function agentInvocation({ agent = "crush", agentCmd = "", prompt, buildTools = [] }) {
   if (agentCmd) {
     return { command: agentCmd.replaceAll("{prompt}", '"$OTTER_PROMPT"'), args: [], shell: true, env: { OTTER_PROMPT: prompt }, configs: [...PARENT_CONFIG_NAMES, ".claude/settings.local.json"] };
   }
   const preset = AGENT_PRESETS[agent];
   if (!preset) throw new Error(`unknown --agent ${agent}: one of ${Object.keys(AGENT_PRESETS).join(", ")}, or pass --agent-cmd`);
-  return { command: preset.command, args: preset.args(prompt), shell: false, env: {}, configs: preset.configs };
+  return { command: preset.command, args: preset.args(prompt, buildTools), shell: false, env: {}, configs: preset.configs };
 }
 
 // Sibling skills sit beside this one in every install, so the worker is handed o-commit's script by absolute path.
@@ -96,7 +122,8 @@ export const defaultPrompt = (commitScript = COMMIT_SCRIPT) =>
 
 const PROMPT = arg("prompt", defaultPrompt());
 const AGENT = AGENT_ARG || defaultAgent();
-const WORKER = agentInvocation({ agent: AGENT, agentCmd: AGENT_CMD, prompt: PROMPT });
+// Built once the repository is known: the worker's allowed commands depend on the project's build files.
+let WORKER;
 
 const run = (cmd) =>
   execSync(cmd, { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).trim();
@@ -544,6 +571,7 @@ async function main() {
     return;
   }
   validateRepo();
+  WORKER = agentInvocation({ agent: AGENT, agentCmd: AGENT_CMD, prompt: PROMPT, buildTools: projectBuildTools(repoRoot) });
   console.log(`\nO-Parallel — ${AGENT_CMD ? "custom" : AGENT} workers, limit ${PARALLEL}, timeout ${TIMEOUT_MIN}m${NO_MERGE ? ", no merge" : ""}`);
   console.log(`Rights: ${RIGHTS}${describeRights()}`);
   const tasks = await loadTasks();

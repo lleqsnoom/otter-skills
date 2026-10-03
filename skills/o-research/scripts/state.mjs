@@ -121,85 +121,73 @@ export function targetMet(state, value) {
   return state.direction === "minimize" ? value <= state.target : value >= state.target;
 }
 
-export function startState({
-  slug,
-  goal,
-  metric,
-  direction = "maximize",
-  target,
-  policy = "score_improvement",
-  evaluator,
-  evaluatorKind,
-  criteria,
-  guard = null,
-  allowed,
-  forbidden,
-  noiseRuns = DEFAULT_NOISE_RUNS,
-  minDelta = DEFAULT_MIN_DELTA,
-  cap = DEFAULT_CAP,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-  candidates = null,
-  evidence = true,
-  now = new Date(),
-} = {}) {
-  if (!slug || typeof slug !== "string") throw new Error("slug is required");
-  if (!metric || typeof metric !== "string") throw new Error("metric is required");
-  if (!DIRECTIONS.includes(direction)) throw new Error(`direction must be one of ${DIRECTIONS.join(", ")}`);
-  if (!POLICIES.includes(policy)) throw new Error(`policy must be one of ${POLICIES.join(", ")}`);
-  if (!Number.isInteger(cap) || cap < 1) throw new Error("cap must be a positive integer");
-  if (!Number.isInteger(noiseRuns) || noiseRuns < 1) throw new Error("noiseRuns must be a positive integer");
-  if (!Number.isFinite(minDelta) || minDelta < 0) throw new Error("minDelta must be a non-negative number");
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("timeoutMs must be a positive number");
+const START_DEFAULTS = {
+  direction: "maximize",
+  policy: "score_improvement",
+  guard: null,
+  noiseRuns: DEFAULT_NOISE_RUNS,
+  minDelta: DEFAULT_MIN_DELTA,
+  cap: DEFAULT_CAP,
+  timeoutMs: DEFAULT_TIMEOUT_MS,
+  candidates: null,
+  evidence: true,
+};
 
+/** Each setting a run cannot start without, and what to say when it is wrong. */
+const SETTING_CHECKS = [
+  [(o) => o.slug && typeof o.slug === "string", "slug is required"],
+  [(o) => o.metric && typeof o.metric === "string", "metric is required"],
+  [(o) => DIRECTIONS.includes(o.direction), `direction must be one of ${DIRECTIONS.join(", ")}`],
+  [(o) => POLICIES.includes(o.policy), `policy must be one of ${POLICIES.join(", ")}`],
+  [(o) => Number.isInteger(o.cap) && o.cap >= 1, "cap must be a positive integer"],
+  [(o) => Number.isInteger(o.noiseRuns) && o.noiseRuns >= 1, "noiseRuns must be a positive integer"],
+  [(o) => Number.isFinite(o.minDelta) && o.minDelta >= 0, "minDelta must be a non-negative number"],
+  [(o) => Number.isFinite(o.timeoutMs) && o.timeoutMs > 0, "timeoutMs must be a positive number"],
+];
+
+/**
+ * The evaluator a run is judged by. The agent-judged mode needs a criteria count, takes its label from it, and
+ * defaults its target to every criterion met (a ratio of 1).
+ */
+function resolveEvaluator({ evaluator, evaluatorKind, criteria, target }) {
   const kind = evaluatorKind || (evaluator === "agent" ? "agent" : "command");
   if (!EVALUATOR_KINDS.includes(kind)) throw new Error(`evaluator kind must be one of ${EVALUATOR_KINDS.join(", ")}`);
-
-  // The agent-judged mode needs a criteria count, an evaluator label, and a
-  // coverage target (default: every criterion met → ratio 1).
-  let label = evaluator;
-  let resolvedCriteria = null;
-  let resolvedTarget = target;
-  if (kind === "agent") {
-    if (!Number.isInteger(criteria) || criteria < 1) throw new Error("agent evaluator needs a positive --criteria count");
-    resolvedCriteria = criteria;
-    label = `agent (coverage of ${criteria} criteria)`;
-    if (!Number.isFinite(resolvedTarget)) resolvedTarget = 1;
-  }
+  if (kind === "agent" && (!Number.isInteger(criteria) || criteria < 1)) throw new Error("agent evaluator needs a positive --criteria count");
+  const label = kind === "agent" ? `agent (coverage of ${criteria} criteria)` : evaluator;
+  const resolvedTarget = kind === "agent" && !Number.isFinite(target) ? 1 : target;
   if (!label || typeof label !== "string") throw new Error("evaluator command is required");
   if (!Number.isFinite(resolvedTarget)) throw new Error("target must be a number");
-  const candidateList = normalizeList(candidates);
-  if (candidates !== null && candidateList.length < 3) {
-    throw new Error("a run needs at least 3 candidate changes (--candidates)");
-  }
+  return { target: resolvedTarget, evaluator: label, evaluatorKind: kind, criteria: kind === "agent" ? criteria : null };
+}
 
+/** What every run holds before its first experiment. */
+const freshRun = (now) => ({ iteration: 0, phase: "baseline", best: null, history: [], stopReason: null, stopGates: null, createdAt: now.toISOString(), updatedAt: now.toISOString() });
+
+export function startState(options = {}) {
+  // An option passed as undefined means "not given", so it must not overwrite its default.
+  const o = { ...START_DEFAULTS, ...Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)) };
+  for (const [ok, message] of SETTING_CHECKS) if (!ok(o)) throw new Error(message);
+  const judge = resolveEvaluator(o);
+  const candidates = normalizeList(o.candidates);
+  if (o.candidates !== null && candidates.length < 3) throw new Error("a run needs at least 3 candidate changes (--candidates)");
   return {
-    slug,
-    goal: goal || null,
-    metric,
-    direction,
-    target: resolvedTarget,
-    policy,
-    evaluator: label,
-    evaluatorKind: kind,
-    criteria: resolvedCriteria,
+    slug: o.slug,
+    goal: o.goal || null,
+    metric: o.metric,
+    direction: o.direction,
+    policy: o.policy,
+    ...judge,
     // Agent-judged coverage must name a source per met criterion unless the run opted out at start.
-    evidenceRequired: kind === "agent" && evidence !== false,
-    guard: guard || null,
-    search: { allowed: normalizeList(allowed), forbidden: normalizeList(forbidden) },
+    evidenceRequired: judge.evaluatorKind === "agent" && o.evidence !== false,
+    guard: o.guard || null,
+    search: { allowed: normalizeList(o.allowed), forbidden: normalizeList(o.forbidden) },
     graph: GRAPH,
-    candidates: candidateList,
-    noiseRuns,
-    minDelta,
-    cap,
-    timeoutMs,
-    iteration: 0,
-    phase: "baseline",
-    best: null,
-    history: [],
-    stopReason: null,
-    stopGates: null,
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
+    candidates,
+    noiseRuns: o.noiseRuns,
+    minDelta: o.minDelta,
+    cap: o.cap,
+    timeoutMs: o.timeoutMs,
+    ...freshRun(o.now ?? new Date()),
   };
 }
 
@@ -285,59 +273,66 @@ export function recordBaseline(state, { score, samples, pass } = {}) {
   return touch(state);
 }
 
+/** The score a candidate carries: the number given, or the mean of its samples. */
+function candidateScore(score, samples) {
+  const nums = normalizeSamples(samples);
+  const value = Number.isFinite(Number(score)) ? Number(score) : nums ? round(nums.reduce((a, b) => a + b, 0) / nums.length) : null;
+  if (!Number.isFinite(value)) throw new Error("candidate needs a numeric score (or samples)");
+  return { value, nums };
+}
+
+/** Every gate a candidate is held to; a gate that does not apply to this run is null. */
+function candidateGates(state, { value, nums, pass, guardPass, paths, evidence }) {
+  const improvement = state.direction === "minimize" ? state.best.score - value : value - state.best.score;
+  const met = state.evaluatorKind === "agent" ? Math.round(value * state.criteria) : null;
+  const cited = evidence?.cited ?? 0;
+  return {
+    improvement,
+    gates: {
+      metric: { actual: value, expected: state.target, pass: targetMet(state, value) },
+      evaluator: { actual: pass === true ? 1 : 0, expected: 1, pass: pass === true },
+      noise: nums ? { actual: nums.length, expected: state.noiseRuns, pass: nums.length >= state.noiseRuns } : null,
+      guard: state.guard ? { actual: guardPass === true ? 1 : 0, expected: 1, pass: guardPass === true } : null,
+      atomic: paths.length ? { actual: paths.length, expected: 1, pass: paths.length === 1 } : null,
+      search: paths.length ? searchVerdict(state.search, paths) : null,
+      improvement: { actual: round(improvement), expected: state.minDelta, pass: improvement >= state.minDelta },
+      evidence: state.evidenceRequired ? { actual: cited, expected: met, pass: cited >= met } : null,
+    },
+  };
+}
+
+/**
+ * Keep or revert. In agent mode a candidate that raises coverage is progress the run keeps: its text stays in the
+ * research file, and recording it as "revert" made the trail say the opposite of what happened.
+ */
+function keepCandidate(state, { gates, improvement }) {
+  const progress = state.evaluatorKind === "agent" && improvement > 0;
+  if (!(gates.evaluator.pass || progress)) return false;
+  if (state.policy === "score_improvement" && !gates.improvement.pass) return false;
+  return [gates.evidence, gates.noise, gates.guard, gates.atomic, gates.search].every((gate) => !gate || gate.pass);
+}
+
 export function recordCandidate(state, { pass, score, samples, guardPass, changed, change, evidence = null } = {}) {
   if (STOP_PHASES.has(state.phase)) throw new Error(`loop already stopped (${state.phase})`);
   if (state.phase !== "iterate") throw new Error(`not awaiting a candidate (phase "${state.phase}")`);
   if (pass === undefined) throw new Error("candidate needs pass (boolean) — pass the evaluator output");
-  const nums = normalizeSamples(samples);
-  const value = Number.isFinite(Number(score))
-    ? Number(score)
-    : nums
-      ? round(nums.reduce((a, b) => a + b, 0) / nums.length)
-      : null;
-  if (!Number.isFinite(value)) throw new Error("candidate needs a numeric score (or samples)");
-  const paths = normalizeList(changed);
-  const search = paths.length ? searchVerdict(state.search, paths) : null;
-  const atomicGate = paths.length ? { actual: paths.length, expected: 1, pass: paths.length === 1 } : null;
-  const evaluatorGate = { actual: pass === true ? 1 : 0, expected: 1, pass: pass === true };
-  const noiseGate = nums ? { actual: nums.length, expected: state.noiseRuns, pass: nums.length >= state.noiseRuns } : null;
-  const guardGate = state.guard ? { actual: guardPass === true ? 1 : 0, expected: 1, pass: guardPass === true } : null;
-  const prevBest = state.best.score;
-  const improvement = state.direction === "minimize" ? prevBest - value : value - prevBest;
-  const improvementGate = { actual: round(improvement), expected: state.minDelta, pass: improvement >= state.minDelta };
-  const metricGate = { actual: value, expected: state.target, pass: targetMet(state, value) };
-  const agent = state.evaluatorKind === "agent";
-  const met = agent ? Math.round(value * state.criteria) : null;
-  const evidenceGate = state.evidenceRequired
-    ? { actual: evidence?.cited ?? 0, expected: met, pass: (evidence?.cited ?? 0) >= met }
-    : null;
-  // In agent mode a candidate that raises coverage is progress the run keeps: its text stays in the
-  // research file, and recording it as "revert" made the trail say the opposite of what happened.
-  const progress = agent && improvement > 0;
-
-  let keep = evaluatorGate.pass || progress;
-  if (state.policy === "score_improvement") keep = keep && improvementGate.pass;
-  if (evidenceGate && !evidenceGate.pass) keep = false;
-  if (noiseGate && !noiseGate.pass) keep = false;
-  if (guardGate && !guardGate.pass) keep = false;
-  if (atomicGate && !atomicGate.pass) keep = false;
-  if (search && !search.pass) keep = false;
-
-  const entry = {
+  const { value, nums } = candidateScore(score, samples);
+  const judged = candidateGates(state, { value, nums, pass, guardPass, paths: normalizeList(changed), evidence });
+  const keep = keepCandidate(state, judged);
+  state.history.push({
     iteration: state.iteration,
     kind: "candidate",
     score: value,
     samples: nums,
     pass: pass === true,
     guardPass: state.guard ? guardPass === true : null,
-    delta: round(improvement),
+    delta: round(judged.improvement),
     decision: keep ? "keep" : "revert",
     change: change || null,
     evidence: evidence ? { cited: evidence.cited, file: evidence.file ?? null } : null,
-    gates: { metric: metricGate, evaluator: evaluatorGate, noise: noiseGate, guard: guardGate, atomic: atomicGate, search, improvement: improvementGate, evidence: evidenceGate },
+    gates: judged.gates,
     ts: new Date().toISOString(),
-  };
-  state.history.push(entry);
+  });
   if (keep) state.best = { score: value, iteration: state.iteration };
   commitStopOrAdvance(state);
   return touch(state);
@@ -450,6 +445,26 @@ function mintRunDir(rootAbs, slug, now) {
 }
 
 /**
+ * A run folder in the system temp directory and outside any repository — a session's scratch folder — is cleared
+ * with it, and the user never finds it in the project. Agents are told to put temporary files there, so a run
+ * started from it lands there too. A repository that happens to live in /tmp is still the project.
+ */
+export function outsideProjectWarning(rootAbs) {
+  const temp = path.resolve(process.env.TMPDIR || process.env.TMP || process.env.TEMP || "/tmp");
+  if (rootAbs !== temp && !rootAbs.startsWith(`${temp}${path.sep}`)) return null;
+  for (let dir = rootAbs; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, ".git"))) return null;
+    if (path.dirname(dir) === dir) break;
+  }
+  return `${rootAbs} is in a temp folder outside any repository, which is cleared and is not the project: run this from the project root, so the run lands in its .o-skills/runs/`;
+}
+
+function warnOutsideProject(rootAbs) {
+  const warning = outsideProjectWarning(rootAbs);
+  if (warning) process.stderr.write(`warning: ${warning}\n`);
+}
+
+/**
  * Return the run folder for a slug, choosing in this order:
  * `fresh` mints a new R<nn>, `run` selects that R number, `marker` selects the
  * folder holding that artifact, one match is returned, none mints, and more
@@ -458,6 +473,7 @@ function mintRunDir(rootAbs, slug, now) {
 function resolveRunDir(slug, { root = RUNS_ROOT, now = new Date(), marker = null, fresh = false, run = null } = {}) {
   if (!slug || typeof slug !== "string") throw new Error("slug is required");
   const rootAbs = path.resolve(root);
+  warnOutsideProject(rootAbs);
   fs.mkdirSync(rootAbs, { recursive: true });
 
   if (fresh) return mintRunDir(rootAbs, slug, now);
@@ -814,10 +830,15 @@ function parseArgs(args) {
   return out;
 }
 
-function readEvidence(file, state) {
+/**
+ * The evidence file is recorded relative to the run folder, never as the absolute path the agent typed: a run is
+ * moved and committed, and an absolute path points into the machine it was made on.
+ */
+function readEvidence(file, state, dir) {
   if (file === undefined) return null;
   if (file === true) throw new Error("--evidence needs a file: one line per met criterion, e.g. `C2: https://… or path:line`");
-  return { ...evidenceCount(fs.readFileSync(file, "utf8"), state.criteria ?? 0), file };
+  const relative = path.relative(path.resolve(dir), path.resolve(file)).split(path.sep).join("/");
+  return { ...evidenceCount(fs.readFileSync(file, "utf8"), state.criteria ?? 0), file: relative };
 }
 
 function num(value, label) {
@@ -917,7 +938,9 @@ function commandStart(args) {
   fs.writeFileSync(path.join(dir, "research_log.md"), `# Research log — ${state.slug}\n\n`);
   writeMemoryHeader(dir, state);
   appendLog(dir, `- [${stampTime()}] start: ${state.metric} ${state.direction} target ${state.target}`);
-  return { output: { dir, state, ...decision(state) } };
+  // resolveRunDir has already printed it; the JSON carries it too, since that is the part a caller parses.
+  const warning = outsideProjectWarning(path.resolve(root));
+  return { output: { dir, ...(warning ? { warning } : {}), state, ...decision(state) } };
 }
 
 /** The score a `record` call carries: from `--coverage k/n` when given, else from the flag's file or number. */
@@ -937,7 +960,7 @@ function recordCandidateArgs(dir, state, args, coverage) {
     guardPass: args.guard === undefined ? src.guardPass : bool(args.guard, "--guard"),
     changed: args.changed,
     change: args.change === true ? null : args.change,
-    evidence: readEvidence(args.evidence, state),
+    evidence: readEvidence(args.evidence, state, dir),
   });
   const last = state.history.at(-1);
   const restored = settleSnapshot(dir, last?.decision);
