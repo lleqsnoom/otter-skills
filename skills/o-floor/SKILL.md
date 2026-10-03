@@ -1,7 +1,7 @@
 ---
 name: o-floor
-description: Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .o-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work, a test made easier, a deleted test, or a removed assertion. Detection only. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard.
-version: 1.1.1
+description: "Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .o-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work, a test made easier, a deleted test, or a removed assertion. Detection only. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard."
+version: 1.1.2
 author: Community
 tags: [quality, floor, constraints, guard, thresholds, suppression, coverage, enforcement, ratchet]
 user-invocable: true

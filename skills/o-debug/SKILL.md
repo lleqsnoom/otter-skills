@@ -1,7 +1,7 @@
 ---
 name: o-debug
-description: Evidence-based debugging — reproduce, hypothesize, fix root cause, verify: a reproduction that goes red on the bug, ranked hypotheses tested until one cause remains, and a fix that never silences it. Use when a crash, stack trace or wrong value has to be debugged.
-version: 1.2.1
+description: "Evidence-based debugging — reproduce, hypothesize, fix root cause, verify: a reproduction that goes red on the bug, ranked hypotheses tested until one cause remains, and a fix that never silences it. Use when a crash, stack trace or wrong value has to be debugged."
+version: 1.2.2
 author: Community
 tags: [debugging, root-cause, reproduction, verification]
 user-invocable: true

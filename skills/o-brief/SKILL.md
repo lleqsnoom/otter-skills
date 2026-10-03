@@ -1,7 +1,7 @@
 ---
 name: o-brief
-description: Write the handoff brief that hands this session's work off — a written note of where things stand: what is settled, what is open, what to do next, as context pointers rather than duplicated content. Use when handing off mid-work, when the session must stop soon or be compacted, when context is nearly full, when switching machines, or to leave a note for whoever continues this work.
-version: 1.1.1
+description: "Write the handoff brief that hands this session's work off — a written note of where things stand: what is settled, what is open, what to do next, as context pointers rather than duplicated content. Use when handing off mid-work, when the session must stop soon or be compacted, when context is nearly full, when switching machines, or to leave a note for whoever continues this work."
+version: 1.1.2
 author: Community
 tags: [handoff, brief, context, session, continuation]
 user-invocable: true

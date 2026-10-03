@@ -1,7 +1,7 @@
 ---
 name: o-commit
-description: Commit the work with one conventional message — `type(scope): what it does`, imperative mood, checked by a script that then makes the commit; a short body only for a large change. Use when the user says commit, commit this or commit the staged changes, or whenever work is ready to land in git.
-version: 1.2.1
+description: "Commit the work with one conventional message — `type(scope): what it does`, imperative mood, checked by a script that then makes the commit; a short body only for a large change. Use when the user says commit, commit this or commit the staged changes, or whenever work is ready to land in git."
+version: 1.2.2
 author: Community
 tags: [conventional-commits, git, commit-messages, commit-changes]
 user-invocable: true

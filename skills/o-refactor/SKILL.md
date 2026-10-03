@@ -1,7 +1,7 @@
 ---
 name: o-refactor
-description: Answer "what should I refactor here?" — measure the module, then route each candidate to the skill that owns it: dead code and needless layers to o-unbloat, where code lives and what it is called to o-arch, noisy comments to o-comments, and a long function, a branch chain or a one-call helper to a before/after suggestion written here. Use when asked for refactoring suggestions or where to start cleaning up a module; it never edits code.
-version: 2.0.1
+description: "Answer \"what should I refactor here?\" — measure the module, then route each candidate to the skill that owns it: dead code and needless layers to o-unbloat, where code lives and what it is called to o-arch, noisy comments to o-comments, and a long function, a branch chain or a one-call helper to a before/after suggestion written here. Use when asked for refactoring suggestions or where to start cleaning up a module; it never edits code."
+version: 2.0.2
 author: Community
 tags: [refactoring, code-quality, router, extract-method, clean-code]
 user-invocable: true
