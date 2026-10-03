@@ -1,7 +1,7 @@
 ---
 name: o-review
 description: Review a change before it merges — is it correct (edge cases, error paths, untrusted input, security), is it simple (small functions, SOLID, KISS, DRY), does it match its spec — with AST complexity counts for the code the change touched. Runs the comments, bloat, architecture and quality-floor passes inside every review and writes one fix plan for o-fix. Use when asked to review code, a diff, a branch, a module or the changes before a PR.
-version: 2.6.0
+version: 2.6.1
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
 user-invocable: true

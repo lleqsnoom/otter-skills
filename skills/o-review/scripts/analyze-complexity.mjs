@@ -729,8 +729,9 @@ function findFunctionEndLine(lines, startLine) {
  * fallback is reached from two call sites and neither owns the source text.
  */
 function pushRegexFunction(functions, lines, { name, startLine, endLine }) {
+  // The scan counts lines from 0; the report counts from 1, as tree-sitter's does, so file:line points at the line.
   functions.push({
-    name, params: [], paramCount: 0, startLine, endLine,
+    name, params: [], paramCount: 0, startLine: startLine + 1, endLine: endLine + 1,
     length: endLine - startLine + 1,
     complexity: regexComplexity(lines.slice(startLine, endLine + 1).join("\n")),
   });
