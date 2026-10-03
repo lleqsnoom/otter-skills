@@ -1,7 +1,7 @@
 ---
 name: o-roast
-description: Roast any non-code artifact — an article, blog post, analysis, spec, epic, task file, research report or skill: fact-check its claims, find the weak ones, attack the reasoning, propose better angles, and score it on a weighted rubric a script computes. Use for "roast this", "poke holes in", "fact-check this", "is this argument sound", "critique or score this spec or task", or any request for a checked number and reason; the report names its reviewer. For source code use o-review.
-version: 1.6.1
+description: "Roast any non-code artifact — an article, blog post, analysis, spec, epic, task file, research report or skill: fact-check its claims, find the weak ones, attack the reasoning, propose better angles, and score it on a weighted rubric a script computes. Use for \"roast this\", \"poke holes in\", \"fact-check this\", \"is this argument sound\", \"critique or score this spec or task\", or any request for a checked number and reason; the report names its reviewer. For source code use o-review."
+version: 1.6.2
 author: Community
 tags: [review, critique, roast, research, article, analysis, epic, task, evaluation, scoring, fact-check]
 user-invocable: true

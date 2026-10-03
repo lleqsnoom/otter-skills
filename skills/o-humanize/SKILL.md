@@ -1,7 +1,7 @@
 ---
 name: o-humanize
-description: Make prose easier to read — an article, blog post, README, PR description, commit or user-facing message — at a B2 reading level: measure sentence length and complexity, cut noise, rewrite, then verify no fact, number or meaning was lost. Use when asked to humanize, simplify, plain-language or make friendlier a piece of text for people; code is not prose.
-version: 1.1.1
+description: "Make prose easier to read — an article, blog post, README, PR description, commit or user-facing message — at a B2 reading level: measure sentence length and complexity, cut noise, rewrite, then verify no fact, number or meaning was lost. Use when asked to humanize, simplify, plain-language or make friendlier a piece of text for people; code is not prose."
+version: 1.1.2
 author: Community
 tags: [writing, readability, simplification, plain-language, cefr, editing, prose]
 user-invocable: true

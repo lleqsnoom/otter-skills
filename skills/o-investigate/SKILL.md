@@ -1,7 +1,7 @@
 ---
 name: o-investigate
-description: Deep root cause analysis for a bug a quick look could not explain — flaky, intermittent, only under load, or regressed since some commit: ranked hypotheses from the evidence, tested with platform tools, git bisect and blame, eliminated until one cause remains, then a fix plan for o-fix. Use when asked why something is flaky or regressed, which commit broke it, or to dig deeper after debugging found nothing.
-version: 1.1.1
+description: "Deep root cause analysis for a bug a quick look could not explain — flaky, intermittent, only under load, or regressed since some commit: ranked hypotheses from the evidence, tested with platform tools, git bisect and blame, eliminated until one cause remains, then a fix plan for o-fix. Use when asked why something is flaky or regressed, which commit broke it, or to dig deeper after debugging found nothing."
+version: 1.1.2
 author: Community
 tags: [debugging, root-cause, hypothesis-testing, git-bisect, triage]
 user-invocable: true
