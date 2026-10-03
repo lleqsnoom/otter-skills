@@ -6,6 +6,58 @@ A suite of skills (`o-*`) for planning, building, reviewing and improving code, 
 `SKILL.md` with its scripts, references and evals — plus an MCP server (`otter-skills-mcp`) that
 exposes a project's `.o-skills` tasks, documents and code over stdio.
 
+## Why Otter
+
+**Your agent says "done". Otter checks.**
+
+40 skills that take a change from idea to merged PR — plan, build test-first, review, fix, commit — with scripts
+at the gates, so the work is measured instead of taken on the agent's word.
+
+### The pitch
+
+Coding agents are fast, confident, and they grade their own homework. When a test refuses to pass, the easy way to
+green is a skipped test, a looser threshold or an `@ts-ignore`. A skill made only of instructions never sees it.
+Otter ships the checks with the instructions:
+
+- **Gates are scripts, not promises.** A plan cannot hand off until its gate exits 0. A review measures the code
+  your change touched from its syntax tree. `o-floor` catches the cheap ways to lower the bar: a weakened
+  threshold, a silenced checker, a skipped test, a deleted assertion.
+- **One chain, idea to merge.** `o-plan → o-decompose → o-implement → o-review → o-fix → o-commit → o-release`,
+  each writing what the next one reads. Bugs get their own chain: `o-triage → o-debug → o-investigate`.
+- **Tested like software, because it is software.** 881 tests. 10 evals where Claude Code runs a skill on a sample
+  project and a script checks what it did. Routing measured on 259 queries. Tests, lint and the routing floor gate
+  every merge in CI.
+- **It learns from how you work.** `o-autoreflection` reads your sessions from 12 coding-agent CLIs, finds where
+  a skill caused friction, and proposes fixes. You pick them; each one is checked and rolled back if the check
+  fails.
+- **Small work stays small.** An XS task skips the heavy passes. The full loop is saved for work that earns it.
+
+### How it compares
+
+These projects are all good, and they solve different problems:
+
+| | What it is | Pick it when |
+|---|---|---|
+| **Otter Skills** | 40 skills, with scripts that gate and measure the work from plan to PR, plus debugging, research and writing | you want the agent's work checked by scripts, in one chain from idea to merge |
+| [Superpowers](https://github.com/obra/superpowers) | A lean methodology: about 15 skills that trigger on their own and steer brainstorm → plan → TDD → review | you want a proven workflow with almost no setup, on many different agents |
+| [Spec Kit](https://github.com/github/spec-kit) | GitHub's toolkit of structured processes — spec-driven development, bug fixing, idea assessment — with a `specify` CLI | your team works from specifications and wants GitHub's templates |
+| [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD) | Agile AI-driven development: briefs, specifications and architecture carried from idea to delivery | you want a full agile process around the code |
+| [Anthropic skills](https://github.com/anthropics/skills) | Anthropic's example skills and the document skills (docx, pdf, pptx, xlsx) | you need documents, or a reference for writing your own skills |
+
+### Try it on work you already have
+
+```
+/plugin marketplace add lleqsnoom/otter-skills
+/plugin install otter-skills@otter-skills
+```
+
+Then run `/otter-skills:o-review` on the branch you are on. It reviews only what you changed, and one run will
+tell you whether Otter earns a place in your workflow. Not sure where to start? Ask `/otter-skills:o-guide`.
+
+**Fair warning:** Otter is young and built Claude Code first. The scripts need Node 22+. The plugin's semantic
+search installs about 1.8 GB in the background the first time it starts. And Otter is opinionated: it would
+rather stop and ask than guess.
+
 ## Install
 
 Link the skills into your agents and register the MCP server:
@@ -33,7 +85,7 @@ The plugin registers three hooks (`hooks/hooks.json`):
 | Event | Script | Does |
 |---|---|---|
 | `SessionStart` | `session-start-summary.mjs` | prints one line on the last heal and the last background report, when there is one |
-| `PostToolUse` on a write | `review-plan-gate.mjs` | tells the agent when an `*-review-plan.md` is missing one of the five pass headings |
+| `PostToolUse` on a write | `review-plan-gate.mjs` | tells the agent when an `*-review-plan.md` is missing one of the six pass headings |
 | `Stop` | `background-reflection.mjs` | counts turns and runs autoreflection's report-only stage every N — only in a project that already keeps a `.o-skills/` tree |
 
 With `npm run install` instead, add the same entries to your Claude Code settings yourself, pointing at this
