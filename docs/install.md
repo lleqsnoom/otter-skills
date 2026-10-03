@@ -43,9 +43,29 @@ resolves to `{ "command": "otter-skills-mcp" }`.
 /plugin install otter-skills@otter-skills
 ```
 
-The plugin installs the skills, the loop commands (`/otter-skills:o-plan` and the others) and the hooks in
-`hooks/hooks.json`. It does not install the MCP server, which needs `npm install` in a checkout. Use one route per
-machine, not both.
+The plugin installs the skills, the loop commands (`/otter-skills:o-plan` and the others), the hooks in
+`hooks/hooks.json`, and the MCP server. The server's packages go into the plugin's data directory
+(`${CLAUDE_PLUGIN_DATA}`), which survives plugin updates, in two stages started by `scripts/mcp-plugin.mjs`:
+
+- the MCP SDK and zod (about 27 MB) before the server answers its first request, so the exact tools work within
+  seconds;
+- LanceDB and transformers.js (about 1.8 GB, mostly the embedding runtime) in the background, logged to
+  `index/install.log`. Until they land, the semantic tools say the index is unavailable.
+
+The first semantic search also downloads the embedding model (a few hundred MB, cached once per machine). Use one
+route per machine, not both.
+
+## Obsidian metadata
+
+Run artifacts start with a property block, and by default it carries what an Obsidian vault over `.o-skills/` uses:
+wikilinks between a run's artifacts, `topics`, tag notes under `.o-skills/tags/`, and `.base` files. A repo that does
+not use Obsidian turns those off with `.o-skills/config/vault.json`:
+
+```json
+{ "enabled": false }
+```
+
+The fields the scripts and the board read (`type`, `size`, `complexity`, the status stamps) are written either way.
 
 ## Hooks with `npm run install`
 

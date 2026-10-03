@@ -1,9 +1,10 @@
 {
   "skill": "o-brief",
   "expected_behavior": [
-    "The conversation is compacted into a handoff brief of exactly the seven named sections — Do next, Where this stands, Settled, Open, Suggested skills, Sources — rather than a summary that leaves the next agent to re-derive state.",
+    "The handoff brief has exactly the six named sections — Do next, Where this stands, Settled, Open, Suggested skills, Sources — rather than a summary that leaves the next agent to re-derive state.",
     "Settled decisions each carry their one-line reason, so the next agent does not re-litigate them.",
-    "The brief points at the artifacts that already hold detail (specs, plans, task files, ADRs, commits) instead of duplicating their content."
+    "The brief points at the artifacts that already hold detail (specs, plans, task files, ADRs, commits) instead of duplicating their content.",
+    "The brief is created by save-brief.mjs at E<nn>-brief.md, and the next session's start names it."
   ],
   "source": [
     "What the brief holds"

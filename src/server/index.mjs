@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-import * as lancedb from '@lancedb/lancedb';
+import { importOptional } from './optional.mjs';
 
 import { isDocumentPath, listDocuments } from './docs.mjs';
 import { EMBEDDING_DIMENSIONS, embed } from './embed.mjs';
@@ -276,7 +276,7 @@ const writeStamp = (db, counts, stamp) => replaceRows({ db, name: 'board', rows:
 export async function syncProject(project) {
   try {
     const stamp = stampOf(project.repoPath);
-    const db = await lancedb.connect(databasePath(project.root));
+    const db = await (await importOptional('@lancedb/lancedb')).connect(databasePath(project.root));
     const stored = (await rowsOf(db, 'board')).find((row) => row.id === STAMP_ROW);
     if (stored?.stamp === stamp) return { ok: true, rebuilt: false, stamp };
 
@@ -302,7 +302,7 @@ export async function indexState(project) {
   if (!existsSync(databasePath(project.root))) return { present: false };
 
   try {
-    const db = await lancedb.connect(databasePath(project.root));
+    const db = await (await importOptional('@lancedb/lancedb')).connect(databasePath(project.root));
     const rows = {};
     for (const name of TABLES) {
       const table = await tableOf(db, name);
@@ -365,7 +365,7 @@ export async function searchProject({ project, vector, tables = CONTENT_TABLES, 
     const synced = await syncProject(project);
     if (!synced.ok) return synced;
 
-    const db = await lancedb.connect(databasePath(project.root));
+    const db = await (await importOptional('@lancedb/lancedb')).connect(databasePath(project.root));
     const results = await rankedNear(db, vector, { tables, limit });
 
     return { ok: true, index: { rebuilt: synced.rebuilt, stamp: synced.stamp }, results };
@@ -387,7 +387,7 @@ export async function relatedProject({ project, relPath, tables = CONTENT_TABLES
     const synced = await syncProject(project);
     if (!synced.ok) return synced;
 
-    const db = await lancedb.connect(databasePath(project.root));
+    const db = await (await importOptional('@lancedb/lancedb')).connect(databasePath(project.root));
     const found = await rowFor(db, relPath, tables);
     if (!found) return { ok: false, reason: `not in the index: ${relPath}` };
 
@@ -418,7 +418,7 @@ export async function relatedProject({ project, relPath, tables = CONTENT_TABLES
  */
 export async function writeDrift({ project, docPath, report }) {
   try {
-    const db = await lancedb.connect(databasePath(project.root));
+    const db = await (await importOptional('@lancedb/lancedb')).connect(databasePath(project.root));
 
     const rows = report.claims.map((claim, index) => ({
       id: `drift:${docPath}:${index}`,

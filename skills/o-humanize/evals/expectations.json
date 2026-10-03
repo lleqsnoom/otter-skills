@@ -5,7 +5,8 @@
     "Every fact, number, name, URL and code block survives the rewrite unchanged; only the language around them is simplified.",
     "The rewrite adds no new filler, and phrases that carry no meaning are removed.",
     "Headings, lists and markdown formatting survive the rewrite.",
-    "By default the simplified text and the report are shown to the user; the original file is overwritten only when asked."
+    "By default the simplified text and the report are shown to the user; the original file is overwritten only when asked.",
+    "A term the reader knows is kept rather than swapped for a vaguer word: the original's repeated terms and any named with --domain-terms score as ordinary words."
   ],
   "source": [
     "o-humanize",

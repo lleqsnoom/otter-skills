@@ -31,6 +31,7 @@ const TOP_LEVEL_TYPES = [
   [/^index\.md$/, 'run'],
   [/^E\d+-(?:plan|epic)\.md$/, 'plan'],
   [/^E\d+-triage\.md$/, 'triage'],
+  [/^E\d+-intake\.md$/, 'intake'],
   [/^E\d+-(?:critique|review[\w-]*)\.md$/, 'review'],
   [/^E\d+-analysis\.md$/, 'analysis'],
   [/^E\d+-debug\.md$/, 'debug'],
@@ -67,7 +68,7 @@ export function noteLabel(note) {
   return name.replace(/^E\d+-/, '').replace(/[-_]/g, ' ');
 }
 
-const FIXED_TITLES = { plan: 'Plan', analysis: 'Analysis', triage: 'Triage', debug: 'Debug', fix: 'Fix plan', summary: 'Summary' };
+const FIXED_TITLES = { plan: 'Plan', analysis: 'Analysis', triage: 'Triage', intake: 'Intake', debug: 'Debug', fix: 'Fix plan', summary: 'Summary' };
 const RESEARCH_TITLES = { 'research.md': 'Research', 'final_report.md': 'Research report' };
 
 /** This critique's place among the run's critiques, counting from 1 in the order they were numbered. */
@@ -188,7 +189,10 @@ export function backfillText(root, relPath, text) {
   if (!type) return { text, added: [] };
   const { properties } = splitProperties(text);
   const present = new Set(properties.map((property) => property.key));
-  const missing = derived(root, relPath, text, type, properties).filter(([key]) => !present.has(key));
+  const vault = vaultEnabled(root);
+  const missing = derived(root, relPath, text, type, properties)
+    .filter(([key]) => !present.has(key))
+    .filter(([, value]) => vault || !value.includes('[['));
   if (!missing.length) return { text, added: [] };
   const lines = missing.map(([key, value]) => (value.startsWith('\n') ? `${key}:${value}` : `${key}: ${value}`));
   const withBlock = properties.length
@@ -208,6 +212,18 @@ function linkedTags(texts) {
     .flatMap((property) => property.values.map((value) => parseWikilink(value)?.path))
     .filter((target) => /^tags\/(?:domain|area)\/[^/]+\.md$/.test(target ?? ''));
   return [...new Set(paths)];
+}
+
+/**
+ * Obsidian's links, topics, hub notes and bases are written unless `.o-skills/config/vault.json` says
+ * `{ "enabled": false }`; the fields the board reads (type, size, done) are filled either way.
+ */
+export function vaultEnabled(root) {
+  try {
+    return JSON.parse(readFileSync(join(root, 'config', 'vault.json'), 'utf8')).enabled !== false;
+  } catch {
+    return true;
+  }
 }
 
 /** The files a vault needs and this one lacks: a hub for every run, the bases at its root, and every linked tag note. */
@@ -315,13 +331,15 @@ function main() {
   const results = files.map((relPath) => {
     const filled = backfillText(root, relPath, readFileSync(join(root, relPath), 'utf8'));
     const names = artifactType(relPath) === 'run' ? [] : (domains[relPath.split('/')[1]] ?? []);
-    const tagged = withDomains(filled.text, names);
+    const tagged = vaultEnabled(root) ? withDomains(filled.text, names) : { text: filled.text, added: [] };
     return { relPath, text: tagged.text, added: [...filled.added, ...tagged.added] };
   });
   const changed = results
     .filter((result) => result.added.length)
     .map((result) => ({ ...result, note: `+ ${result.added.join(', ')}` }));
-  const created = missingFiles(root, linkedTags(results.map((result) => result.text))).map((file) => ({ ...file, note: 'created' }));
+  const created = vaultEnabled(root)
+    ? missingFiles(root, linkedTags(results.map((result) => result.text))).map((file) => ({ ...file, note: 'created' }))
+    : [];
   apply(root, [...changed, ...created], args.dryRun);
   const summary = args.dryRun
     ? `Would change ${changed.length} of ${files.length} files and create ${created.length}`

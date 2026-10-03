@@ -22,8 +22,9 @@ Or install the suite as a Claude Code plugin (no local linking):
 ```
 
 The plugin brings the skills, the four loop commands and the hooks; plugin skills are namespaced, so `o-plan` runs
-as `/otter-skills:o-plan`. It does not bring the MCP server, which needs this checkout's dependencies: for that,
-use `npm run install`. Pick one route per machine — both at once installs every skill twice.
+as `/otter-skills:o-plan`. It also starts the MCP server, installing its packages into the plugin's data
+directory on first start — the exact tools at once, the semantic index (about 1.8 GB) in the background; see
+[docs/install.md](docs/install.md). Pick one route per machine — both at once installs every skill twice.
 
 ### Hooks
 
@@ -42,7 +43,7 @@ checkout's `hooks/` (see [docs/install.md](docs/install.md)).
 
 | Skill | What it does | Say when |
 |---|---|---|
-| `o-plan` | Three approaches → a layered spec, gated on your approval | "plan this feature", "what's the spec" |
+| `o-plan` | The approaches weighed → a layered spec, gated on your approval | "plan this feature", "what's the spec" |
 | `o-decompose` | Cut an approved plan into triaged task files | "break this down into tasks" |
 | `o-implement` | Build tasks test-first, review-clean, one commit each | "implement the tasks" |
 | `o-fix` | Resolve a review's fix plan | "fix these findings" |
@@ -52,7 +53,6 @@ checkout's `hooks/` (see [docs/install.md](docs/install.md)).
 | `o-triage` | Structured intake for a bug or request | "a bug came in" |
 | `o-investigate` | Root cause by ranked, tested hypotheses | "why is this failing" |
 | `o-debug` | Reproduce, fix the root cause, verify | "debug this" |
-| `o-reproduce` | Generate a minimal repro case | "make a repro" |
 | `o-verify` | Mutation and property tests after a fix | "verify the fix" |
 | `o-differential` | Review the diff hunk-by-hunk for regression risk | "what could this break" |
 | `o-second-opinion` | Fresh-context re-review of a change | "second opinion before shipping" |
@@ -61,19 +61,18 @@ checkout's `hooks/` (see [docs/install.md](docs/install.md)).
 | `o-floor` | Declare and enforce the quality floor | "set or check the quality bar" |
 | `o-unbloat` | Cut code to what the task needs | "unbloat this" |
 | `o-comments` | Comment hygiene: add why, remove noise | "clean up comments" |
-| `o-refactor` | Refactoring suggestions with before/after | "suggest refactors" |
+| `o-refactor` | Measure a module and route each refactor to the skill that owns it | "what should I refactor?" |
 | `o-skill-lint` | Validate the repo's own skills | "lint the skills" |
 | `o-test-gen` | Generate test stubs from code | "scaffold tests" |
 | `o-ui` | Design and audit UIs | "audit this screen" |
 | `o-browser` | Open the app in a real browser with devtools MCP | "open the app" |
 | `o-parallel` | Run independent tasks in isolated worktrees | "parallelize these tasks" |
-| `o-analyze` | Interactive analysis → thesis and three options | "analyze this" |
-| `o-research` | Metric-driven iteration toward a number | "research or tune X" |
+| `o-analyze` | Interactive analysis → thesis and the options weighed | "analyze this" |
+| `o-research` | Research a topic toward cited coverage of its questions | "research X with sources" |
+| `o-tune` | Move a number toward a target, one measured change at a time | "optimize X until Y" |
 | `o-roast` | Critique a non-code artifact, scored by a script | "roast this" |
 | `o-humanize` | Simplify text to a B2 reading level | "simplify this text" |
 | `o-essay` | Write an article on a fixed critique loop | "write an article" |
-| `o-api-draft` | Draft an API design from requirements | "draft the API" |
-| `o-api-swagger` | API design draft → OpenAPI YAML | "make the OpenAPI" |
 | `o-migrate` | Framework or dependency migration plan | "migrate to X" |
 | `o-rollback` | Revert with multi-step confirmation | "roll this back" |
 | `o-search` | Find code, tasks and docs by identifier or meaning, across repos | "where is this defined" |

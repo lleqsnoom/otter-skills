@@ -1,0 +1,16 @@
+{
+  "skill": "o-comments",
+  "queries": [
+    { "query": "clean up the noisy comments in this file", "should_trigger": true },
+    { "query": "remove the comments that just restate the code", "should_trigger": true },
+    { "query": "add comments only where the code needs a why", "should_trigger": true },
+    { "query": "this function is over-commented, fix it", "should_trigger": true },
+    { "query": "which of these comments are worth keeping?", "should_trigger": true },
+    { "query": "the comments here are stale and obvious, tidy them", "should_trigger": true },
+    { "query": "write documentation for the API", "should_trigger": false },
+    { "query": "simplify this paragraph of prose", "should_trigger": false },
+    { "query": "review the code for bugs", "should_trigger": false },
+    { "query": "remove dead code", "should_trigger": false },
+    { "query": "write the README", "should_trigger": false }
+  ]
+}

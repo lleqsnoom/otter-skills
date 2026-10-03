@@ -1,7 +1,7 @@
 ---
 name: o-comments
 description: Comment management — add only precise, meaningful comments and remove noisy or obvious ones; refactor overly commented code into self-explanatory functions instead of describing it. Use when asked to fix noisy, obvious or missing comments; runs as a pass inside o-review and o-implement.
-version: 1.1.2
+version: 1.2.0
 author: Community
 tags: [comments, code-cleaning, self-documenting-code, readability, refactoring]
 user-invocable: true
@@ -42,7 +42,22 @@ If a comment restates the code, describes *what* the code does, or paraphrases t
 2. **Pass 1 — remove noise**: delete every comment that restates the code or states the obvious.
 3. **Pass 2 — refactor instead of explain**: for each comment block longer than ~2 lines that explains *what* a chunk does, extract that chunk into a small, descriptively named function and drop the comment.
 4. **Pass 3 — keep and sharpen the *why***: rewrite remaining comments to be precise and non-obvious, or delete them if they cannot be made to earn their place.
-5. **Report** what you removed, what you refactored, and what you kept (and why it stayed).
+5. **Report** what you removed, what you refactored, and what you kept (and why it stayed), led by the counts —
+   `removed N · refactored into functions M · kept K · added J` — so the result can be checked against the diff
+   instead of taken on your word. The removed count is the number of comment lines `git diff` shows deleted.
+
+## Never Cut
+
+A comment that a tool reads, or a law requires, is not commentary. Leave these alone whatever the rules above say:
+
+- **Directives** — `eslint-disable…`, `@ts-expect-error`, `@ts-ignore`, `# noqa`, `# type: ignore`,
+  `// prettier-ignore`, `//go:build`, `#pragma`, `// @ts-check`, `/* istanbul ignore */`. Removing one changes
+  what a linter or compiler does; whether it should exist is `o-floor`'s question, not this skill's.
+- **License and copyright headers.**
+- **Shebangs, encoding lines and magic comments** (`#!/usr/bin/env node`, `# -*- coding: utf-8 -*-`,
+  `// @flow`, `"use client"`).
+- **Doc comments a tool consumes** — JSDoc or docstrings on a public API that generate types, API docs or editor
+  hints. Trim their prose; keep the tags.
 
 ## Rules
 

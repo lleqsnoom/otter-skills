@@ -1,0 +1,16 @@
+{
+  "skill": "o-commit",
+  "queries": [
+    { "query": "commit this", "should_trigger": true },
+    { "query": "commit the staged changes with a good message", "should_trigger": true },
+    { "query": "write a conventional commit message for these changes", "should_trigger": true },
+    { "query": "land this in git", "should_trigger": true },
+    { "query": "make the commit, one line, conventional", "should_trigger": true },
+    { "query": "commit what I have", "should_trigger": true },
+    { "query": "write the PR description", "should_trigger": false },
+    { "query": "revert the last commit", "should_trigger": false },
+    { "query": "review the changes before committing", "should_trigger": false },
+    { "query": "open a pull request", "should_trigger": false },
+    { "query": "squash the branch history", "should_trigger": false }
+  ]
+}

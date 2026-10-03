@@ -1,7 +1,7 @@
 ---
 name: o-roast
-description: Roast any non-code artifact — articles, analyses, specs, epics, tasks, research, or another skill — where the reviewer fact-checks the claims, attacks the reasoning, proposes better angles, and scores it on a weighted, anchored rubric computed by a script. Use for "roast this", "poke holes in", "review this spec/skill/analysis", or any request for a checked number and reason; the report names its reviewer (self or independent). For source code use o-review instead.
-version: 1.5.2
+description: Roast any non-code artifact — an article, blog post, analysis, spec, epic, task file, research report or skill: fact-check its claims, find the weak ones, attack the reasoning, propose better angles, and score it on a weighted rubric a script computes. Use for "roast this", "poke holes in", "fact-check this", "is this argument sound", "critique or score this spec or task", or any request for a checked number and reason; the report names its reviewer. For source code use o-review.
+version: 1.6.0
 author: Community
 tags: [review, critique, roast, research, article, analysis, epic, task, evaluation, scoring, fact-check]
 user-invocable: true
@@ -19,7 +19,7 @@ Use this for prose and planning artifacts. For **source code**, use `o-review` i
 
 ## When to use
 
-- "Roast this", "poke holes in this", "review this spec", "second opinion on this".
+- "Roast this", "poke holes in this", "review this spec", "score this document".
 - An article, analysis, spec, epic, task, research report, or **another skill** (`SKILL.md`).
 - You need a critical second opinion before publishing or committing to a plan.
 - You want a *number* and a *reason* — not "looks good".
@@ -52,6 +52,14 @@ Not for source code — use `o-review` there.
    codex exec -m <model> "Use the o-roast skill on <path>; save with --reviewer independent --model <model> --author <author>"
    opencode run -m <provider/model> "..."     # or crush run -m <provider/model> "..."
    ```
+
+## Quick or full
+
+A **full roast** runs every step below. A **quick roast** — `save-report.mjs --quick` — skips calibration (step 4's
+blind case) and the creative re-think (step 5), and keeps everything that makes a score checkable: the quoted
+claims and their verification, the scored rubric, one finding per dimension, and the proposals. Use quick for "poke
+holes in this" and for the drafts inside a loop (o-essay's middle iterations); use full for a document that will be
+acted on, and for any roast whose number someone will compare with another.
 
 ## Procedure
 
@@ -127,8 +135,8 @@ node $X/score.mjs --input scores.json --report
 
 **Calibrate first, blind.** Every profile has two cases, a weak one and a strong one. List yours,
 pick one whose answer this session has not seen, read its artifact, and score it before you score
-your own. Never open `evals/calibration-answers.json`: it is the answer key, and
-`--calibrate` reads it for you. A calibration done after reading it measures nothing. Two ways it
+your own. Never open the answer key (`evals/o-roast/calibration-answers.json` at the repository root, outside this
+skill): `--calibrate` reads it for you. A calibration done after reading it measures nothing. Two ways it
 leaks by accident: a search over the repo (keep it out: `grep --exclude=calibration-answers.json`),
 and an earlier roast's `**Calibration:**` line, which holds another reviewer's scores for that case.
 Calibrate before you open an earlier report.
@@ -264,7 +272,7 @@ can check stay the reviewer's honesty: that a URL says what its row claims, and 
 | It is a plan or task that failed review | `o-plan` (the layers) / `o-decompose` (the tasks) |
 | It is a skill that failed review | edit the `SKILL.md`, then `o-skill-lint` (frontmatter, refs, README) |
 | You need deeper root-cause work on a claim | `o-investigate` |
-| You need to reproduce a failing claim | `o-reproduce` |
+| You need to reproduce a failing claim | `o-debug` (its reproduction step) |
 
 ## Files
 
@@ -273,5 +281,5 @@ can check stay the reviewer's honesty: that a URL says what its row claims, and 
 - `scripts/check-report.mjs` — the gate: `--rules` lists what it checks, `--calibrate <case>` compares a roast with a reference.
 - `references/rubric.md` — the anchored 1–5 definitions and profile map.
 - `references/example-roast.md` — a worked roast of a calibration case, and a report that passes the gate.
-- `evals/calibration.json` — frozen artifacts (`evals/calibration/`: a weak and a strong case for each of the eight profiles) to measure whether a roast agrees with their reference scores, which live apart in `evals/calibration-answers.json` so a case can be scored blind. The references are the skill author's. A second model family (DeepSeek) scored all 16 blind, and 147 of its 148 scores are within 1 of them (`score.mjs --agreement` prints the count without showing any score). The one disagreement is kept in `disputes` with its reason. That is agreement between two models, not a human standard.
+- `evals/calibration.json` — frozen artifacts (`evals/calibration/`: a weak and a strong case for each of the eight profiles) to measure whether a roast agrees with their reference scores, which live apart in the repository's `evals/o-roast/calibration-answers.json`, outside the skill, so a case can be scored blind. The references are the skill author's. A second model family (DeepSeek) scored all 16 blind, and 147 of its 148 scores are within 1 of them (`score.mjs --agreement` prints the count without showing any score). The one disagreement is kept in `disputes` with its reason. That is agreement between two models, not a human standard.
 - `evals/triggers.json` — trigger and near-miss queries for description tuning.

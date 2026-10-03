@@ -1,7 +1,7 @@
 {
   "skill": "o-ui",
   "expected_behavior": [
-    "Each screen has one primary action, and it is the only element that uses size, weight and colour all at once.",
+    "Each screen has one primary action, and it is the only action that uses size, weight and colour all at once; headings are not counted.",
     "Text and forms are left-aligned on one edge; body text is never centred or justified.",
     "Colour comes last: near-black text on near-white, one grey for secondary text, never pure black on pure white.",
     "A single accent colour marks only what the user can act on — the primary button, links, focus ring, active state.",

@@ -29,10 +29,47 @@ const IMPORT_SPECIFIERS = [/from\s+['"]([^'"]+)['"]/g, /import\(\s*['"]([^'"]+)[
 
 const isCode = (rel) => CODE_EXTENSIONS.has(path.extname(rel));
 
-/** The relative import specifiers a file names, without duplicates. */
-export function specifiersIn(text) {
+/** The import specifiers a file names, without duplicates: relative ones, and those an alias maps into the tree. */
+export function specifiersIn(text, aliases = []) {
   const found = IMPORT_SPECIFIERS.flatMap((pattern) => [...text.matchAll(pattern)].map((match) => match[1]));
-  return [...new Set(found)].filter((spec) => spec.startsWith("./") || spec.startsWith("../"));
+  return [...new Set(found)].filter((spec) => spec.startsWith("./") || spec.startsWith("../") || aliases.some((alias) => spec.startsWith(alias.prefix)));
+}
+
+/** JSON with the comments and trailing commas tsconfig allows. */
+function readLenientJson(file) {
+  try {
+    const text = fs.readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'])\/\/.*$/gm, "$1").replace(/,(\s*[}\]])/g, "$1");
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Path aliases from tsconfig.json or jsconfig.json (`"@domain/*": ["src/domain/*"]`), as prefix → root-relative
+ * target. An alias import is invisible to a relative-only scan, which is how a declaration ends up missing the
+ * directions a TypeScript project actually takes.
+ */
+export function readAliases(root) {
+  for (const name of ["tsconfig.json", "jsconfig.json"]) {
+    const config = readLenientJson(path.join(root, name));
+    const paths = config?.compilerOptions?.paths;
+    if (!paths) continue;
+    const base = config.compilerOptions.baseUrl ?? ".";
+    return Object.entries(paths).flatMap(([key, targets]) => {
+      const [target] = Array.isArray(targets) ? targets : [];
+      if (!target) return [];
+      return [{ prefix: key.replace(/\*$/, ""), target: path.posix.normalize(path.posix.join(base, target.replace(/\*$/, ""))) }];
+    });
+  }
+  return [];
+}
+
+/** The root-relative path a specifier points at, through an alias when one matches. */
+function resolveSpecifier(root, rel, spec, aliases) {
+  const alias = aliases.find((entry) => spec.startsWith(entry.prefix));
+  if (alias) return path.posix.join(alias.target, spec.slice(alias.prefix.length));
+  return path.relative(root, path.resolve(root, path.dirname(rel), spec)).split(path.sep).join("/");
 }
 
 export function layerOf(rel) {
@@ -52,14 +89,21 @@ export function readLayers(root, exclude) {
 }
 
 /** The other layers a file's relative imports reach, resolved rather than guessed at. */
-export function outgoingLayers(root, rel) {
+export function outgoingLayers(root, rel, aliases = []) {
   const from = layerOf(rel);
   const text = fs.readFileSync(path.join(root, rel), "utf8");
-  const reached = specifiersIn(text)
-    .map((spec) => layerOf(path.relative(root, path.resolve(root, path.dirname(rel), spec)).split(path.sep).join("/")))
+  const reached = specifiersIn(text, aliases)
+    .map((spec) => layerOf(resolveSpecifier(root, rel, spec, aliases)))
     .filter((layer) => layer !== null && layer !== from);
   return [...new Set(reached)];
 }
+
+/**
+ * A marker that matches an import of a path, not any string that happens to start with it: `from "../src/a"`,
+ * `import("../src/a")`, `require("../src/a")` or a bare `import "../src/a"`. A quoted path in a fixture or a log
+ * line is data, and reading it as an import reported every test that names a file.
+ */
+export const importMarker = (pathPattern) => `(?:\\bfrom\\s+|\\bimport\\s*\\(\\s*|\\brequire\\s*\\(\\s*|^\\s*import\\s+)['"]${pathPattern}`;
 
 /**
  * The declaration the tree already keeps: one layer per code directory, each allowed the directions its
@@ -68,11 +112,14 @@ export function outgoingLayers(root, rel) {
 export function proposeDeclaration({ root, exclude = [] }) {
   const rootAbs = path.resolve(root);
   const byLayer = readLayers(rootAbs, [...DEFAULT_EXCLUDE, ...exclude]);
+  const aliases = readAliases(rootAbs);
+  const escape = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
   const layers = {};
   const allowed = {};
   for (const layer of [...byLayer.keys()].sort()) {
-    layers[layer] = { roots: [layer], import_markers: [`['"](?:\\.\\.?/)*${layer}/`] };
-    allowed[layer] = [...new Set(byLayer.get(layer).flatMap((rel) => outgoingLayers(rootAbs, rel)))].sort();
+    const aliasMarkers = aliases.filter((alias) => layerOf(`${alias.target}x`) === layer).map((alias) => importMarker(escape(alias.prefix)));
+    layers[layer] = { roots: [layer], import_markers: [importMarker(`(?:\\.\\.?/)+${layer}/`), ...aliasMarkers] };
+    allowed[layer] = [...new Set(byLayer.get(layer).flatMap((rel) => outgoingLayers(rootAbs, rel, aliases)))].sort();
   }
   return {
     note: "Proposed from the tree as it is: these directions are the ones a static relative import already takes. An import built at run time (path.join with __dirname), an absolute specifier and a re-export are all invisible here, so an empty list means nothing was observed rather than nothing is imported: widen each entry to what the layer may do before ratifying, and treat a later change to this file as a decision rather than an edit. Once it is ratified, check that the commit takes: `.o-skills/` is ignored in some repos, and `git check-ignore -v .o-skills/config/arch.json` names the rule that does it, so force-add the file or keep the declaration where the repo already tracks its configuration.",

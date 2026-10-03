@@ -5,7 +5,9 @@
  * repository root, so Claude Code finds the parts in their default places — every skill under `skills/`, the loop
  * commands under `commands/`, and the hooks in `hooks/hooks.json`. A component field in the entry replaces or
  * breaks those defaults (`"hooks": "./hooks"` is a directory, which the validator rejects), so the entry carries
- * none. Each hook command must name a script that exists, since nothing else runs them before a user does.
+ * none — except `mcpServers`, which has no default to break: its default home, a root `.mcp.json`, would also be
+ * this checkout's own project config, registering a server whose `${CLAUDE_PLUGIN_ROOT}` nothing expands. Each hook
+ * command must name a script that exists, since nothing else runs them before a user does.
  */
 
 const { describe, it } = require("node:test");
@@ -15,7 +17,7 @@ const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
 const MARKETPLACE = path.join(ROOT, ".claude-plugin", "marketplace.json");
-const COMPONENT_FIELDS = ["skills", "commands", "agents", "hooks", "mcpServers", "outputStyles"];
+const COMPONENT_FIELDS = ["skills", "commands", "agents", "hooks", "outputStyles"];
 
 const skillDirs = (root) =>
   fs
@@ -42,6 +44,15 @@ describe("plugin marketplace", () => {
     assert.equal(path.resolve(pluginRoot()), path.resolve(ROOT), "the source is the repository root");
     assert.doesNotMatch(plugin.source, /\.\./, "a source with .. fails validation");
     assert.deepEqual(COMPONENT_FIELDS.filter((field) => field in plugin), [], "component fields in the entry");
+  });
+
+  it("starts the MCP server through the plugin launcher, with its data directory, and keeps the root free of .mcp.json", () => {
+    const [plugin] = readMarketplace().plugins;
+    assert.deepEqual(plugin.mcpServers, {
+      "otter-skills": { command: "node", args: ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp-plugin.mjs", "${CLAUDE_PLUGIN_DATA}"] },
+    });
+    assert.ok(fs.existsSync(path.join(ROOT, "scripts", "mcp-plugin.mjs")));
+    assert.equal(fs.existsSync(path.join(ROOT, ".mcp.json")), false);
   });
 
   it("finds every skill in the default skills/ directory", () => {

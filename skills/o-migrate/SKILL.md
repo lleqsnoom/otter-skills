@@ -1,7 +1,7 @@
 ---
 name: o-migrate
 description: Plan a framework or dependency upgrade — inventory declared and installed versions, read each crossed major's official upgrade guide, list every breaking change with its URL and where the project uses it, and order the steps one major at a time. Use when asked to upgrade, bump or migrate a package or framework (Express 4 → 5, React 18 → 19).
-version: 2.0.0
+version: 2.1.0
 author: Community
 tags: [migration, upgrade, dependency-management, framework-migration, version-upgrade]
 user-invocable: true
@@ -17,21 +17,22 @@ names that page by URL. A change you cannot source is not in the plan — say it
 
 ## 1. Inventory — what the project actually runs
 
-From the project root (npm projects):
+From the project root:
 
 ```bash
 node <skill>/scripts/analyze.mjs --target express@5 [--output <run folder>/E<nn>-migration-plan.md]
-node <skill>/scripts/analyze.mjs --all        # every declared dependency, with its installed version
+node <skill>/scripts/analyze.mjs --target django@latest --online   # ask the registry for the latest version
+node <skill>/scripts/analyze.mjs --all [--online]                  # every declared dependency
 ```
 
-The script reads `package.json`, `node_modules` and `package-lock.json`, and prints JSON:
-`inventory[]` (`package`, `declared`, `installed`, `from`, `target`, `majorsCrossed`) and `plan[]` — one step per
-major crossed, each with `source: null` and an empty `changes` list for you to fill. `problems[]` says what it
-could not decide: a target such as `latest` (run `npm view <package> version` and pass the number), or a package
-the project does not use. To see which packages are behind, run `npm outdated --json`.
-
-For another ecosystem (pip, cargo, go modules, Maven), take the same inventory with its own tools: the declared
-constraint, the locked version, the target, the majors crossed.
+It reads npm (`package.json`, `node_modules`, `package-lock.json`), Python (`requirements.txt`,
+`pyproject.toml` with its extras, dependency groups and Poetry groups, `poetry.lock` / `uv.lock`), Cargo
+(`Cargo.toml` and every workspace member's, `Cargo.lock`) and Go (`go.mod`), and prints
+JSON: `inventory[]` (`ecosystem`, `name`, `declared`, `installed`, `from`, `target`, `majorsCrossed`, and with
+`--online` the `latest` version and the `links` where its changelog lives) and `plan[]` — one step per major
+crossed, each with `source: null` and an empty `changes` list for you to fill. `problems[]` says what it could not
+decide: a target such as `latest` without `--online`, a registry that could not be reached, or a package the
+project does not use. Other ecosystems (Maven, NuGet) get the same inventory by hand.
 
 ## 2. Sources — one official guide per major crossed
 

@@ -23,7 +23,7 @@ export const GRAPH = {
     { from: "thesis", to: "mechanical_check", guards: ["evidence_cited"] },
     { from: "mechanical_check", to: "confidence_gate", guards: ["check_recorded"] },
     { from: "confidence_gate", to: "clarify", guards: [] },
-    { from: "confidence_gate", to: "propose", guards: ["confidence_ok", "three_options"] },
+    { from: "confidence_gate", to: "propose", guards: ["confidence_ok", "options_weighed"] },
     { from: "propose", to: "route", guards: ["decision_made"] },
     ...ROUTES.map((to) => ({ from: "route", to, guards: ["route_chosen"] })),
     ...ABANDON_EDGES,
@@ -171,11 +171,20 @@ export function computeGuards(state, { reportText = "" } = {}) {
     evidence_cited: gate(cited, ">=1 cited evidence", state.evidence.length),
     check_recorded: gate(checkRecorded, "run or not-run with a reason", check.status),
     confidence_ok: gate(["high", "medium"].includes(state.confidence), "high or medium", state.confidence),
+    options_weighed: optionsGate(state),
+    // A run started before the gate was relaxed carries this name in its stored graph, and keeps its old meaning.
     three_options: gate(state.options.length >= 3, 3, state.options.length),
     decision_made: gate(state.decision !== null, "a decision", state.decision ? "recorded" : "none"),
     route_chosen: gate(state.route !== null, "a route", state.route || "none"),
     report_written: gate(Boolean(reportText.trim()), "a non-empty analysis", reportText.trim() ? "written" : "empty"),
   };
+}
+
+/** Solutions weighed: two or more, or a single one recorded with the reason no alternative is real. */
+function optionsGate(state) {
+  const options = state.options.length;
+  const justified = options === 1 && state.events.some((event) => event.kind === "option" && event.reason);
+  return gate(options >= 2 || justified, ">=2 options, or 1 with --reason", options === 1 && !justified ? "1 option, no reason" : `${options} option(s)`);
 }
 
 function answerQuestion(list, target, answer) {
@@ -284,7 +293,20 @@ function writeMemory(dir, state, fromIndex) {
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
   const at = parts.lastIndexOf(".o-skills");
-  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+  if (at === -1 || !vaultEnabled(parts.slice(0, at + 1).join(path.sep))) return null;
+  return parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/**
+ * Obsidian's links, topics and tag notes are written unless the repo turns them off with
+ * `.o-skills/config/vault.json` → `{ "enabled": false }`. Fields the scripts read (type, size, status) stay either way.
+ */
+function vaultEnabled(oSkillsRoot) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(oSkillsRoot, "config", "vault.json"), "utf8")).enabled !== false;
+  } catch {
+    return true;
+  }
 }
 
 /** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
@@ -304,7 +326,7 @@ function propertyBlock(type, title, runDir, links = {}, topics = []) {
     `title: ${JSON.stringify(title)}`,
     ...(run ? [`run: "[[${run}]]"`] : []),
     ...named.map(([key, note]) => `${key}: "[[${note}]]"`),
-    ...(topics.length ? ["topics:", ...topics.map((topic) => `  - "[[tags/${topic}]]"`)] : []),
+    ...(topics.length && run ? ["topics:", ...topics.map((topic) => `  - "[[tags/${topic}]]"`)] : []),
     "---",
     "",
   ].join("\n");
@@ -355,6 +377,7 @@ function ensureTagNotes(runDir, topics) {
   const at = parts.lastIndexOf(".o-skills");
   if (at === -1 || !topics.length) return;
   const vault = parts.slice(0, at + 1).join(path.sep);
+  if (!vaultEnabled(vault)) return;
   const files = [["tag.base", TAG_BASE], ...topics.map((topic) => [`tags/${topic}.md`, tagNote(topic)])];
   for (const [rel, text] of files.filter(([rel]) => !fs.existsSync(path.join(vault, rel)))) {
     fs.mkdirSync(path.dirname(path.join(vault, rel)), { recursive: true });
@@ -400,6 +423,7 @@ function usage() {
     "  node scenario.mjs status --dir <dir>",
     "  node scenario.mjs record --dir <dir> --event <kind> [--data <text>] [--target <id>] [--status <s>] [--reason <r>]",
     "  node scenario.mjs record --dir <dir> --to <node>",
+    "  node scenario.mjs record --dir <dir> --events <file.jsonl>   # several events and moves in one call",
     "  node scenario.mjs guard  --dir <dir> --gate <name>",
     "  node scenario.mjs verify --dir <dir>   # exit 0 iff the stop is justified",
     "",
@@ -424,8 +448,32 @@ function commandStart(args) {
   return { dir, state, node: state.node };
 }
 
+/** Several events in one call: a JSON-lines file of `{ "event", "data", "target", "status", "reason" }` or `{ "to" }`. */
+function commandRecordMany(args) {
+  const lines = fs.readFileSync(args.events, "utf8").split("\n").map((line) => line.trim()).filter(Boolean);
+  const before = loadState(args.dir);
+  let state = before;
+  lines.forEach((line, index) => {
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      throw new Error(`${args.events}:${index + 1} is not JSON`);
+    }
+    if (entry.event) state = applyEvent(state, { kind: entry.event, data: entry.data ?? null, status: entry.status ?? null, reason: entry.reason ?? null, target: entry.target ?? null });
+    if (entry.to) {
+      const result = transition(state, entry.to, { reportText: reportTextFor(args.dir, state) });
+      if (!result.ok) throw new Error(`${args.events}:${index + 1}: ${result.error}`);
+      state = result.state;
+    }
+  });
+  persist(args.dir, state, { fromIndex: before.events.length, writeReport: true });
+  return { dir: args.dir, recorded: lines.length, node: state.node };
+}
+
 function commandRecord(args) {
   if (!args.dir || args.dir === true) throw new Error("--dir is required");
+  if (typeof args.events === "string") return commandRecordMany(args);
   const before = loadState(args.dir);
   let state = before;
   if (args.event !== undefined) {

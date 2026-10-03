@@ -2,10 +2,14 @@
   "skill": "o-review",
   "expected_behavior": [
     "The comments pass is mandatory on every review, including a re-run: report its findings under a [Comments] heading, and say so plainly when it found nothing.",
-    "A review is not finished until that section is in the plan, so a plan without it is incomplete rather than clean.",
+    "A correctness pass — logic, boundaries, error paths, state, untrusted input, compatibility — runs before the style passes, and a shown wrong result, data loss or security hole is the only CRITICAL.",
     "The bloat pass (o-unbloat, ladder steps 3 and 5), the architecture pass (o-arch, all five groups, plus o-arch-lint) and the floor pass (o-floor's floor-guard.mjs, with its rated and unrated lists) run inside the review too: their findings go under [Bloat], [Architecture] and [Floor], so a plan missing any of those headings is incomplete rather than clean.",
     "The review runs the comments, bloat, architecture and floor passes itself rather than recommending them afterwards; the Next Steps table routes fixes to o-fix, not to those passes.",
-    "A re-run reviews the whole change set: each earlier finding comes back as resolved or still open, and pre-existing findings are listed apart from the ones this branch introduced."
+    "A re-run reviews the whole change set: each earlier finding comes back as resolved or still open, and pre-existing findings are listed apart from the ones this branch introduced.",
+    "A change of about 50 lines or less with no new contract gets a light review: correctness, floor and spec in full, and every other heading written as skipped."
   ],
-  "source": ["I2", "R04/S2"]
+  "source": [
+    "I2",
+    "R04/S2"
+  ]
 }

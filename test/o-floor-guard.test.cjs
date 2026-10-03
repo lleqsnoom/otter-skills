@@ -65,6 +65,20 @@ describe("o-floor floor-guard", () => {
     assert.equal(json.violations[0].line, 2);
   });
 
+  it("lets a repo turn the bare-TODO check off, and still reports a stub", () => {
+    write(repo, ".o-skills/config/floor.json", JSON.stringify({ rules: [], unfinishedWork: { bareTodo: false } }));
+    commitAll(repo, "floor");
+    write(repo, "src/a.js", "export const sum = (a, b) => a + b;\n// TODO: handle overflow\nexport const f = () => { throw new Error('not implemented'); };\n");
+    const { json } = guard(repo);
+    assert.deepEqual(json.violations.map((v) => v.detail), ["not-implemented"]);
+  });
+
+  it("does not report a test rewritten with more assertions than it lost", () => {
+    write(repo, "test/sum.test.js", "it('adds two numbers', () => {\n  expect(sum(1, 2)).toBe(3);\n  expect(sum(0, 0)).toBe(0);\n});\n");
+    const { code, json } = guard(repo);
+    assert.equal(code, 0, JSON.stringify(json.violations));
+  });
+
   it("reads untracked files, which `git diff` alone cannot see", () => {
     write(repo, "src/fresh.js", "// @ts-ignore\nexport const x = 1;\n");
     const { code, json } = guard(repo);
@@ -153,5 +167,52 @@ describe("o-floor floor-guard", () => {
     const unknown = spawnSync(process.execPath, [GUARD, "--explain"], { encoding: "utf8" });
     assert.equal(unknown.status, 2);
     assert.match(unknown.stderr, /unknown argument/);
+  });
+});
+
+describe("floor guard — net assertions, the TODO switch, and measuring the floor", () => {
+  const { pathToFileURL } = require("node:url");
+  const load = () => import(pathToFileURL(GUARD).href);
+
+  it("does not report a test rewritten with as many assertions as it lost", async () => {
+    const { netAssertions } = await load();
+    const removed = [1, 2, 3].map((line) => ({ rule: "assertion-removed", file: "test/a.test.js", line, detail: "assertion" }));
+    const added = [1, 2, 3, 4].map((line) => ({ file: "test/a.test.js", line, text: "  assert.equal(x, 1);" }));
+    assert.deepEqual(netAssertions(removed, added), []);
+  });
+
+  it("reports only the net loss, on the last removed lines", async () => {
+    const { netAssertions } = await load();
+    const removed = [10, 11, 12].map((line) => ({ rule: "assertion-removed", file: "test/a.test.js", line, detail: "assertion" }));
+    const added = [{ file: "test/a.test.js", line: 5, text: "expect(y).toBe(2)" }, { file: "test/other.test.js", line: 1, text: "expect(z)" }];
+    const out = netAssertions(removed, added);
+    assert.deepEqual(out.map((v) => v.line), [11, 12]);
+    assert.match(out[0].detail, /net 2 fewer/);
+  });
+
+  it("reads a tool's number from JSON or from the last number it printed", async () => {
+    const { readMeasurement } = await load();
+    assert.equal(readMeasurement('{"value": 81.5}'), 81.5);
+    assert.equal(readMeasurement("Statements: 72.1% (1200/1664)\nLines: 79.4%"), 79.4);
+    assert.equal(readMeasurement("no numbers here"), null);
+  });
+
+  it("holds each measured number against its rule, honours exceptions, and names what it could not measure", async () => {
+    const { measureFloor } = await load();
+    const config = {
+      rules: [
+        { id: "coverage", direction: "min", value: 80, tool: "cov" },
+        { id: "file-lines", direction: "max", value: 1000, tool: "longest" },
+        { id: "deps", direction: "max", value: 0, tool: "audit" },
+        { id: "broken", direction: "min", value: 1, tool: "boom" },
+      ],
+      exceptions: [{ rule: "deps", owner: "t", expires: "2999-01-01", reason: "vendor fix pending" }],
+    };
+    const outputs = { cov: "72.5", longest: "640", audit: "3", boom: null };
+    const run = (tool) => (outputs[tool] === null ? { ok: false, reason: "exit 1" } : { ok: true, stdout: outputs[tool] });
+    const result = measureFloor(config, "/repo", { run });
+    assert.deepEqual(result.violations.map((v) => v.detail), ["coverage: measured 72.5 vs min 80"]);
+    assert.deepEqual(result.unmeasured.map((u) => u.id), ["broken"]);
+    assert.ok(result.measured.some((m) => m.id === "deps" && m.status === "excepted"));
   });
 });

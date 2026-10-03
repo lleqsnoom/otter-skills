@@ -430,7 +430,9 @@ export function lintReport(text, { root: given, file } = {}) {
   const rows = checkClaims(parts.claims, artifact, violations);
   const block = checkScore(parts.score, header, rows, violations);
   checkBacks(rows, block, violations);
-  checkCalibrationLine(header, block, violations);
+  // A quick roast trades calibration and the creative section for speed, and says so in its header.
+  const quick = /^\*\*Mode:\*\*\s*quick\b/m.test(header);
+  if (!quick) checkCalibrationLine(header, block, violations);
   checkFindings(parts.findings, block, rows, root, artifact, violations);
   checkContradicted(rows, parts.findings, violations);
   for (const ref of lineRefs(`${parts.findings ?? ""}\n${parts.claims ?? ""}`, root, artifact).filter((r) => !r.ok)) {
@@ -438,7 +440,7 @@ export function lintReport(text, { root: given, file } = {}) {
   }
 
   const alternatives = items(parts["creative alternatives"], /^\d+\.\s/);
-  if (alternatives.length < 3 || alternatives.some((item) => !TAGS.test(item))) {
+  if (!quick && (alternatives.length < 3 || alternatives.some((item) => !TAGS.test(item)))) {
     violations.push({ rule: "alternatives", detail: RULES.alternatives });
   }
   checkProposals(parts["improvement proposals"], block, violations);
@@ -507,7 +509,15 @@ function resolveFile(args) {
 }
 
 
+const USAGE = `Usage: node check-report.mjs [--file <report.md> | --dir <run folder>] [--calibrate <case>]
+       node check-report.mjs --rules
+Checks a roast report against every rule; without a file it takes the newest *-critique.md. Exit 0 clean, 1 violations, 2 usage.`;
+
 function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const args = parseArgs(process.argv.slice(2));
   if (args.rules) {
     process.stdout.write(`${Object.entries(RULES).map(([rule, what]) => `${rule}: ${what}`).join("\n")}\n`);

@@ -1,7 +1,7 @@
 ---
 name: o-floor
 description: Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .o-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work, a test made easier, a deleted test, or a removed assertion. Detection only. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard.
-version: 1.0.2
+version: 1.1.0
 author: Community
 tags: [quality, floor, constraints, guard, thresholds, suppression, coverage, enforcement, ratchet]
 user-invocable: true
@@ -36,6 +36,7 @@ not the code.
 node <skill>/scripts/floor-guard.mjs --root .
 node <skill>/scripts/floor-guard.mjs --root . --base HEAD       # uncommitted work only
 node <skill>/scripts/floor-guard.mjs --root . --config path/to/floor.json
+node <skill>/scripts/floor-guard.mjs --root . --measure      # also run each rule's tool and check its number
 node <skill>/scripts/floor-guard.mjs --self-test
 ```
 
@@ -48,7 +49,7 @@ first of `origin/main`, `origin/master`, `main`, `master` that resolves; the flo
 |------|-------|
 | 0 | No violation, or nothing declared that could be lowered |
 | 1 | At least one violation, each printed with its `rule`, `file` and `line` |
-| 2 | The guard could not run: not a git repo, no merge base, an unreadable config, an unknown option |
+| 2 | The guard could not run: not a git repo, no merge base, an unreadable config, an unknown option — or, with `--measure`, a rule's tool failed and nothing else was wrong |
 
 **A 2 never reads as a 0.** A shallow clone with no merge base, a config that is not JSON, a mistyped
 `--explain` — each stops the guard rather than reporting a clean tree it never examined.
@@ -82,10 +83,10 @@ in a README or stored in a fixture is prose or data, not a checker someone silen
 | `rule` | Fires when |
 |--------|-----------|
 | `silenced-checker` | An added line carries a suppression: `@ts-ignore` / `@ts-nocheck` / `@ts-expect-error`, `eslint-disable`, `biome-ignore`, `# noqa`, `# type: ignore`, `istanbul ignore`, `nosemgrep`, `gitleaks:allow`, `Stryker disable` |
-| `unfinished-work` | An added line is a stub (`NotImplementedError`, a "not implemented" throw), an empty `catch`, or a bare `TODO` — one carrying `#123` or a URL is tracked work and passes |
+| `unfinished-work` | An added line is a stub (`NotImplementedError`, a "not implemented" throw), an empty `catch`, or a bare `TODO` — one carrying `#123` or a URL is tracked work and passes. A repo that uses TODOs as working notes sets `"unfinishedWork": { "bareTodo": false }`; stubs and empty catches still count |
 | `test-made-easier` | An added line skips a test: `it.skip` / `test.todo` / `xit` / `xdescribe`, `@pytest.mark.skip`, `t.Skip(`, `#[ignore]` |
 | `test-deleted` | The diff deletes a test file |
-| `assertion-removed` | An `expect` / `assert` / `should` line is removed from a test file that still exists |
+| `assertion-removed` | A test file that still exists lost more `expect` / `assert` / `should` lines than it gained — the net loss is reported, so a test rewritten with as many assertions passes |
 
 The declaration rules are rated once a floor file exists, on either side of the diff.
 
@@ -104,18 +105,22 @@ enough to run on every diff.
 
 ## What it cannot check, and where it can be blind
 
-- **A threshold nobody measures is a number, not a floor.** The guard compares declarations; it does not run
-  your coverage tool, your linter, or your dependency scanner. `tool` in a rule is documentation for the reader
-  and the hook, and nothing here executes it.
+- **A threshold nobody measures is a number, not a floor.** By default the guard compares declarations only.
+  `--measure` runs each rule's `tool` (a shell command, five minutes at most) and reads its number — `{"value": n}`
+  JSON, or else the last number it printed — then reports `threshold-unmet` when it is below a `min` or above a
+  `max`. A rule with an active exception is skipped; a tool that fails is listed in `unmeasured`, never read as
+  a pass.
 - **The regexes are shallow on purpose.** A suppression assembled at run time, a skip written through a helper
   (`skipIf(flaky, …)`), an assertion deleted with the whole `describe` gone, or a test weakened by changing its
   input rather than removing a line — none of those is a line the guard can see. It catches the cheap road to
   green that agents actually take, not a person hiding a change.
 - **A test that *tests* a pattern reads as the pattern.** A file holding `"// @ts-ignore"` as a fixture string
   is a `silenced-checker` finding, and this skill's own `test/o-floor-guard.test.cjs` is the standing example:
-  nine findings, all fixture data. There is no way to tell that string from a real suppression without a parser
-  per language, so the answer is `ignore`, not a cleverer regex — and it is why the diff guard suits a repo that
-  has declared a floor and an ignore list, rather than being wired into CI blind.
+  nine findings, all fixture data. Code that *writes* the pattern reads the same way: a stub generator that emits
+  `assert.fail("TODO: …")` is `unfinished-work` on every line that builds a stub. There is no way to tell either
+  string from the real thing without a parser per language, so the answer is a narrow `ignore` entry naming the
+  file, not a cleverer regex — and it is why the diff guard suits a repo that has declared a floor and an ignore
+  list, rather than being wired into CI blind.
 - **Code files only.** Widening `codeExtensions` widens the net; leaving it narrow is what stops a README that
   *documents* `eslint-disable` from reading as a violation.
 - **Only the diff.** A tree that already sits below its own floor is not reported. The guard is a ratchet: it
@@ -167,11 +172,13 @@ who trips over it.
 - `rules[].id` — stable, referenced by an exception. A rule without one cannot be compared across the diff.
 - `rules[].direction` — `min` or `max`. The guard needs it to know which way is down; a rule without one has
   every move reported as `threshold-changed`, because staying quiet cannot be the default.
-- `rules[].value` — the number. `tool` and `runsAt` say where it is measured, and are not executed here.
+- `rules[].value` — the number. `tool` is the command `--measure` runs to read it; `runsAt` says where else it is
+  measured.
 - `exceptions[]` — a `rule`, an `owner`, an `expires` date and a `reason`. An exception is a tracked decision;
   an untracked one is a loosened rule, which is why adding or extending one is reported.
 - `ignore` — globs, matched against the repo-relative path. `*` stays inside a path segment, `**` crosses one.
 - `codeExtensions` — added to the built-in code list, for a stack the guard does not know.
+- `unfinishedWork.bareTodo` — `false` stops reporting untracked `TODO` lines; everything else in the rule stays.
 
 ### Sane defaults
 

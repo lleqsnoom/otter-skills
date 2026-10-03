@@ -1,0 +1,16 @@
+{
+  "skill": "o-decompose",
+  "queries": [
+    { "query": "break this approved plan into tasks", "should_trigger": true },
+    { "query": "split the spec into tickets per layer", "should_trigger": true },
+    { "query": "decompose the epic into implementable tasks", "should_trigger": true },
+    { "query": "turn the layers of the plan into task files", "should_trigger": true },
+    { "query": "which of these steps are tasks and which need their own plan?", "should_trigger": true },
+    { "query": "cut the roadmap into small tasks we can implement one by one", "should_trigger": true },
+    { "query": "implement the tasks", "should_trigger": false },
+    { "query": "write a spec for the new feature", "should_trigger": false },
+    { "query": "analyze whether we should use postgres or sqlite", "should_trigger": false },
+    { "query": "review the task file critically and score it", "should_trigger": false },
+    { "query": "run the tasks in parallel", "should_trigger": false }
+  ]
+}

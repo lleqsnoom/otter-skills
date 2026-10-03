@@ -45,12 +45,10 @@ done
 ```
 
 A `403` from a bot user-agent is not proof a page is gone — confirm through the
-service's own API before dropping the citation. (Details: `blog-post-authoring`.)
+service's own API before dropping the citation.
 
 ## Hand-off to the site
 
-This skill stops at the finished prose. Publishing is `blog-post-authoring`:
-filename = slug, `draft: false` to appear, frontmatter fields (`title`,
-`description`, `date`, `author: "Tomasz Kwiatek"`, `tags[]`, `image`), the og card
-at `public/images/<slug>-og.png`, `npm run thumbs`, then the build check and the
-live-URL check. Keep the split: this skill never touches frontmatter or assets.
+This skill stops at the finished prose. Publishing is the site's own process — typically a slug, frontmatter
+(title, description, date, author, tags, image), an og card, the build, and a check of the live URL. Keep the
+split: this skill never touches frontmatter or assets.

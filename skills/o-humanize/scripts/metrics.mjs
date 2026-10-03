@@ -120,11 +120,33 @@ function round(value, places = 1) {
   return Math.round(value * f) / f;
 }
 
-function buildSentence(rawText, index, familiar) {
+/**
+ * A domain term counts as an ordinary two-syllable, familiar word. "Infrastructure" is long, but a technical reader
+ * knows it, and replacing it with a vaguer word to pass a grade loses the precision the text exists for.
+ */
+const TERM_SYLLABLES = 2;
+
+/**
+ * The domain terms of a text: the long, unfamiliar words it uses more than once, which is how a subject's own
+ * vocabulary shows itself. Explicit terms are added to them.
+ */
+export function domainTermsOf(text, explicit = []) {
+  const familiar = loadFamiliarWords();
+  const counts = new Map();
+  for (const word of tokenizeWords(maskNonProse(text)).map((w) => w.toLowerCase().replace(/['’]s$/, ""))) {
+    if (countSyllables(word) >= POLYSYLLABLE_MIN && !familiar.has(word)) counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  const repeated = [...counts].filter(([, count]) => count >= 2).map(([word]) => word);
+  return new Set([...repeated, ...explicit.map((term) => term.toLowerCase())]);
+}
+
+function buildSentence(rawText, index, familiar, terms = new Set()) {
   const words = tokenizeWords(rawText);
   const wordCount = words.length;
-  const syllables = words.reduce((s, w) => s + countSyllables(w), 0);
-  const polysyllables = words.filter((w) => countSyllables(w) >= POLYSYLLABLE_MIN).length;
+  const isTerm = (w) => terms.has(w.toLowerCase().replace(/['’]s$/, ""));
+  const syllablesOf = (w) => (isTerm(w) ? Math.min(countSyllables(w), TERM_SYLLABLES) : countSyllables(w));
+  const syllables = words.reduce((s, w) => s + syllablesOf(w), 0);
+  const polysyllables = words.filter((w) => syllablesOf(w) >= POLYSYLLABLE_MIN).length;
   const lower = rawText.toLowerCase();
   const markers = CLAUSE_MARKERS.filter((m) => new RegExp(`\\b${m.replace(/ /g, "\\s+")}\\b`).test(lower));
   const passive = (rawText.match(PASSIVE_RE) ?? []).length;
@@ -132,7 +154,7 @@ function buildSentence(rawText, index, familiar) {
   const hardWords = [
     ...new Set(
       words
-        .filter((w) => !familiar.has(w.toLowerCase().replace(/['’]s$/, "")) && w.length >= 5)
+        .filter((w) => !isTerm(w) && !familiar.has(w.toLowerCase().replace(/['’]s$/, "")) && w.length >= 5)
         .map((w) => w.toLowerCase()),
     ),
   ];
@@ -211,10 +233,10 @@ export function cefrFromGrade(grade) {
   return "C2";
 }
 
-export function analyzeText(text, { target = DEFAULT_TARGET } = {}) {
+export function analyzeText(text, { target = DEFAULT_TARGET, terms = new Set() } = {}) {
   const familiar = loadFamiliarWords();
   const units = splitSentences(text);
-  const sentences = units.map((u, i) => buildSentence(u, i, familiar));
+  const sentences = units.map((u, i) => buildSentence(u, i, familiar, terms));
 
   const words = sentences.reduce((s, x) => s + x.words, 0);
   const sentenceCount = sentences.length;

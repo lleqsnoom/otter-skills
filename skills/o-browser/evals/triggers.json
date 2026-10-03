@@ -1,0 +1,16 @@
+{
+  "skill": "o-browser",
+  "queries": [
+    { "query": "open the app in chrome so you can click through it", "should_trigger": true },
+    { "query": "launch a browser with devtools attached to the dev server", "should_trigger": true },
+    { "query": "take a screenshot of the running app", "should_trigger": true },
+    { "query": "start chrome with remote debugging for the local site", "should_trigger": true },
+    { "query": "attach the chrome devtools mcp to localhost", "should_trigger": true },
+    { "query": "find the app url and open it in the browser", "should_trigger": true },
+    { "query": "audit the ui of the settings page", "should_trigger": false },
+    { "query": "mock up the screen", "should_trigger": false },
+    { "query": "fix the css bug in the header", "should_trigger": false },
+    { "query": "review the frontend code", "should_trigger": false },
+    { "query": "write end to end tests", "should_trigger": false }
+  ]
+}

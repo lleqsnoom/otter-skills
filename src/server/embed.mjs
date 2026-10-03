@@ -1,4 +1,4 @@
-import { pipeline } from '@huggingface/transformers';
+import { MissingDependency, importOptional } from './optional.mjs';
 
 /**
  * Text to vectors, with a model that runs here.
@@ -25,10 +25,12 @@ async function pipelineFor(model) {
   if (!pipelines.has(model)) {
     pipelines.set(
       model,
-      pipeline('feature-extraction', model).catch((error) => {
-        pipelines.delete(model);
-        throw error;
-      }),
+      importOptional('@huggingface/transformers')
+        .then(({ pipeline }) => pipeline('feature-extraction', model))
+        .catch((error) => {
+          pipelines.delete(model);
+          throw error;
+        }),
     );
   }
   return pipelines.get(model);
@@ -40,9 +42,10 @@ export async function embedAvailable({ model = EMBEDDING_MODEL } = {}) {
 
   const answer = await pipelineFor(model).then(
     () => ({ ok: true }),
-    (error) => ({ ok: false, reason: error.message }),
+    (error) => ({ ok: false, reason: error.message, missing: error instanceof MissingDependency }),
   );
-  availability.set(model, answer);
+  // A package still installing is a passing state, so only a settled answer is remembered.
+  if (!answer.missing) availability.set(model, answer);
   return answer;
 }
 

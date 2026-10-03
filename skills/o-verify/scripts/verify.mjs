@@ -13,7 +13,7 @@
  * from where those tools already write them. When a repo has no test runner for a language it
  * changed, it reports that and stops — it never invents one.
  *
- * Usage: node verify.mjs [--root <dir>] [--base <ref>] [--config <path>] [--dry-run] [--self-test] [--help]
+ * Usage: node verify.mjs [--root <dir>] [--base <ref>] [--config <path>] [--dry-run] [--budget-min <n>] [--self-test] [--help]
  * Exit:  0 clean (or, in --dry-run, nothing to read yet) · 1 violations · 2 the pass could not run
  */
 
@@ -39,7 +39,7 @@ export const TOOLING = {
     propertyTool: "fast-check",
     mutation: {
       tool: "Stryker",
-      command: "npx stryker run",
+      command: (files) => `npx stryker run --mutate ${shellList(files)}`,
       survivors: { format: "stryker-json", path: "reports/mutation/stryker.json" },
       check: ["npx", "--no-install", "stryker", "--version"],
     },
@@ -49,7 +49,7 @@ export const TOOLING = {
     propertyTool: "hypothesis",
     mutation: {
       tool: "mutmut",
-      command: "mutmut run",
+      command: (files) => `mutmut run --paths-to-mutate ${shellList(files)}`,
       survivors: { format: "mutmut-results", command: "mutmut results" },
       check: ["mutmut", "version"],
     },
@@ -59,12 +59,18 @@ export const TOOLING = {
     propertyTool: "proptest",
     mutation: {
       tool: "cargo-mutants",
-      command: "cargo mutants --in-diff <base> --output json",
+      // cargo-mutants reads a diff file; it writes its outcomes to mutants.out/ beside it.
+      command: (files, base) => `git diff ${shellQuote(base)} > mutants.diff && cargo mutants --in-diff mutants.diff`,
       survivors: { format: "cargo-mutants-json", path: "mutants.out/outcomes.json" },
       check: ["cargo", "mutants", "--version"],
     },
   },
 };
+
+/** One shell word, quoted, so a path with a space or a quote stays one argument. */
+const shellQuote = (value) => `'${String(value).replace(/'/g, "'\\''")}'`;
+/** Changed files as one comma-separated argument: mutation runs on what the diff touched, not the whole tree. */
+const shellList = (files) => shellQuote(files.join(","));
 
 /** A mutant no test killed. `NoCoverage` is one too: uncovered behavior is behavior nothing checks. */
 const SURVIVOR_STATUSES = new Set(["Survived", "NoCoverage"]);
@@ -131,7 +137,8 @@ export function resolveBase(root, requested) {
 export function changedFiles(root, base) {
   const mergeBase = git(["merge-base", base, "HEAD"], root)?.trim();
   if (!mergeBase) throw new Error(`no merge base between ${base} and HEAD`);
-  const tracked = git(["diff", "--name-only", "--no-prefix", mergeBase, "--"], root, { allowDiffExit: true });
+  // A deleted file has nothing left to mutate.
+  const tracked = git(["diff", "--name-only", "--no-prefix", "--diff-filter=d", mergeBase, "--"], root, { allowDiffExit: true });
   if (tracked === null) throw new Error(`could not diff against ${mergeBase}`);
   const untracked = git(["ls-files", "--others", "--exclude-standard"], root);
   if (untracked === null) throw new Error("could not list untracked files");
@@ -143,7 +150,7 @@ function spawn(args, cwd) {
   return { ok: result.status === 0 && !result.error, error: result.error?.code ?? null };
 }
 
-export function planLanguages(files, runners, { probe = (check) => spawn(check, process.cwd()) } = {}) {
+export function planLanguages(files, runners, { probe = (check) => spawn(check, process.cwd()), base = "HEAD" } = {}) {
   const byRunner = new Map(runners.map((runner) => [runner.language, runner]));
   const grouped = new Map();
   for (const file of files) {
@@ -162,7 +169,7 @@ export function planLanguages(files, runners, { probe = (check) => spawn(check, 
       runner: byRunner.get(language)?.command ?? null,
       propertyTool: spec.propertyTool,
       mutationTool: spec.mutation.tool,
-      mutationCommand: spec.mutation.command,
+      mutationCommand: spec.mutation.command(group, base),
       survivors: spec.mutation.survivors,
       missingTools: missing,
     });
@@ -301,7 +308,7 @@ export function evaluateGate(survivors, config, { at = today() } = {}) {
  * Run the pass. `exec` runs a shell command and returns { status, stdout, stderr }: main hands in a
  * real spawner, and tests hand in a stub so no tool has to be installed.
  */
-export function verify({ root, base, configRel = DEFAULT_CONFIG, dryRun = false, exec, probe }) {
+export function verify({ root, base, configRel = DEFAULT_CONFIG, dryRun = false, exec, probe, budgetMinutes = null }) {
   const resolved = resolveBase(root, base);
   if (!resolved) {
     throw new Error(`no base: none of ${base ? [base] : BASE_CANDIDATES} resolves in ${root}`);
@@ -309,7 +316,7 @@ export function verify({ root, base, configRel = DEFAULT_CONFIG, dryRun = false,
   const files = changedFiles(root, resolved);
   const code = files.filter((file) => languageFor(file));
   const runners = detectRunners(root);
-  const plans = planLanguages(code, runners, probe ? { probe } : {});
+  const plans = planLanguages(code, runners, { ...(probe ? { probe } : {}), base: resolved });
   const withoutRunner = plans.filter((plan) => !plan.runner);
   if (withoutRunner.length) {
     const names = withoutRunner.map((plan) => plan.language).join(", ");
@@ -318,9 +325,11 @@ export function verify({ root, base, configRel = DEFAULT_CONFIG, dryRun = false,
     );
   }
   const missingTools = plans.filter((plan) => plan.missingTools.length);
-  if (missingTools.length) {
-    const detail = missingTools.map((plan) => `${plan.language}: ${plan.missingTools.join(", ")}`).join("; ");
-    throw new Error(`mutation tools not installed — ${detail}; install them, then run the pass again`);
+  const missingDetail = missingTools.map((plan) => `${plan.language}: ${plan.missingTools.join(", ")}`).join("; ");
+  // A real run cannot go on without its tools. A dry run still shows the plan — what would be mutated, and how —
+  // so the tools can be chosen with it in front of you; it then stops as could-not-run, never as clean.
+  if (missingTools.length && !dryRun) {
+    throw new Error(`mutation tools not installed — ${missingDetail}; install them, then run the pass again`);
   }
 
   const config = loadConfig(root, configRel);
@@ -339,8 +348,11 @@ export function verify({ root, base, configRel = DEFAULT_CONFIG, dryRun = false,
     explained: [],
     unexplained: [],
     violations: [],
+    ...(missingTools.length ? { couldNotRun: `mutation tools not installed — ${missingDetail}; install them, then run the pass again` } : {}),
   };
+  if (missingTools.length) return report;
 
+  const budgetMs = budgetMinutes ? budgetMinutes * 60_000 : undefined;
   for (const plan of plans) {
     if (!dryRun) {
       const run = exec({ command: plan.runner, cwd: root });
@@ -350,7 +362,10 @@ export function verify({ root, base, configRel = DEFAULT_CONFIG, dryRun = false,
         return report;
       }
       report.propertyPass = { status: "passed", command: plan.runner };
-      const mutants = exec({ command: plan.mutationCommand, cwd: root });
+      const mutants = exec({ command: plan.mutationCommand, cwd: root, timeout: budgetMs });
+      if (mutants.timedOut) {
+        throw new Error(`${plan.mutationCommand} ran past the --budget-min ${budgetMinutes} budget and was stopped; raise it or narrow the diff`);
+      }
       if (mutants.status !== 0) {
         throw new Error(`${plan.mutationCommand} failed with exit ${mutants.status}`);
       }
@@ -432,7 +447,7 @@ function main() {
       process.stdout.write(usage());
       return;
     }
-    const known = ["--root", "--base", "--config"];
+    const known = ["--root", "--base", "--config", "--budget-min"];
     const unknown = args.filter(
       (arg, index) => arg.startsWith("--") && !known.includes(arg) && !["--self-test", "--dry-run", "--help", "-h"].includes(arg) && !known.includes(args[index - 1]),
     );
@@ -450,13 +465,20 @@ function main() {
       base: option("--base", undefined),
       configRel: option("--config", DEFAULT_CONFIG),
       dryRun: args.includes("--dry-run"),
-      exec: ({ command, cwd }) => {
-        const result = spawnSync(command, { cwd, encoding: "utf8", shell: true, stdio: ["ignore", "pipe", "pipe"] });
-        return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+      budgetMinutes: Number(option("--budget-min", "")) || null,
+      exec: ({ command, cwd, timeout }) => {
+        const result = spawnSync(command, { cwd, encoding: "utf8", shell: true, stdio: ["ignore", "pipe", "pipe"], timeout, killSignal: "SIGKILL" });
+        return { status: result.status, stdout: result.stdout, stderr: result.stderr, timedOut: result.error?.code === "ETIMEDOUT" };
       },
     });
+    // exitCode, not exit(): a report larger than the pipe buffer would be cut off mid-document by an exit here.
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-    process.exit(report.violations.length === 0 ? 0 : 1);
+    if (report.couldNotRun) {
+      process.stderr.write(`${JSON.stringify({ error: report.couldNotRun })}\n`);
+      process.exitCode = 2;
+      return;
+    }
+    process.exitCode = report.violations.length === 0 ? 0 : 1;
   } catch (err) {
     process.stderr.write(`${JSON.stringify({ error: err.message })}\n`);
     process.exit(2);

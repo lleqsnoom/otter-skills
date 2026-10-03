@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, execSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { changeScope } from "./change-scope.mjs";
+import { changeScope, changedRanges, touches } from "./change-scope.mjs";
 
 /** The directory this script sits in: ESM has no __dirname, and the siblings are spawned from here. */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -176,7 +176,12 @@ function firstLine(message) {
 
 // ── Stats aggregation ────────────────────────────────────────────────
 
-function aggregateStats(complexity, duplication, patterns) {
+/**
+ * `ranges` (from changedRanges) splits every over-the-bar function into one this change touched — a finding of this
+ * review — and one it only walked past, which is counted and not listed. Without ranges (`--all`, `--files`, no git)
+ * nothing is split and every function counts as touched.
+ */
+function aggregateStats(complexity, duplication, patterns, ranges = null) {
   const stats = {
     totalFilesAnalyzed: new Set(),
     functionsHighComplexity: 0,
@@ -185,18 +190,33 @@ function aggregateStats(complexity, duplication, patterns) {
     duplicatedBlocks: 0,
     refactorSuggestions: 0,
     byType: {},
+    thresholds: null,
+    split: ranges !== null,
+    touched: [],
+    preExisting: 0,
   };
 
   // Count with the thresholds the analyzer actually applied, falling back to the defaults only when
   // an older analyzer did not report them.
   const C = { maxComplexity: 5, maxLength: 20, maxParams: 3, ...(complexity?.summary?.thresholds || {}) };
+  stats.thresholds = C;
   if (complexity) {
     for (const f of complexity.files || []) {
       stats.totalFilesAnalyzed.add(f.file);
       for (const fn of f.functions || []) {
+        const over = [];
+        if (fn.complexity > C.maxComplexity) over.push(`complexity ${fn.complexity}`);
+        if (fn.length > C.maxLength) over.push(`${fn.length} lines`);
+        if (fn.paramCount > C.maxParams) over.push(`${fn.paramCount} parameters`);
+        if (!over.length) continue;
+        if (ranges && !touches(ranges, f.file, fn.line, fn.line + Math.max(fn.length, 1) - 1)) {
+          stats.preExisting++;
+          continue;
+        }
         if (fn.complexity > C.maxComplexity) stats.functionsHighComplexity++;
         if (fn.length > C.maxLength) stats.functionsLong++;
         if (fn.paramCount > C.maxParams) stats.functionsTooManyParams++;
+        stats.touched.push({ file: f.file, line: fn.line, name: fn.name, over });
       }
     }
   }
@@ -281,10 +301,24 @@ function generatePlanHeader(stats, branch, failed = [], scope = { kind: "all" })
   lines.push(`**Branch:** ${branch}`);
   lines.push(scopeLine(scope));
   lines.push(`**Total files analyzed:** ${totalFiles}`);
-  lines.push(metric("Functions with complexity > 5", stats.functionsHighComplexity, "analyze-complexity.mjs"));
-  lines.push(metric("Functions longer than 20 lines", stats.functionsLong, "analyze-complexity.mjs"));
+  const C = stats.thresholds ?? { maxComplexity: 5, maxLength: 20, maxParams: 3 };
+  const where = stats.split ? " in code this change touched" : "";
+  lines.push(metric(`Functions with complexity > ${C.maxComplexity}${where}`, stats.functionsHighComplexity, "analyze-complexity.mjs"));
+  lines.push(metric(`Functions longer than ${C.maxLength} lines${where}`, stats.functionsLong, "analyze-complexity.mjs"));
+  if (stats.split) {
+    lines.push(metric("Pre-existing functions over the bar, untouched", `${stats.preExisting} — not findings of this review; \`--all\` lists them`, "analyze-complexity.mjs"));
+  }
   lines.push(metric("Duplicated blocks found", stats.duplicatedBlocks, "check-duplication.mjs"));
   lines.push("");
+
+  if (stats.touched.length) {
+    lines.push(`## Over the bar${where}`);
+    lines.push("");
+    lines.push("Measured, not judged: each is a candidate for the [PRINCIPLE] pass, which decides whether it is a finding.");
+    lines.push("");
+    for (const fn of stats.touched) lines.push(`- \`${path.relative(process.cwd(), path.resolve(fn.file)) || fn.file}:${fn.line}\` ${fn.name} — ${fn.over.join(", ")}`);
+    lines.push("");
+  }
 
   if (failed.length) {
     lines.push("> ⚠️ **Analysis incomplete.** A count above is unknown, not zero:");
@@ -302,7 +336,7 @@ function generatePlanHeader(stats, branch, failed = [], scope = { kind: "all" })
   }
 
   if (stats.functionsTooManyParams > 0) {
-    lines.push(`> ⚠️ ${stats.functionsTooManyParams} function(s) have more than 3 parameters.`);
+    lines.push(`> ⚠️ ${stats.functionsTooManyParams} function(s) have more than ${C.maxParams} parameters.`);
     lines.push("");
   }
 
@@ -325,7 +359,20 @@ function topicsOf(file) {
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
   const at = parts.lastIndexOf(".o-skills");
-  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+  if (at === -1 || !vaultEnabled(parts.slice(0, at + 1).join(path.sep))) return null;
+  return parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/**
+ * Obsidian's links, topics and tag notes are written unless the repo turns them off with
+ * `.o-skills/config/vault.json` → `{ "enabled": false }`. Fields the scripts read (type, size, status) stay either way.
+ */
+function vaultEnabled(oSkillsRoot) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(oSkillsRoot, "config", "vault.json"), "utf8")).enabled !== false;
+  } catch {
+    return true;
+  }
 }
 
 /** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
@@ -372,11 +419,24 @@ function analyze(files) {
 
 // ── Main ──────────────────────────────────────────────────────────────
 
+const USAGE = `Usage: node save-plan.mjs (--output <dir> | --slug <topic>) [options]
+  --reviews <file>   the task or plan the review checks the diff against
+  --base <ref>       measure the change since the merge-base with this ref (default main or master)
+  --files <a,b>      measure exactly these files
+  --all              measure the whole repository
+  --branch <name>    the branch named in the plan header
+  --new-run | --run <nn>   pick the run folder for --slug
+Prints the path of the E<nn>-review-plan.md it wrote.`;
+
 function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const args = parseArgs(process.argv.slice(2));
 
   if (!args.output && !args.slug) {
-    console.error("Usage: node save-plan.mjs [--output <dir> | --slug <topic>] [--branch <name>] [--reviews <task or plan file>]");
+    console.error(USAGE);
     process.exit(1);
   }
 
@@ -394,7 +454,7 @@ function main() {
   const scope = resolveScope(args);
   const runs = emptyReason(scope) ? [] : analyze(isWholeTree(scope) ? ["--all"] : scope.files);
   const [complexity, duplication, patterns] = runs.map((run) => run.data);
-  const stats = aggregateStats(complexity, duplication, patterns);
+  const stats = aggregateStats(complexity, duplication, patterns, changedRanges(scope));
   const failed = runs.filter((run) => !run.ok);
   const header = generatePlanHeader(stats, branch, failed, scope);
 
@@ -408,12 +468,13 @@ function main() {
  * A heading still holding its pending line is a pass that has not reported yet.
  */
 const PASSES = [
-  ["[PRINCIPLE]", "pass 2"],
-  ["[Comments]", "pass 3"],
-  ["[Bloat]", "pass 4"],
-  ["[Architecture]", "pass 5"],
-  ["[Floor]", "pass 6"],
-  ["[Spec]", "pass 7"],
+  ["[Correctness]", "pass 2"],
+  ["[PRINCIPLE]", "pass 3"],
+  ["[Comments]", "pass 4"],
+  ["[Bloat]", "pass 5"],
+  ["[Architecture]", "pass 6"],
+  ["[Floor]", "pass 7"],
+  ["[Spec]", "pass 8"],
 ];
 
 function passSkeleton() {
@@ -421,7 +482,7 @@ function passSkeleton() {
   return `${sections.join("\n---\n\n")}\n---\n\n## Summary\n\n_pending_\n`;
 }
 
-export { generatePlanHeader, passSkeleton };
+export { aggregateStats, generatePlanHeader, passSkeleton };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   main();

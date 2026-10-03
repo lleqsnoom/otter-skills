@@ -237,12 +237,19 @@ export function calibrationCases(profile = null) {
   return JSON.parse(fs.readFileSync(file, "utf8")).cases.filter((entry) => !profile || entry.profile === profile);
 }
 
-// One case with its reference scores, which live apart in evals/calibration-answers.json so a reviewer
+/**
+ * The answer key sits outside the skill's folder — in the repository's evals/o-roast/ — so a reviewer browsing the
+ * installed skill never meets it. A symlinked or plugin install resolves it from the checkout; a bare copy of the
+ * skill has no key, and --calibrate says so instead of guessing.
+ */
+const ANSWERS_URL = new URL("../../../evals/o-roast/calibration-answers.json", import.meta.url);
+
+// One case with its reference scores, which live apart in the answer key so a reviewer
 // can find a case without reading its answer.
 export function calibrationCase(name) {
   const found = calibrationCases().find((entry) => entry.name === name);
   if (!found) throw new Error(`no calibration case "${name}"`);
-  const answers = new URL("../evals/calibration-answers.json", import.meta.url);
+  const answers = ANSWERS_URL;
   const reference = JSON.parse(fs.readFileSync(answers, "utf8")).references[name];
   if (!reference) throw new Error(`calibration case "${name}" has no reference in calibration-answers.json`);
   return { ...found, reference };
@@ -257,7 +264,7 @@ export function calibrationLine(name, scores, drift) {
 
 // How far the second reviewer's blind scores sit from the references, without printing either.
 export function calibrationAgreement() {
-  const answers = JSON.parse(fs.readFileSync(new URL("../evals/calibration-answers.json", import.meta.url), "utf8"));
+  const answers = JSON.parse(fs.readFileSync(ANSWERS_URL, "utf8"));
   const pairs = Object.entries(answers.references).flatMap(([name, reference]) =>
     Object.entries(reference).map(([dimension, score]) => ({ at: `${name}.${dimension}`, gap: Math.abs(score - answers.second[name][dimension]) })));
   return {

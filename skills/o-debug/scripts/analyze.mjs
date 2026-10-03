@@ -12,6 +12,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { matchErrors } from "./error-patterns.mjs";
 
 // ── Run folders ──────────────────────────────────────────────────────
 // #region run-folder
@@ -98,18 +99,6 @@ function nextE(runDir) {
 }
 // #endregion run-folder
 
-// Each runtime words the same fault its own way, and V8 changed its wording in Node 16.9 ("Cannot read properties
-// of undefined (reading 'x')"), so every reading a current runtime prints is listed.
-const PATTERNS = [
-  [/Cannot (read|set) propert(ies|y) .*\bundefined\b/, "undefined-reference", "A property is read or set on a value that is undefined"],
-  [/Cannot (read|set) propert(ies|y) .*\bnull\b|'NoneType' object has no attribute|nil pointer dereference|called `Option::unwrap\(\)` on a `None` value|NullPointerException/, "null-reference", "A value that can be null or empty is used as if it were present"],
-  [/is not a function|object is not callable/, "not-a-function", "A value that is not callable is called"],
-  [/Maximum call stack size exceeded|RecursionError|stack overflow/, "infinite-recursion", "A recursion has no reachable base case"],
-  [/Unexpected token|SyntaxError/, "syntax-error", "Malformed source, or input parsed as JSON that is not JSON"],
-  [/Module not found|Cannot find module|ModuleNotFoundError|ERR_MODULE_NOT_FOUND/, "missing-module", "A module is missing, misnamed, or resolved from the wrong place"],
-  [/ECONNREFUSED|Connection refused/, "connection-error", "The target service is not listening where the code expects it"],
-];
-
 function parseArgs(argv) {
   const args = argv.slice(2);
   let errorText = null, targetFile = null, sessionId = null, slug = null;
@@ -131,11 +120,7 @@ function parseArgs(argv) {
 }
 
 function matchPatterns(errorText) {
-  const matches = [];
-  for (const [regex, category, desc] of PATTERNS) {
-    if (regex.test(errorText)) matches.push({ category, description: desc });
-  }
-  return matches;
+  return matchErrors(errorText).map(({ category, description, test }) => ({ category, description, test }));
 }
 
 /** The error text as a fenced block whose fence is longer than any backtick run inside it, so no input can close it. */
@@ -149,7 +134,20 @@ function fenced(text) {
 function vaultNote(target) {
   const parts = path.resolve(target).split(path.sep);
   const at = parts.lastIndexOf(".o-skills");
-  return at === -1 ? null : parts.slice(at + 1).join("/").replace(/\.md$/, "");
+  if (at === -1 || !vaultEnabled(parts.slice(0, at + 1).join(path.sep))) return null;
+  return parts.slice(at + 1).join("/").replace(/\.md$/, "");
+}
+
+/**
+ * Obsidian's links, topics and tag notes are written unless the repo turns them off with
+ * `.o-skills/config/vault.json` → `{ "enabled": false }`. Fields the scripts read (type, size, status) stay either way.
+ */
+function vaultEnabled(oSkillsRoot) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(oSkillsRoot, "config", "vault.json"), "utf8")).enabled !== false;
+  } catch {
+    return true;
+  }
 }
 
 /** A run folder's topic: its name without the `YYYY-MM-DD-hhmm-R<nn>-` stamp. */
@@ -182,7 +180,7 @@ function generateSession(errorText, matches, targetFile, sessionId, runDir, fixe
   if (targetFile) md += "\n**File:** " + path.relative(process.cwd(), targetFile) + "\n";
   md += "\n## Reproduction\n_Not built yet. One command that runs the project's own code and goes red on this bug; save it in this run folder as `E<nn>-verify.<ext>` so o-fix can run it._\n";
   md += "\n## Hypotheses\n";
-  for (const m of matches) md += "- **" + m.category + "**: " + m.description + "\n";
+  for (const m of matches) md += "- [ ] **" + m.category + "**: " + m.description + " — test: " + m.test + "\n";
   if (!matches.length) md += "_No known error pattern matched. Write your own, ranked by likelihood._\n";
   md += "\n## Tests\n_Run each test and mark [ ] -> [x] Confirmed or [ ] Rejected_\n";
   md += "\n## Root Cause\n_Fill after testing:_\n";
@@ -197,11 +195,8 @@ function exportFixPlan(errorText, matches, targetFile, sessionId, confirmed, run
 
   let plan = propertyBlock("fix", `Fix plan · ${runSlug(runDir)}`, runDir, sessionPath) + "# Fix Plan\n\n**Error:**\n\n" + fenced(errorText) + "\n";
   if (!confirmed) {
-    plan += "## Test Hypotheses First\n";
-    for (const m of matches) {
-      plan += "- [ ] **" + m.category + "**: " + m.description + "\n";
-    }
-    plan += "\nRun tests above, then re-run with confirmed root cause.\n";
+    // A checkbox here is a change for o-fix to make, so the untested hypotheses stay in the session file.
+    plan += "## Fixes\n\n_None yet. Confirm the root cause in the debug session first, then add one `- [ ]` item per change: severity, file:line, issue, fix._\n";
   } else {
     plan += "## Confirmed Root Cause\n\n";
     plan += "- [ ] **Severity:** CRITICAL (fix root cause, do NOT silence)\n";

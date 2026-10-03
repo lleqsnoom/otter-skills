@@ -1,7 +1,7 @@
 ---
 name: o-decompose
-description: Decompose an approved plan (or an older run's epic) into layer-based tasks, triaging every candidate first — each candidate is decided as a task in this run, a run of its own (o-plan), an analysis (o-analyze), or dropped; outputs <run folder>/E<nn>-triage.md and <run folder>/E<nn>-tasks/ for handoff to o-implement. Use when asked to break a spec into tickets.
-version: 3.0.2
+description: Decompose an approved plan (or an older run's epic) into layer-based task files, triaging every candidate first — each is decided as a task in this run, a run of its own (o-plan), an analysis (o-analyze), or dropped; outputs <run folder>/E<nn>-triage.md and <run folder>/E<nn>-tasks/ for o-implement. Use when asked to break or split a spec into tasks or tickets, turn a plan's layers into task files, or cut a roadmap into small tasks.
+version: 3.1.0
 author: Community
 tags: [decompose, tasks, layers, triage, verdict, child-run, definition-of-done, DOD, test-plan, atomic, estimation, self-contained, incremental]
 user-invocable: true
@@ -26,8 +26,8 @@ Not for these: "make me a platform game" is a `o-plan` job first — this skill 
 Tasks are not components. A task is one step within a layer, and each layer is a complete, runnable increment.
 
 ```
-Layer 0 (Skeleton)     → Task 0.1: project setup + basic flow with mock
-                         → Task 0.2: add test that verifies end-to-end flow
+Layer 0 (Skeleton)     → Task 0.1: an end-to-end test of the flow, then the skeleton with mocks that passes it
+                         → Task 0.2: the second path through the skeleton, test first
 Layer 1 (Real Logic)   → Task 1.1: implement real processing function
                          → Task 1.2: wire real function into flow, verify regression
 Layer 2 (Resilience)   → Task 2.1: add error handling + logging
@@ -70,11 +70,11 @@ node <skill>/scripts/triage.mjs add   --dir <run folder> --task L0-T1 --title "o
 
 ```bash
 node <skill>/scripts/triage.mjs list   --dir <run folder>
-node <o-plan skill>/scripts/scenario.mjs    start --slug platform-physics
+node <skills>/o-plan/scripts/scenario.mjs    start --slug platform-physics
 node <skill>/scripts/triage.mjs decide --dir <run folder> --task L1-T1 --verdict plan \
   --why "own contract: gravity, collision resolution, tilemap format" \
   --evidence "src/game/loop.js:1 - no collision code exists" --child platform-physics
-node <skill>/scripts/triage.mjs decide --dir <run folder> --task L0-T1 --verdict task --why "one change, one check, 3h"
+node <skill>/scripts/triage.mjs decide --dir <run folder> --task L0-T1 --verdict task --why "one change, one check, size S"
 ```
 
    1. **Analysis** — read the layer entry, search the repository where the candidate lands, walk the signals. Absence is evidence too: no collision code anywhere is a finding.
@@ -82,7 +82,7 @@ node <skill>/scripts/triage.mjs decide --dir <run folder> --task L0-T1 --verdict
    3. **Start the child's run before a `plan` or `analyze` verdict** — the child run *is* what "needs its own plan" means, so open it first, with `o-plan`, or with `o-analyze` when nobody can state the shape yet:
 
 ```bash
-node <o-analyze skill>/scripts/scenario.mjs start --slug leaderboard-backend
+node <skills>/o-analyze/scripts/scenario.mjs start --slug leaderboard-backend
 ```
 
    `decide` refuses those two verdicts while the child run does not exist or holds no artifact yet, because the ledger is the record of where the work went and a hand-off to an empty folder is not one. The child owns its own spec, its own layers, and its own tasks: this run writes **no** task file for that candidate.
@@ -121,7 +121,7 @@ node <skill>/scripts/triage.mjs verify --dir <run folder> [--source <artifact>] 
 | `<run folder>/triage-<nn>.json` | the same decisions as state, named for the rung of the report it pairs with, so `verify` reads them instead of prose |
 | `<run folder>/E<nn>-tasks/` | the tasks written for that ledger's `task` verdicts, `L<N>-T<M>-<slug>.md` |
 
-**This ledger is not `o-triage`'s brief.** Both write `E<nn>-triage.md` and both are read under **Triage**, but `o-triage` writes a bug intake brief for one bug, and this skill writes one verdict per candidate task for one decomposition. If you need to know which document you are holding, read its first line: `# Task triage - <slug>` is this one.
+**This ledger is not `o-triage`'s brief.** `o-triage` writes `E<nn>-intake.md`, a bug intake brief for one bug; this skill writes one verdict per candidate task for one decomposition.
 
 The triage report is a live file and the script owns two blocks of it: `## Verdicts` and `## Handoffs`. Every `add` and `decide` rewrites those and nothing else, so notes written anywhere else in the file survive.
 
@@ -164,10 +164,7 @@ created: <YYYY-MM-DDThh:mm>
 ## Definition of Done
 - [ ] <automated check>: `<command>`
 - [ ] seen to work, not just compiled: <the command, the request, or the screen that shows it>
-- [ ] the diff touches only this task's files
-- [ ] REFACTOR ran: no dead code, debug output, or comment that restates code left behind
-- [ ] the docs describe the change as it now is (`E00-plan.md`, or the living docs)
-- [ ] `o-review` and `o-fix` came back clean on the changed files, and `o-floor`'s guard exits 0
+- [ ] standing bar clear — o-implement's Definition of Done: scoped to this task's files, refactored clean, docs current, review and floor guard clean
 ## Test Plan
 ### Happy Path
 - Given <condition> → expect <result>
@@ -177,7 +174,9 @@ created: <YYYY-MM-DDThh:mm>
 <Concrete codebase state required before starting. Describe the state, not task dependencies within the layer.>
 ```
 
-**The block on top is for people and Obsidian, not for the implementer.** `title` is what Obsidian shows on the
+**The block on top is for people and Obsidian, not for the implementer.** In a repo without a vault
+(`.o-skills/tags/` absent, or `.o-skills/config/vault.json` saying `"enabled": false`), keep `type`, `title`, `size`, `complexity`, `complexity_why` and `depends_on`, and
+leave out `run`, `plan` and `topics`. `title` is what Obsidian shows on the
 graph node in place of the file name (through the Front Matter Title plugin), so it reads as the task, not its file. Links are quoted wikilinks from the
 `.o-skills` root without `.md` (unquoted, YAML reads `[[x]]` as a nested list). `topics` copies the plan's `domain/` tags, then adds one `area/` tag per module the task's **Files:** touch — a
 workspace package (`apps/<x>`, `packages/<x>`, `skills/<x>`), else the top-level folder under `src/`; tests are not
@@ -212,11 +211,11 @@ monorepo, otherwise a top-level folder under `src/`; tests do not count.
 The two are independent: an XS complex task (one flag with an unknown runtime effect) is riskier than an M clear
 one (an endpoint copied from its sibling). Hours are not estimated: an agent's time does not predict the work.
 
-**The first row is the task's own acceptance criterion; the five below it are the standing bar**, the same for
-every task in every layer: see *Definition of Done* in `o-implement`'s `SKILL.md` for what each one means. A
-task's own rows vary and answer *did we build this?*; the standing rows do not, and answer *is it ready?*. Write
-them into every task file rather than assuming the implementer read the bar — an unticked box is how the run says
-a task is unfinished, and a bar that lives only in a skill's prose can never be ticked.
+**The first two rows are the task's own — its acceptance check and how it was seen working; the last row is the
+standing bar**, the same for every task in every layer and spelled out once in `o-implement`'s *Definition of
+Done*. A task's own rows answer *did we build this?*; the standing row answers *is it ready?*. It is one box, not
+five copies of the same five boxes, but it is still a box: an unticked one is how the run says a task is
+unfinished.
 
 ### Task Design Rules
 
@@ -243,57 +242,11 @@ a task is unfinished, and a bar that lives only in a skill's prose can never be 
 
 ### Layer-to-Task Examples
 
-#### Web Page Project
-```
-Layer 0 — Skeleton (2 tasks):
-  Task 0.1: Project setup + one page that renders a placeholder end-to-end (build, serve, test)
-  Task 0.2: Add the test that proves the page renders through the real build
-
-Layer 1 — Real content, one flow (2 tasks):
-  Task 1.1: The home page renders real copy and nav links from the content source
-  Task 1.2: A visitor can follow the first nav link to a page that renders its own content
-
-Layer 2 — Interactivity (2 tasks):
-  Task 2.1: The contact form submits through the real endpoint and shows the response
-  Task 2.2: Add the test for the submit flow, including the invalid-input response
-
-Layer 3 — Polish (1 task):
-  Task 3.1: Styling, responsive design and accessibility across the flows above
-```
-
 **A component is a task only when it works alone.** "Layer 1: header component, Layer 1: main content area" is a horizontal slice: nothing is verifiable until the header, the content and the footer all exist. When a component has to be named, it must stand on its own — its own route, its own render test — or it belongs to a layer that delivers one flow end to end.
 
-#### Data Pipeline (SQS + Lambda)
-```
-Layer 0 — Skeleton (2 tasks):
-  Task 0.1: Create project + basic sender that pushes to mock queue
-  Task 0.2: Add Lambda stub that returns fixed response + integration test
-
-Layer 1 — Real Processing (2 tasks):
-  Task 1.1: Implement image resize logic in Lambda
-  Task 1.2: Wire real processor, verify end-to-end with test image
-
-Layer 2 — Resilience (2 tasks):
-  Task 2.1: Add error handling + dead letter queue for failed messages
-  Task 2.2: Add retry logic with exponential backoff
-
-Layer 3 — Observability (1 task):
-  Task 3.1: Add CloudWatch metrics + structured logging
-```
-
-#### Platform Game (triaged, not component-sliced)
-```
-L0 — Walking skeleton:
-  L0-T1  task    one level, one sprite, arrow keys move it, a test proves it renders and moves
-
-L1 — Real movement:
-  L1-T1  plan    gravity, collision resolution, tilemap format — child run "platform-physics"
-  L1-T2  task    pause menu on top of the skeleton
-
-L2 — Enemies and score:
-  L2-T1  plan    enemy behaviour, spawn rules, pathing, damage — child run "enemy-ai"
-  L2-T2  analyze leaderboard storage — child run "leaderboard-backend"
-```
+Worked decompositions — a web page, a data pipeline, an existing (brownfield) codebase, and a triaged game — are
+in `references/examples.md`. Read the brownfield one before cutting a plan for a system that already runs: its L0
+is a seam, not a prototype.
 
 ## Limits
 
@@ -313,3 +266,4 @@ L2 — Enemies and score:
 - `scripts/save-tasks.mjs` — creates `<run folder>/E<nn>-tasks/`.
 - `references/triage-rules.md` — the signals, the four verdicts, the bounds, and a worked example.
 - `references/task-rules.md` — the size gates a task file must pass.
+- `references/examples.md` — worked decompositions, brownfield included.

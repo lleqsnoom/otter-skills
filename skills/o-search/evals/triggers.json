@@ -1,0 +1,16 @@
+{
+  "skill": "o-search",
+  "queries": [
+    { "query": "where is parseConfig defined?", "should_trigger": true },
+    { "query": "find the code that handles retries across our repos", "should_trigger": true },
+    { "query": "search the codebase for where the session token is validated", "should_trigger": true },
+    { "query": "which file owns the export feature?", "should_trigger": true },
+    { "query": "find every place that calls sendInvoice", "should_trigger": true },
+    { "query": "look up the task about the billing migration", "should_trigger": true },
+    { "query": "research vector databases with sources", "should_trigger": false },
+    { "query": "review this file", "should_trigger": false },
+    { "query": "debug the crash in the search endpoint", "should_trigger": false },
+    { "query": "explain this function", "should_trigger": false },
+    { "query": "plan a search feature", "should_trigger": false }
+  ]
+}

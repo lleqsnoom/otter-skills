@@ -184,12 +184,36 @@ describe("o-verify end to end", () => {
     assert.match(stderr, /rather than inventing one/);
   });
 
-  it("names missing mutation tools and exits 2, never 0", async () => {
+  it("names missing mutation tools and exits 2, never 0 — and a dry run still shows the plan", async () => {
     write(repo, "src/other.js", "export const other = 1;\n");
-    const { code, stderr } = runWith("absent")(repo, "--base", "HEAD", "--dry-run");
+    const { code, stderr, json } = runWith("absent")(repo, "--base", "HEAD", "--dry-run");
     assert.equal(code, 2);
     assert.match(stderr, /mutation tools not installed/);
     assert.match(stderr, /Stryker/);
+    assert.ok(json && json.languages.length, "the plan is printed so the tools can be chosen with it in view");
+  });
+
+  it("mutates only the changed files, and builds each tool's command without shell placeholders", async () => {
+    const { planLanguages } = await mod();
+    const plans = planLanguages(["src/a.js", "src/b.js", "lib/c.py", "src/d.rs"], [
+      { language: "javascript", command: "npm test" },
+      { language: "python", command: "pytest" },
+      { language: "rust", command: "cargo test" },
+    ], { probe: () => ({ ok: true }), base: "abc123" });
+    const byLanguage = Object.fromEntries(plans.map((plan) => [plan.language, plan.mutationCommand]));
+    assert.equal(byLanguage.javascript, "npx stryker run --mutate 'src/a.js,src/b.js'");
+    assert.equal(byLanguage.python, "mutmut run --paths-to-mutate 'lib/c.py'");
+    assert.equal(byLanguage.rust, "git diff 'abc123' > mutants.diff && cargo mutants --in-diff mutants.diff");
+  });
+
+  it("stops a mutation run that passes its budget, as could-not-run", async () => {
+    const { verify } = await mod();
+    write(repo, "src/other.js", "export const other = 1;\n");
+    const exec = ({ command }) => (command.includes("stryker") ? { status: null, timedOut: true } : { status: 0 });
+    assert.throws(
+      () => verify({ root: repo, base: "HEAD", exec, probe: () => ({ ok: true }), budgetMinutes: 1 }),
+      /past the --budget-min 1 budget/,
+    );
   });
 
   it("dry run rates the plan, gates on an existing report, and stays unrated without one", async () => {

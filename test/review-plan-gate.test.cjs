@@ -2,7 +2,7 @@
 
 /**
  * The review-plan gate turns o-review's "a plan missing a pass heading is incomplete, not clean" from
- * prose into a fact: a review plan must carry the five pass headings, and one that does not is refused
+ * prose into a fact: a review plan must carry the six pass headings, and one that does not is refused
  * with one actionable line per missing heading, never a silent pass. The tests pin that on stdin text,
  * on a JSON hook payload (where only review plans are judged), on the plan template o-review ships, and
  * on the skeleton save-plan.mjs writes.
@@ -19,7 +19,7 @@ const ROOT = path.join(__dirname, "..");
 const GATE = path.join(ROOT, "hooks", "review-plan-gate.mjs");
 const SKILL = path.join(ROOT, "skills", "o-review", "SKILL.md");
 
-const HEADINGS = ["[Comments]", "[Bloat]", "[Architecture]", "[Floor]", "[Spec]"];
+const HEADINGS = ["[Correctness]", "[Comments]", "[Bloat]", "[Architecture]", "[Floor]", "[Spec]"];
 const SAVE_PLAN = path.join(ROOT, "skills", "o-review", "scripts", "save-plan.mjs");
 
 const run = (input, args = []) =>
@@ -37,7 +37,7 @@ const shippedPlanTemplate = () => {
 };
 
 describe("review-plan gate hook", () => {
-  it("exits 0 with no output on a plan carrying all five headings", () => {
+  it("exits 0 with no output on a plan carrying all six headings", () => {
     const result = run(plan(HEADINGS));
     assert.equal(result.status, 0);
     assert.equal(result.stdout, "");
@@ -78,9 +78,9 @@ describe("review-plan gate hook", () => {
 
   it("matches the heading however the plan writes it", () => {
     for (const text of [
-      "## [Comments] — pass 3 of the review\n## [Bloat] — pass 4\n## [Architecture] — pass 5\n## [Floor] — pass 6\n## [Spec] — pass 7\n",
-      "[Comments]\n[Bloat]\n[Architecture]\n[Floor]\n[Spec]\n",
-      "# [Comments]\n# [Bloat]\n# [Architecture]\n# [Floor]\n# [Spec]\n",
+      "## [Correctness] — pass 2\n## [Comments] — pass 4 of the review\n## [Bloat] — pass 5\n## [Architecture] — pass 6\n## [Floor] — pass 7\n## [Spec] — pass 8\n",
+      "[Correctness]\n[Comments]\n[Bloat]\n[Architecture]\n[Floor]\n[Spec]\n",
+      "# [Correctness]\n# [Comments]\n# [Bloat]\n# [Architecture]\n# [Floor]\n# [Spec]\n",
     ]) {
       const result = run(text);
       assert.equal(result.status, 0, result.stderr);

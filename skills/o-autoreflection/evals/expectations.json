@@ -5,7 +5,8 @@
     "Only the fixes the user picked are applied; each one is checked, a failed check reverts that fix, and the outcome is written to heal-ledger.jsonl.",
     "Each edit names a unique find string that was actually read and replaces only that span, never a whole section.",
     "Deleting a skill or another portfolio change is offered as a question to the user, never applied as an automatic edit.",
-    "Instructions that no longer change behaviour are proposed for pruning rather than kept as no-op text."
+    "Instructions that no longer change behaviour are proposed for pruning rather than kept as no-op text.",
+    "Keys, tokens, passwords and other credentials in transcripts are redacted before any prompt or report is written, so none reaches the model or the run folder."
   ],
   "source": [
     "The environment, not only the skills",

@@ -121,15 +121,23 @@ const dedupe = (violations) => {
   });
 };
 
+/**
+ * A path the declaration exempts from the banned-name rule: a workspace package such as `packages/shared` that
+ * has a stated purpose and an owner is a published boundary, not a bag. The exemption is written down, so it is
+ * a decision a reader can see rather than a silent hole.
+ */
+const exemptFromBannedNames = (rel, exempt) => exempt.some((prefix) => rel === prefix || rel.startsWith(`${prefix.replace(/\/$/, "")}/`));
+
 export function checkNaming(files, config, layerOf = new Map()) {
   const banned = config?.banned_names ?? DEFAULT_BANNED_NAMES;
   const rules = asArray(config?.naming);
+  const exempt = asArray(config?.naming_exempt);
   const violations = files.flatMap((rel) => {
     const segments = rel.split("/");
     const base = segments.at(-1);
+    const bannedChecks = exemptFromBannedNames(rel, exempt) ? [] : [...bannedDirectory(segments, banned), ...bannedFilename(rel, base, banned)];
     return [
-      ...bannedDirectory(segments, banned),
-      ...bannedFilename(rel, base, banned),
+      ...bannedChecks,
       ...rules.filter((rule) => ruleApplies(rule, rel, layerOf)).flatMap((rule) => ruleViolations(rel, base, rule)),
     ];
   });
@@ -186,10 +194,25 @@ export function checkDeclaration(root, config, configPath = null) {
   return [...missingRoots(configHome(configPath, root), config), ...unknownRuleLayer(config)];
 }
 
+/**
+ * Files whose lines can hold an import. A README that names `src/a.js` as an example, or a fixture holding a path
+ * as data, is not a dependency — scanning them read every documented path as a wrong-way import.
+ */
+export const CODE_EXTENSIONS = new Set([
+  ".astro", ".c", ".clj", ".cpp", ".cs", ".cxx", ".dart", ".ex", ".exs", ".go", ".h", ".hpp", ".hs",
+  ".java", ".js", ".jsx", ".kt", ".kts", ".lua", ".mjs", ".cjs", ".mts", ".cts", ".php", ".pl", ".py", ".rb", ".rs",
+  ".scala", ".sh", ".swift", ".ts", ".tsx", ".vue", ".svelte", ".zig",
+]);
+
+const isCodeFile = (rel, config) => CODE_EXTENSIONS.has(path.extname(rel)) || asArray(config?.code_extensions).includes(path.extname(rel));
+
 const layerMarkers = (config) =>
   Object.entries(config?.layers ?? {}).flatMap(([layer, cfg]) => asArray(cfg?.import_markers).map((marker) => ({ layer, marker })));
 
-const firstMatch = (lines, marker) => lines.findIndex((line) => new RegExp(marker).test(line));
+/** A line that is only a comment cannot import anything, however much it quotes an import. */
+const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*|#)/;
+
+const firstMatch = (lines, marker) => lines.findIndex((line) => !COMMENT_LINE.test(line) && new RegExp(marker).test(line));
 
 const permits = (allowed) => (asArray(allowed).length ? asArray(allowed).join(", ") : "nothing");
 
@@ -203,7 +226,7 @@ export function checkDependencies({ root, files, config, layerOf }) {
   const markers = layerMarkers(config);
   return files.flatMap((rel) => {
     const from = layerOf.get(rel);
-    if (!from) return [];
+    if (!from || !isCodeFile(rel, config)) return [];
     const lines = fs.readFileSync(path.join(root, rel), "utf8").split("\n");
     return markers
       .filter(({ layer }) => layer !== from && !asArray(allowed[from]).includes(layer))

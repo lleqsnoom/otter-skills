@@ -5,7 +5,8 @@
     "It checks the whole tree as it stands, not only the files in the diff.",
     "scaffold.mjs prints a proposed arch.json and writes it only when no declaration exists, or when --force is passed.",
     "Every violation is reported as file:line with a rule name, and the run exits 1 when there is at least one.",
-    "Files no declared layer claims, and rules the declaration cannot cover, are listed as unrated instead of passing silently."
+    "Files no declared layer claims, and rules the declaration cannot cover, are listed as unrated instead of passing silently.",
+    "Imports are read only from code files and never from comment lines, so a path quoted in documentation or a fixture is not a dependency."
   ],
   "source": [
     "o-arch-lint",

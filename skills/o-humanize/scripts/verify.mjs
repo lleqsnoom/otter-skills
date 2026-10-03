@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
-import { analyzeText, GRADE_TARGETS, DEFAULT_TARGET, findFiller, FILLER_PHRASES, tokenizeWords } from "./metrics.mjs";
+import { analyzeText, domainTermsOf, GRADE_TARGETS, DEFAULT_TARGET, findFiller, FILLER_PHRASES, tokenizeWords } from "./metrics.mjs";
 import { readTextInput } from "./text-input.mjs";
 
 const URL_RE = /https?:\/\/[^\s)>"']+/g;
@@ -14,6 +14,17 @@ const NUMBER_RE = /\b\d[\d.,]*\b/g;
 
 function collect(re, text) {
   return (String(text ?? "").match(re) ?? []).map((s) => s.trim()).sort();
+}
+
+/** What `before` holds that `after` lost, counting repeats. */
+function missingFrom(before, after) {
+  const left = [...after];
+  return before.filter((value) => {
+    const at = left.indexOf(value);
+    if (at === -1) return true;
+    left.splice(at, 1);
+    return false;
+  });
 }
 
 function sameMultiset(a, b) {
@@ -30,9 +41,12 @@ function contentWordOverlap(before, after) {
   return Math.round((hit / a.size) * 1000) / 1000;
 }
 
-export function verify({ original, revised, target = DEFAULT_TARGET, minOverlap = 0.2 } = {}) {
-  const before = analyzeText(original, { target });
-  const after = analyzeText(revised, { target });
+export function verify({ original, revised, target = DEFAULT_TARGET, minOverlap = 0.2, domainTerms = [] } = {}) {
+  // The original's own vocabulary is measured as ordinary words on both sides, so keeping a precise term never
+  // costs the grade; --domain-terms adds terms used only once.
+  const terms = domainTermsOf(original, domainTerms);
+  const before = analyzeText(original, { target, terms });
+  const after = analyzeText(revised, { target, terms });
   const maxGrade = GRADE_TARGETS[target] ?? GRADE_TARGETS[DEFAULT_TARGET];
 
   const beforeFiller = new Set(findFiller(original));
@@ -59,17 +73,17 @@ export function verify({ original, revised, target = DEFAULT_TARGET, minOverlap 
     {
       id: "urls-preserved",
       ok: sameMultiset(collect(URL_RE, original), collect(URL_RE, revised)),
-      detail: "every URL kept unchanged",
+      detail: sameMultiset(collect(URL_RE, original), collect(URL_RE, revised)) ? "every URL kept unchanged" : `URLs changed or dropped: ${missingFrom(collect(URL_RE, original), collect(URL_RE, revised)).join(", ") || "one was added"}`,
     },
     {
       id: "code-preserved",
       ok: sameMultiset(collect(CODE_RE, original), collect(CODE_RE, revised)),
-      detail: "every code block kept unchanged",
+      detail: sameMultiset(collect(CODE_RE, original), collect(CODE_RE, revised)) ? "every code block kept unchanged" : "a code block was changed, dropped or added",
     },
     {
       id: "numbers-preserved",
       ok: sameMultiset(collect(NUMBER_RE, original), collect(NUMBER_RE, revised)),
-      detail: "every number kept unchanged",
+      detail: sameMultiset(collect(NUMBER_RE, original), collect(NUMBER_RE, revised)) ? "every number kept unchanged" : `numbers changed or dropped: ${missingFrom(collect(NUMBER_RE, original), collect(NUMBER_RE, revised)).join(", ") || "one was added"}`,
     },
     {
       id: "meaning-retained",
@@ -119,6 +133,7 @@ function usage() {
     "  --revised <file>     Rewritten text (required)",
     "  --level <lvl>        Target reader: A2 | B1 | B2 | C1 (default: B2)",
     "  --min-overlap <n>    Min content-word overlap 0..1 (default: 0.2, hard floor)",
+    "  --domain-terms <a,b> Terms scored as ordinary words; the original's repeated long terms already are",
     "  --help               Show this help",
     "",
     "Exit 0 = all checks pass; exit 1 = a check failed.",
@@ -138,6 +153,7 @@ function main() {
     else if (a === "--revised" && i + 1 < args.length) opts.revised = args[++i];
     else if (a === "--level" && i + 1 < args.length) opts.target = args[++i];
     else if (a === "--min-overlap" && i + 1 < args.length) opts.minOverlap = Number(args[++i]);
+    else if (a === "--domain-terms" && i + 1 < args.length) opts.domainTerms = args[++i].split(",").map((t) => t.trim()).filter(Boolean);
     else {
       process.stderr.write(`${JSON.stringify({ error: `Unknown argument "${a}"` })}\n`);
       process.exit(1);
@@ -155,7 +171,7 @@ function main() {
 
   try {
     const read = (p) => readTextInput({ file: p === "-" ? "-" : p, useStdin: p === "-" }).text;
-    const result = verify({ original: read(opts.original), revised: read(opts.revised), target: opts.target, minOverlap: opts.minOverlap });
+    const result = verify({ original: read(opts.original), revised: read(opts.revised), target: opts.target, minOverlap: opts.minOverlap, domainTerms: opts.domainTerms ?? [] });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     process.exit(result.pass ? 0 : 1);
   } catch (err) {

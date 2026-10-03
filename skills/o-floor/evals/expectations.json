@@ -3,7 +3,7 @@
   "expected_behavior": [
     "Each number in floor.json carries the reason it exists, and each rule carries a stable id so it can be compared across the diff.",
     "The guard reports only what the current diff does to the bar; a tree already below its floor is not reported, so the floor works as a ratchet.",
-    "Every move that lowers the bar — a weakened threshold, a new suppression, a skipped or deleted test, a removed assertion, a stub — is reported with its rule, file and line, and the guard exits 1.",
+    "Every move that lowers the bar — a weakened threshold, a new suppression, a skipped or deleted test, a net loss of assertions in a test file, a stub — is reported with its rule, file and line, and the guard exits 1; a test rewritten with as many assertions passes.",
     "The guard never edits code, and a run that could not complete exits 2, which is reported as not a pass."
   ],
   "source": [

@@ -192,7 +192,7 @@ function usage() {
     "Flags:",
     "  --list            List sessions of every detected host (id, host, title, modified) and exit",
     "  --session <id>    Session id, or \"last\" for the session you are in on Crush",
-    "  --host <ids>      Comma-separated hosts to read: crush, codex, opencode, goose (default: all detected)",
+    `  --host <ids>      Comma-separated hosts to read: ${HOSTS.map((host) => host.id).join(", ")} (default: all detected)`,
     "  --hours <n>       How far back --list looks (default: 24; --session ignores it)",
     "  --file <path>     Read a raw session dump instead of calling a host",
     "  --out <path>      Write the normalized JSON here (default: stdout)",

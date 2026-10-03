@@ -2,10 +2,11 @@
   "skill": "o-parallel",
   "expected_behavior": [
     "Each task runs in its own git worktree with its task file written to TASK.md, which is excluded from git and never merged.",
-    "Workers copy the project's agent config into their worktree so they hold the user's rights, and that config never reaches a commit.",
+    "Workers copy the project's untracked agent config — Crush's config, Claude Code's settings.local.json — into their worktree so they hold the user's rights, and that config never reaches a commit.",
     "A task counts as failed only after every retry was used, and each retry starts from a clean worktree.",
     "The script refuses to start when the working tree has uncommitted changes.",
-    "Every agent run is killed after the timeout; no worker runs unbounded."
+    "Every agent run is killed after the timeout; no worker runs unbounded.",
+    "The worker can be Claude Code, Codex, Crush or a custom command, and a custom command receives the prompt through the environment, never through the shell's parser."
   ],
   "source": [
     "How It Works",

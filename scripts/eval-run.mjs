@@ -27,6 +27,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SKILLS = path.join(ROOT, "skills");
 const CASE_TIMEOUT_MS = 15 * 60 * 1000;
 
+/** The environment every child gets. A run started inside `node --test` must not make the case's own test runs report to it. */
+function childEnv(extra = {}) {
+  const env = { ...process.env, ...extra };
+  delete env.NODE_TEST_CONTEXT;
+  return env;
+}
+
 // File edits plus the commands the cases need; anything else is refused in a non-interactive run.
 const CLAUDE_TOOLS = ["Read", "Edit", "Write", "Glob", "Grep", "Skill", "Bash(git:*)", "Bash(node:*)", "Bash(npm test:*)", "Bash(ls:*)", "Bash(cat:*)"];
 
@@ -75,11 +82,13 @@ function runAgent(fixture, prompt, transcript) {
   const custom = process.env.OTTER_EVAL_AGENT_CMD;
   const [command, args, shell] = custom
     ? [custom, [], true]
-    : ["claude", ["-p", prompt, "--permission-mode", "acceptEdits", "--allowedTools", ...CLAUDE_TOOLS], false];
+    : // --strict-mcp-config with no --mcp-config: the agent gets none of the user's MCP servers, so a case passes or
+      // fails on the skill and not on whoever's machine ran it.
+      ["claude", ["-p", prompt, "--permission-mode", "acceptEdits", "--strict-mcp-config", "--allowedTools", ...CLAUDE_TOOLS], false];
   const result = spawnSync(command, args, {
     cwd: fixture,
     shell,
-    env: { ...process.env, OTTER_EVAL_PROMPT: prompt },
+    env: childEnv({ OTTER_EVAL_PROMPT: prompt }),
     encoding: "utf8",
     timeout: CASE_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
@@ -94,7 +103,7 @@ export function runCase(entry, { keep = false } = {}) {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), `otter-eval-${entry.skill}-`));
   const transcript = path.join(os.tmpdir(), `${path.basename(fixture)}.log`);
   const node = (script, env = {}) =>
-    spawnSync(process.execPath, [path.join(entry.dir, script)], { cwd: fixture, encoding: "utf8", env: { ...process.env, ...env } });
+    spawnSync(process.execPath, [path.join(entry.dir, script)], { cwd: fixture, encoding: "utf8", env: childEnv(env) });
 
   const setup = node("setup.mjs");
   if (setup.status !== 0) return { ...entry, passed: false, detail: `setup failed: ${setup.stderr.trim()}`, fixture };

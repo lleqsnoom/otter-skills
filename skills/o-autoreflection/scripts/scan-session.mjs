@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { DEFAULT_CLIP, isNormalized, loadSession, normalizeSession, parseArgs } from "./read-session.mjs";
 import { scanReactions } from "./reactions.mjs";
+import { redact } from "./redact.mjs";
 
 /** Commands whose non-zero exit is an answer rather than a failure. */
 export const EXPECTED_NONZERO = ["diff", "cmp", "grep", "egrep", "fgrep", "test", "git diff", "git grep"];
@@ -43,8 +44,9 @@ const BACKGROUND_NOTICE_RE = /\b(?:moved to background|Background shell (?:start
 /** The command shapes that never return on their own: a dev server, a bundler, a watcher, a follow. */
 const UNBOUNDED_COMMAND_RE = /\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:dev|start|serve|watch)\b|\bvite\b|\bwebpack\b|http\.server\b|\bserve\b|--watch\b|\s-w\b|tail\s+-f|docker\s+compose\s+up|\bwatch\b|\bdev\.mjs\b/i;
 
+/** Excerpts land in reports on disk and in prompts, so they are redacted before they are clipped. */
 function excerpt(text, limit = 160) {
-  return String(text ?? "").replace(/\s+/g, " ").trim().slice(0, limit);
+  return redact(String(text ?? "").replace(/\s+/g, " ").trim()).slice(0, limit);
 }
 
 /**

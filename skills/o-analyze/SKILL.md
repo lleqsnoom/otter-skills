@@ -1,7 +1,7 @@
 ---
 name: o-analyze
-description: Interactive analysis — research the project and web first, ask short plain questions until the user is sure, then produce a thesis with cited evidence and a mechanical check, propose three solutions with trade-offs, and route to fix or task creation; graph-driven with guards and a markdown memory. Use when asked to analyze a problem or weigh solutions with evidence.
-version: 1.1.2
+description: Answer a question or decision with no bug in it — which option, which approach, X or Y — by researching the project and the web first, asking short plain questions until the user is sure, then writing a thesis with cited evidence and a mechanical check, weighing the options with their trade-offs, and routing to a fix or tasks. Use when asked to analyze a problem, decide between options, or compare solutions with evidence; a failing bug goes to o-debug.
+version: 1.2.0
 author: Community
 tags: [analysis, troubleshooting, diagnosis, problem-solving, investigation]
 user-invocable: true
@@ -34,7 +34,7 @@ graph LR
   thesis -->|evidence_cited| mechanical_check
   mechanical_check -->|check_recorded| confidence_gate
   confidence_gate --> clarify
-  confidence_gate -->|confidence_ok,three_options| propose
+  confidence_gate -->|confidence_ok,options_weighed| propose
   propose -->|decision_made| route
   route -->|route_chosen| fix
   route -->|route_chosen| tasks
@@ -44,10 +44,11 @@ graph LR
 ```
 
 ```bash
-node <skill>/scripts/scenario.mjs start --slug <slug> [--topics domain/<x>,area/<y>]   # reuse existing tags in .o-skills/tags/ where one fits
+node <skill>/scripts/scenario.mjs start --slug <slug> [--topics domain/<x>,area/<y>]   # topics only when .o-skills/tags/ exists; reuse a tag that fits
 node <skill>/scripts/scenario.mjs record --dir <dir> --event research --data "<finding>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --event evidence --data "<claim>" --target "<file:line|url>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --to <node>
+node <skill>/scripts/scenario.mjs record --dir <dir> --events round.jsonl   # a whole round in one call: one JSON object per line
 node <skill>/scripts/scenario.mjs verify --dir <dir>   # exit 0 iff the stop is justified
 ```
 
@@ -68,7 +69,7 @@ guard each one satisfies:
 | `evidence --target "<file:line\|url>"` | one claim and the source that backs it | `evidence_cited` |
 | `check --data "<command>" --reason "<result>"` | the mechanical check and its output, or `--status not-run --reason "<why>"` | `check_recorded` |
 | `confidence --data "high\|medium\|low"` | your confidence level | `confidence_ok` |
-| `option` | one solution with its trade-off | `three_options` |
+| `option` | one solution with its trade-off (`--reason` when it is the only real one) | `options_weighed` |
 | `decide` | the route the user picked | `decision_made` |
 | `route --data "<fix\|tasks\|plan\|investigate\|defer>"` | where the run hands off | `route_chosen` |
 
@@ -84,7 +85,7 @@ still going, use `guard --gate <name>`: it exits 0 or 1 on that gate alone.
 | `evidence_cited` | at least one claim cites a `file:line` or URL |
 | `check_recorded` | the mechanical check ran, or is recorded `not-run` with a reason |
 | `confidence_ok` | confidence is high or medium |
-| `three_options` | three distinct solutions are recorded |
+| `options_weighed` | two or more distinct solutions are recorded, or one with the reason no alternative is real |
 | `decision_made` | the user picked a route |
 | `route_chosen` | the route is recorded |
 
@@ -99,7 +100,7 @@ whether the run is finished, and mid-run it is not. That is the normal state, no
 
 ### Phase 1: Confirm Understanding of Intent
 
-When the user describes a problem (text + logs / error output / screenshots), restate what you believe they want solved in your own words. Show them this restatement and confirm it with a `confirm` panel before proceeding.
+When the user describes a problem (text + logs / error output / screenshots), restate what you believe they want solved in your own words. Show them this restatement and confirm it with a `confirm` panel before proceeding — unless the request is one plain, unambiguous question ("does X support Y?"), which needs no restatement: record it as confirmed from the request and go on.
 
 ```
 You say something like: "So you're saying that when X happens, Y occurs instead of Z. You want the behavior to be Z. Is that right?"
@@ -117,7 +118,7 @@ alone, as a panel.
 
 ### Phase 2: Clarify Ambiguities
 
-For every aspect of the problem you are uncertain about, ask a focused question as a panel (`single`, `multi`, `open`, or `confirm`) — never in prose. Group related questions but never ask more than 3 at once.
+For every aspect of the problem you are uncertain about, ask a focused question as a panel (`single`, `multi`, `open`, or `confirm`) — never in prose. Group related questions, at most four in one round.
 
 Suggested clarification dimensions (ask only what's genuinely unclear):
 
@@ -168,12 +169,14 @@ Once you have enough information (or the user confirms they want to proceed with
 **Size:** <XS 1 file · S 2–3 files · M 4–10 files in one module · L beyond, more than one module, or a contract change · XL several contracts — tests not counted>
 **Complexity:** <clear — a pattern to copy · complicated — a design call between options · complex — only trying it tells> — <one line a reviewer can check>
 
-### Option B: <alternative, if applicable>
+### Option B: <alternative>
 **What:** ...
 **Where:** ...
 **Risk:** ...
 **Size:** ...
 **Complexity:** ...
+
+<one option only when no alternative is real — then say why under it>
 
 ## Decision
 <What the user chose to do — fix now, create tasks, gather more info, or defer>
@@ -202,7 +205,7 @@ Based on the analysis scope and user decision, present the routes as a `single` 
 | Single, small fix (<1 file, <30 min) | `o-fix` or direct implementation | Apply the fix directly; reference this analysis |
 | Multi-file fix or moderate complexity | Create tasks and use `o-implement` | Split into tasks, follow TDD workflow |
 | Large / architectural issue | Use `o-plan` → `o-decompose` | Write spec first, then the layers and tasks |
-| Needs more investigation | Use `o-investigate` + `o-reproduce` pipeline | Hand off with full analysis as context |
+| A bug that needs a root cause | `o-debug`, then `o-investigate` if the first look explains nothing | Hand off with full analysis as context |
 | Not actionable right now | Note for later | Save analysis; don't force a decision |
 
 When routing to another skill, pass `<run folder>/E<nn>-analysis.md` as the input context so the downstream skill has full background.

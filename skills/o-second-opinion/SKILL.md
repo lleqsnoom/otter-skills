@@ -1,7 +1,7 @@
 ---
 name: o-second-opinion
 description: An independent re-review of a change from a fresh context — a reviewer who never saw the session critiques the diff against its spec, and must either name a substantive objection or say clean in so many words. Use before shipping a change that a same-context review already passed, when the change touches an invariant or a contract, or whenever the feeling of "looks good" is the only evidence nothing is wrong.
-version: 1.0.1
+version: 1.1.0
 author: Community
 tags: [review, verification, independence, shipping, critique]
 user-invocable: true
@@ -34,14 +34,27 @@ Every review produces exactly one of:
   with what is wrong and why it matters. An objection without a line number is an opinion.
 - **A clean verdict** — the words "clean", in so many words, with what was checked to say it.
 
-A review that returns neither — praise, a summary, "mostly fine" — is not a verdict, and the
-pass runs again. At least one objection or an explicit clean: silence is not a pass.
+A review that returns neither — praise, a summary, "mostly fine" — is not a verdict: ask the same
+reviewer once more for objections or the word clean. That is asking for an answer, not for a different one.
+At least one objection or an explicit clean: silence is not a pass.
 
 ## Procedure
 
 1. Collect the diff and the spec it implements.
-2. Open a fresh context (a new agent session, a second model, a colleague who has not seen the
-   branch) and hand it the three inputs above.
+2. Open a fresh context and hand it the three inputs above, with this prompt:
+
+   ```text
+   You are reviewing a change you did not write. Here is its spec and its diff. What does the diff get wrong
+   against the spec — missing behaviour, behaviour the spec did not ask for, or something it breaks that the
+   spec promised to keep? Answer with objections, each with file:line, what is wrong and why it matters; or,
+   if you find none, the word clean and what you checked.
+   ```
+
+   | Host | A fresh context |
+   |------|-----------------|
+   | Claude Code | a subagent started without this conversation, given only the prompt, the spec and `git diff` |
+   | Another model family | `codex exec -m <model> "<prompt>"` or `crush run -m <provider/model> "<prompt>"`, with the diff and spec in files it reads |
+   | A person | the prompt, the spec link and the PR diff — nothing from the session |
 3. Ask for objections against the spec: where does the diff fail to implement it, implement
    more than it, or break something the spec promised to protect?
 4. Record the verdict in the run folder as `E<nn>-second-opinion.md`: the reviewer, the inputs,
@@ -53,8 +66,8 @@ pass runs again. At least one objection or an explicit clean: silence is not a p
 
 - **Never soften an objection.** Summarizing a reviewer's finding "in your own words" is how
   severity gets laundered; the objection ships as written.
-- **Never shop for a second opinion.** One fresh reviewer, once. Re-rolling until the verdict
-  is clean is not independence, it is patience.
+- **Never shop for a second opinion.** One fresh reviewer per change. A verdict you dislike is recorded as it
+  is; asking a new reviewer until one says clean is not independence, it is patience.
 - **The spec is the ground truth.** A reviewer who dislikes the spec's design files a design
   objection, clearly labeled; the diff is judged against the spec as agreed, not as the
   reviewer would have written it.

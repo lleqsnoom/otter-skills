@@ -1,7 +1,7 @@
 ---
 name: o-essay
 description: Write an article end-to-end on a fixed loop — o-analyze thesis, o-roast critique, o-humanize rewrite — repeating until it scores strong and reads clean. Use when asked to write or draft an article, blog post, or essay that must defend a claim.
-version: 1.0.2
+version: 1.0.3
 author: Community
 tags: [writing, article, essay, blog, editorial, loop, pipeline, drafting, prose]
 user-invocable: true
@@ -35,8 +35,8 @@ matters. For papers/research use `o-roast --profile research` (a later `--type`)
 
 - "Write an article / blog post / essay about …", "draft a piece arguing …".
 - You have a claim to defend and want the review built in, not bolted on.
-- **Not** for publishing: the finished `.mdx` goes to the site via
-  `blog-post-authoring` (frontmatter, slug, og image, build). This skill hands it off.
+- **Not** for publishing: this skill stops at the finished prose. Frontmatter, slug, images and the site's
+  build belong to whatever publishes it.
 
 ## Before the loop
 
@@ -84,7 +84,8 @@ claim first, evidence per section, counterargument handled, references listed.
 Completion: a complete draft file, not an outline.
 
 ### 4. Roast — run `o-roast`, then record
-Run `o-roast` on the draft (profile `article`). You wrote the draft, so your own roast is
+Run `o-roast` on the draft (profile `article`) — a quick roast (`save-report.mjs --quick`) for the drafts in the
+middle of the loop, and a full roast, calibration included, on the draft you expect to ship. You wrote the draft, so your own roast is
 `Reviewer: self`. When the host can reach a model from another family, hand it the draft and
 o-roast's `references/rubric.md` for an `independent` roast instead, at least for the final
 iteration. Save its score JSON, then:
@@ -123,8 +124,8 @@ node <skill>/scripts/state.mjs verify --dir <dir>   # exit 0 iff the stop is jus
 Present the article, the numeric summary
 (`iterations`, `firstRoastTotal → bestRoastTotal`, `scoreGain`, `lastCoverage`), and
 the report paths (the `E<nn>-analysis.md`, `E<nn>-critique.md`, and `E<nn>-humanize.md` artifacts in the run folder).
-Hand the text to `blog-post-authoring` when the user wants it published, and
-`o-commit` to commit.
+Publishing is the site's own process — frontmatter, slug, images, build — and stays out of this skill; use
+`o-commit` to commit the text.
 
 ## Output format
 
@@ -146,7 +147,7 @@ Hand the text to `blog-post-authoring` when the user wants it published, and
 
 | After | Next |
 |-------|------|
-| Article is done and should be published | `blog-post-authoring` |
+| Article is done and should be published | the site's own publishing steps (frontmatter, images, build) |
 | You want it committed | `o-commit` |
 | Escalated (cap hit, still weak) | file the open findings as tasks, or `o-plan` a restructure |
 | A single claim needs deeper proof | `o-investigate` |
@@ -158,5 +159,4 @@ Hand the text to `blog-post-authoring` when the user wants it published, and
   Every transition is a recorded `{ actual, expected, pass }` number comparison.
 - `references/loop.md` — the state diagram, the three numeric gates, and why
   humanize is last.
-- `references/best-practices-article.md` — the pre-roast article checklist and the
-  hand-off contract to `blog-post-authoring`.
+- `references/best-practices-article.md` — the pre-roast article checklist and what is left for publishing.

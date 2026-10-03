@@ -84,16 +84,19 @@ export function rank(query, skills, vectors) {
 
 export function measure(root = REPO_ROOT) {
   const skillsDir = path.join(root, "skills");
-  const names = fs
+  const all = fs
     .readdirSync(skillsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
+  const frontmatters = new Map(all.map((name) => [name, parseFrontmatter(fs.readFileSync(path.join(skillsDir, name, "SKILL.md"), "utf8")) ?? {}]));
+  // A skill the model may not invoke is never a router's pick, so it is neither a candidate nor scored.
+  const userOnly = all.filter((name) => String(frontmatters.get(name)["disable-model-invocation"]) === "true");
+  const names = all.filter((name) => !userOnly.includes(name));
 
   const descriptions = new Map();
   for (const name of names) {
-    const text = fs.readFileSync(path.join(skillsDir, name, "SKILL.md"), "utf8");
-    const frontmatter = parseFrontmatter(text) ?? {};
+    const frontmatter = frontmatters.get(name);
     // The name is part of the vocabulary a user reaches for ("plan", "review"), and descriptions do not
     // always repeat it.
     descriptions.set(name, `${name.replace(/^o-/, "").replace(/-/g, " ")} ${frontmatter.description ?? ""}`);
@@ -138,6 +141,7 @@ export function measure(root = REPO_ROOT) {
     root,
     skills: names.length,
     skillsWithTriggers: new Set(rows.map((row) => row.skill)).size,
+    userOnly,
     positives: positives.length,
     rank1: Number(rank1.toFixed(1)),
     negatives: negatives.length,

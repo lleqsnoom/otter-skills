@@ -1,7 +1,7 @@
 ---
 name: o-commit
-description: Write single-line conventional commit messages — one authoritative type map, imperative mood, no description body — validated by a script before it lands. Use whenever work is ready to land in git.
-version: 1.1.2
+description: Commit the work with one conventional message — `type(scope): what it does`, imperative mood, checked by a script that then makes the commit; a short body only for a large change. Use when the user says commit, commit this or commit the staged changes, or whenever work is ready to land in git.
+version: 1.2.0
 author: Community
 tags: [conventional-commits, git, commit-messages, commit-changes]
 user-invocable: true
@@ -13,7 +13,7 @@ Make a conventional commit that states what the current change does. One sentenc
 
 ## Scripts
 
-All scripts self-resolve via `__dirname` — run from any working directory:
+Run the scripts from any working directory. `commit.mjs` calls git without a shell, so quotes, `$(…)` and backticks in a message are text.
 
 ```bash
 # Suggest a type + scope from the staged changes
@@ -21,6 +21,9 @@ node <skill>/scripts/suggest-type.mjs
 
 # Validate AND commit atomically
 node <skill>/scripts/commit.mjs "<message>"
+
+# A large change (10+ files or 400+ changed lines) may carry one short paragraph of why
+node <skill>/scripts/commit.mjs "<message>" --body "<why, in one paragraph>"
 ```
 
 `<skill>` is this skill's folder; its scripts find their own files from there, so run them from any directory.
@@ -36,7 +39,7 @@ node <skill>/scripts/commit.mjs "<message>"
 
 ## Rules
 
-- **One line only** — no description body, no blank lines inside the message. The **only** exception is the `BREAKING CHANGE:` footer described below.
+- **One line only** — no description body, no blank lines inside the message. Two exceptions: the `BREAKING CHANGE:` footer described below, and a `--body` paragraph on a large change, which says *why* in at most 600 characters. The script refuses a body on anything smaller.
 - **Imperative mood** — "add", not "added" or "adds".
 - **No trailing period**.
 - **No AI attribution** — never mention tools, models, or assistants.

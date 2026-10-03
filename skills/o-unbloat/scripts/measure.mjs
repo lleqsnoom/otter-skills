@@ -144,6 +144,10 @@ export function measureRecord(file, cwd = process.cwd()) {
 const USAGE = "usage: measure.mjs [--base <git ref>] | --record <Enn-unbloat.md>   (default: --base HEAD)";
 
 function main(argv) {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const value = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] || null : undefined);
   const record = value("--record");
   const base = value("--base");

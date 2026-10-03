@@ -1,7 +1,7 @@
 ---
 name: o-skill-lint
 description: Validate the repo's own skills — frontmatter, referenced scripts and references, stray template tokens, symlink-safe main guards, evals and the README skills table — and measure trigger rank-1 and description collisions. Use when adding or editing a skill, before shipping the repo, or when a skill is not triggering.
-version: 1.1.2
+version: 1.2.0
 author: Community
 tags: [lint, validation, skills, frontmatter, repo-hygiene, discovery]
 user-invocable: true
@@ -49,8 +49,12 @@ violation is found, **2** on a usage error. Each violation names the `skill` and
 | `copy-drift` | A file shared across skills differs byte-for-byte between copies. |
 | `card-budget` | A pass card (the `pass.md` in a skill's references folder) is over 600 words. A card is what a host reads instead of the skill's whole body, so its length is the cost of every pass. |
 | `pass-ref` | A skill's `SKILL.md` or reference files name another skill's `SKILL.md` while that skill ships a pass card. The violation gives the `file:line` and the card path to name instead. |
+| `repo-relative-path` | A skill's text runs a script as `node skills/o-x/…`, a path that only exists in this checkout; use `<skill>/scripts/…` or `<skills>/o-x/scripts/…`. A heal plan's `check` line is exempt — it runs inside this repo. |
+| `stale-placeholder` | A `<path-to-…>`, `<o-x skill>` or `<… skill root>` placeholder no agent can expand; the convention is `<skill>` and `<skills>`. |
 | `fragile-main-guard` | A script compares `import.meta.url` to `process.argv[1]` without `realpathSync`, so it does nothing when run through a symlinked install. |
 | `commonjs-script` | A `scripts/**/*.js` file uses `require(` or `module.exports` while the lint root's `package.json` declares `"type": "module"`, so the script throws before it runs — and it throws for whoever installed the skill, because an installed skill is a symlink into that root. Fix it by renaming the file to `.mjs` with `import` and `export`; `.cjs` is the escape hatch for a tree that must stay CommonJS. |
+| `no-help` | A runnable script never looks at `--help`, so it treats the flag as input — a commit script would commit a message called "--help". |
+| `counted-claim` | A count stated in words ("N solutions", "N passes") is not one `.o-skills/config/claims.json` allows. Each entry is `{ "pattern", "allowed", "paths", "why" }`; the pattern's first group is the count, `evals/` is never read, and a repo without the file gets no check. |
 | `expectations-shape` | An optional `evals/expectations.json` names another skill, holds no or more than seven `expected_behavior` lines, or lacks a `source` list. |
 | `triggers-shape` | An optional `evals/triggers.json` names another skill, has a query without text or a non-boolean `should_trigger`, or holds fewer than four should-trigger or four should-not-trigger queries. |
 
@@ -88,11 +92,11 @@ outlier? — rather than as a verdict. Reporting is the default, and no floor is
 passed: the number is the point, and each repo sets its own floor once it knows the baseline. Never lower the
 floor to make a regression pass; raise it as routing improves.
 
-Measured on this corpus (32 skills, 9 with trigger sets): **74.6% rank-1 over 67 should-trigger queries, 4/72
-should-not-trigger queries firing the wrong skill**. The misses cluster where two skills genuinely overlap in
+The baseline is whatever `trigger-rate.mjs` prints today — run it rather than trusting a number written down
+here, which goes stale with the next description edit. The misses cluster where two skills genuinely overlap in
 vocabulary — `o-arch` against `o-arch-lint`, `o-roast` against `o-essay` — which is the ambiguity the measurement
-exists to expose rather than a defect it can fix. CI runs it at `--min-rank1 70`: below the baseline, so an
-unrelated description edit does not turn the build red, and raised only as the number improves.
+exists to expose rather than a defect it can fix. CI runs it at `--min-rank1 80`, below the baseline, so an
+unrelated description edit does not turn the build red; raise the floor as the number improves, never lower it.
 
 ## Completion
 

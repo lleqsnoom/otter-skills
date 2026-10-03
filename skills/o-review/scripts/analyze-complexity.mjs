@@ -28,7 +28,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Only the optional tree-sitter package is resolved dynamically; node's own modules are imports above. */
 const requireFromHere = createRequire(import.meta.url);
 
-// ── Thresholds (override via ASSETS_CONFIG env or defaults) ─────────
+// ── Thresholds: the skill's defaults, then the repo's own .o-skills/config/review.json ─────────
 
 const DEFAULTS = {
   maxComplexity: 5,
@@ -36,13 +36,26 @@ const DEFAULTS = {
   maxParams: 3,
 };
 
-function loadConfig() {
+const readJson = (file) => {
   try {
-    const configPath = path.join(HERE, "..", "assets", "config.json");
-    return JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    return JSON.parse(fs.readFileSync(file, "utf-8"));
   } catch {
     return {};
   }
+};
+
+/** The repository the review runs in, or the working directory outside one. */
+function repoRoot() {
+  try {
+    return cp.execFileSync("git", ["rev-parse", "--show-toplevel"], { stdio: ["ignore", "pipe", "ignore"], encoding: "utf-8" }).trim();
+  } catch {
+    return process.cwd();
+  }
+}
+
+/** A repo sets its own bar in .o-skills/config/review.json; the skill's assets/config.json is the default. */
+function loadConfig() {
+  return { ...readJson(path.join(HERE, "..", "assets", "config.json")), ...readJson(path.join(repoRoot(), ".o-skills", "config", "review.json")) };
 }
 
 const CONFIG = { ...DEFAULTS, ...loadConfig() };
@@ -716,8 +729,9 @@ function findFunctionEndLine(lines, startLine) {
  * fallback is reached from two call sites and neither owns the source text.
  */
 function pushRegexFunction(functions, lines, { name, startLine, endLine }) {
+  // The scan counts lines from 0; the report counts from 1, as tree-sitter's does, so file:line points at the line.
   functions.push({
-    name, params: [], paramCount: 0, startLine, endLine,
+    name, params: [], paramCount: 0, startLine: startLine + 1, endLine: endLine + 1,
     length: endLine - startLine + 1,
     complexity: regexComplexity(lines.slice(startLine, endLine + 1).join("\n")),
   });

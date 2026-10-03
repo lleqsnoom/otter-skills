@@ -23,7 +23,8 @@ No record of its own; uncommitted work is the task. The host's scope is the scop
 - **Only the why.** A comment earns its place by saying why a non-obvious choice exists, where a magic value
   comes from or what invariant it holds, what breaks if it changes, or intent the code cannot recover.
 - Prefer a better name or an extracted function to any explanatory comment. One sentence beats a paragraph.
-- When unsure whether a comment is noise, delete it.
+- When unsure whether a comment is noise, delete it — except what `SKILL.md`'s *Never Cut* protects: directives
+  (`eslint-disable`, `@ts-expect-error`, `# noqa`), license headers, shebangs, and doc comments a tool consumes.
 
 ## Full rules
 

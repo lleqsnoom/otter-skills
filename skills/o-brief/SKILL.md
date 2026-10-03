@@ -1,7 +1,7 @@
 ---
 name: o-brief
 description: Write the handoff brief that hands this session's work off — a written note of where things stand: what is settled, what is open, what to do next, as context pointers rather than duplicated content. Use when handing off mid-work, when the session must stop soon or be compacted, when context is nearly full, when switching machines, or to leave a note for whoever continues this work.
-version: 1.0.2
+version: 1.1.0
 author: Community
 tags: [handoff, brief, context, session, continuation]
 user-invocable: true
@@ -15,7 +15,14 @@ it for a reader who has none of this conversation — because they do not.
 
 ## What the brief holds
 
-Write it to a file in the run folder (or where the user asks), in this order:
+Create it with the script, so it lands where the next session looks — `<run folder>/E<nn>-brief.md`, with a
+pointer the session-start hook prints:
+
+```bash
+node <skill>/scripts/save-brief.mjs --slug <topic> [--dir <the run folder the work belongs to>]
+```
+
+`<skill>` is this skill's folder. Fill the six sections it writes, in this order:
 
 - **Do next** — the first three actions for the next session, in order; the section the next session reads
   first, so it leads.

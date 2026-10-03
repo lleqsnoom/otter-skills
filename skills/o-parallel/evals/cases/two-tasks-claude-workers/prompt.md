@@ -1,0 +1,1 @@
+Use the o-parallel skill to run the two task files in tasks/ in parallel, with Claude Code as the worker (--agent claude), at most 2 at a time and a 10-minute timeout per worker, and merge the results into this branch. Do not ask me anything; if something fails, say what failed.

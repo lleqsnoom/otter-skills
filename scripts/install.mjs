@@ -33,7 +33,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -211,6 +211,39 @@ function registerMcp(args) {
   return { lines, registered, failed };
 }
 
+/**
+ * Links this checkout installed for a skill it no longer has: a symlink in the install folder that resolves into
+ * this checkout's `skills/` and to nothing. A link to anywhere else — even a dangling one — belongs to someone
+ * else and is left alone.
+ */
+export function staleLinks(dir, source = SOURCE) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .map((name) => join(dir, name))
+    .filter((file) => isSymlink(file) && !existsSync(file))
+    .filter((file) => {
+      const target = resolve(dirname(file), readlinkSync(file));
+      return target === source || target.startsWith(`${source}/`);
+    });
+}
+
+/** Mirror links that point at exactly the install-folder entries being pruned, and nothing else. */
+export function staleMirrors(mirrorDir, installDir, prunedNames) {
+  if (!existsSync(mirrorDir)) return [];
+  return prunedNames
+    .map((name) => join(mirrorDir, name))
+    .filter((file) => isSymlink(file) && resolve(dirname(file), readlinkSync(file)) === join(installDir, basename(file)));
+}
+
+function pruneStale(installDir, mirrorDir, args) {
+  const primary = staleLinks(installDir);
+  const mirrors = staleMirrors(mirrorDir, installDir, primary.map((file) => basename(file)));
+  return [...primary, ...mirrors].map((file) => {
+    if (!args.dryRun) unlinkSync(file);
+    return `${TOOL}: ${args.dryRun ? "would prune" : "pruned"} ${file} (its skill is gone)`;
+  });
+}
+
 /** Link every skill, collecting the line each one earns and how many were not already right. */
 function installSkills(args) {
   const names = skills();
@@ -260,9 +293,10 @@ function main() {
   }
 
   const installed = installSkills(args);
+  const pruned = pruneStale(args.target, join(home(), ".claude", "skills"), args);
   const mcp = registerMcp(args);
 
-  for (const line of [...installed.lines, ...mcp.lines]) process.stdout.write(`${line}\n`);
+  for (const line of [...installed.lines, ...pruned, ...mcp.lines]) process.stdout.write(`${line}\n`);
   process.stdout.write(summary(args, installed, mcp));
 
   if (mcp.failed) process.exitCode = 1;

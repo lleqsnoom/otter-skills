@@ -1,7 +1,7 @@
 ---
 name: o-sketch
 description: Build a throwaway prototype to answer a design question — a clickable single-file HTML demo you can play with to test a state machine or a piece of logic, or several UI variants (layouts, flows) to compare side by side; throw it away and keep the verdict. Use when asked to prototype, demo, or mock something up, when the user wants to click through a flow before it is built, or when a question needs a runnable answer rather than more words about it.
-version: 1.0.1
+version: 1.0.2
 author: Community
 tags: [prototype, sketch, design-question, ui-variants, throwaway]
 user-invocable: true
@@ -35,13 +35,14 @@ sketch.
    HTML file. No thinking required to start it.
 3. **No persistence by default.** State lives in memory; if the question is about persistence, hit a scratch
    store with a "PROTOTYPE, wipe me" name.
-4. **No polish.** No tests, no error handling beyond what keeps it runnable, no abstractions. The point is to
-   learn, fast.
+4. **No polish, one sitting.** No tests, no error handling beyond what keeps it runnable, no abstractions. A
+   sketch that needs a second session has become a project: stop and take what it already shows.
 5. **Surface the state.** After every action (logic) or on every variant switch (UI), render the full relevant
    state so the user sees what changed, not a black box.
 6. **Capture the verdict.** Fold the validated decision into the real code, then commit the sketch to a
    throwaway branch — out of main — and leave a pointer to that branch plus the verdict on the task or issue.
-   Main keeps only the decision.
+   Main keeps only the decision: before calling the sketch done, `git diff main --stat` on the branch you are
+   merging lists no sketch file.
 
 ## Relation to the other skills
 

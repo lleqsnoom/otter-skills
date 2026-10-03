@@ -1,0 +1,16 @@
+{
+  "skill": "o-essay",
+  "queries": [
+    { "query": "write an article arguing that monorepos are worth it", "should_trigger": true },
+    { "query": "draft a blog post defending our choice of rust", "should_trigger": true },
+    { "query": "write an essay on why tests should run first", "should_trigger": true },
+    { "query": "write a post that makes the case for small pull requests", "should_trigger": true },
+    { "query": "draft an article with a clear thesis about remote work and get it reviewed", "should_trigger": true },
+    { "query": "write a blog post about our migration and make it read well", "should_trigger": true },
+    { "query": "simplify this paragraph", "should_trigger": false },
+    { "query": "roast this article", "should_trigger": false },
+    { "query": "write the PR description", "should_trigger": false },
+    { "query": "research the topic with citations", "should_trigger": false },
+    { "query": "write the README", "should_trigger": false }
+  ]
+}

@@ -1,52 +1,56 @@
 ---
 name: o-rollback
-description: Automated git revert with multi-step confirmation — identifies target commits, analyzes impact, requires approval, creates properly formatted revert commits via o-commit integration. Use when asked to roll back, revert or undo a commit or release.
-version: 1.0.2
+description: Revert safely — preview exactly which commits and files a revert touches, get the user's approval for those, then make one revert each. Use when asked to roll back, revert, undo or back out a commit, a merge or a release.
+version: 1.1.0
 author: Community
 tags: [git-revert, rollback, safety, confirmation, version-control]
 user-invocable: true
 ---
 
-# O-Rollback — Automated Git Revert with Safety Checks
+# O-Rollback — Revert Exactly What Was Approved
 
-Automates safe git reverts with multi-step confirmation to prevent accidental rollbacks. Integrates with o-commit for proper revert commit formatting.
+A revert is the one git operation that is easy to aim at the wrong commit. This skill makes the target visible
+first and asks for approval of *those* commits, so what gets reverted is what the user agreed to.
 
-## Scripts
+`<skill>` below is this skill's folder.
 
-All scripts self-resolve via `__dirname` — run from any working directory:
+## Procedure
 
-```bash
-# Revert a specific commit by SHA
-node <skill>/scripts/revert.mjs --commit abc123def456
+1. **Preview.** Name the target and run a dry run:
 
-# Revert last N commits
-node <skill>/scripts/revert.mjs --last 1
+   ```bash
+   node <skill>/scripts/revert.mjs --last 1 --dry-run              # the most recent commit
+   node <skill>/scripts/revert.mjs --last 3 --dry-run              # the three most recent, newest first
+   node <skill>/scripts/revert.mjs --commit <sha> --dry-run        # a named commit (repeat --commit for more)
+   ```
 
-# Dry-run mode (show what would happen without reverting)
-node <skill>/scripts/revert.mjs --commit abc123def456 --dry-run
-```
+   It prints each target's SHA, subject and files, and a `confirmWith` line naming the exact approval.
+2. **Ask.** Show the user the targets and ask with a `confirm` panel. Never revert on your own judgement.
+3. **Revert, on yes:**
 
-`<skill>` is this skill's folder; its scripts find their own files from there, so run them from any directory.
+   ```bash
+   node <skill>/scripts/revert.mjs --last 1 --yes --expect-sha <sha from the dry run>
+   ```
 
-## Safety Checks
+   `--expect-sha` lists the dry run's SHAs (comma-separated, 7+ characters each). If `--last` now resolves to
+   anything else — someone committed in between — the run refuses rather than reverting a commit nobody
+   approved. In a real terminal without `--yes`, the script asks for the word `REVERT` itself.
 
-1. **Clean working tree required** — exits early with error if uncommitted changes exist
-2. **SHA verification** — confirms target commit exists in current branch history
-3. **Impact analysis** — shows affected files before confirmation
-4. **Explicit approval** — requires user to confirm revert action
+Each target gets its own commit, `revert: <original subject>`, made through o-commit's script when it sits
+beside this skill.
+
+## Safety checks
+
+| Check | On failure |
+|-------|------------|
+| Working tree clean | a revert exits 1 before anything changes; a dry run still previews and reports `blocked` |
+| Target in the current branch's history | exit 1 — a SHA from another branch is not reverted here |
+| Merge commit | exit 1 until `--mainline 1` says which parent to keep |
+| No terminal and no matching `--yes --expect-sha` | exit 1, naming the approval to ask for |
+| A revert conflicts | that revert is aborted, the earlier ones stay, and the JSON lists what landed |
 
 ## Definition of Done
 
-A rollback run is done when `revert.mjs` delivers:
-
-- **Refuses a dirty tree** — any uncommitted change makes it exit 1 with a "working tree is not clean" message on stderr, before touching anything.
-- **Resolves exactly one target** — `--commit <sha>` or `--last N` selects a single commit; a missing or ambiguous target exits 1 with a usage error.
-- **Shows impact before acting** — `--dry-run` prints a JSON plan to stdout (`dryRun: true` plus `sha`, `message`, `files`, `stats`) and creates **no** revert commit; HEAD is unchanged.
-- **Requires explicit confirmation** — in an interactive terminal it waits for the literal `REVERT`; any other answer cancels with exit 0.
-- **Commits the revert** — on confirmation it creates a `revert: "…"` commit (via o-commit when available, falling back to `git commit`) and prints `{ success: true, revertSha, message }` to stdout.
-
-Failure modes — each prints a message to stderr and exits 1:
-
-- No `--commit` / `--last` target → usage error.
-- Commit SHA not in current history → "not found".
-- Revert fails mid-way → aborts with `git revert --abort` and reports the error.
+- The dry run's targets were shown to the user and approved.
+- `revert.mjs` exited 0 and printed `{ success: true, reverted: [...] }` with one revert SHA per target.
+- `git log` shows one `revert:` commit per approved target, and nothing else changed.

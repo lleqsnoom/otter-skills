@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Session-start summary — a SessionStart hook that surfaces what the last heal and the last
- * background reflection did, so a rejected proposal and a background report are visible instead of
- * silent. Reads two files and prints one line; prints nothing and exits 0 when neither exists.
+ * Session-start summary — a SessionStart hook that surfaces the last handoff brief, what the last heal
+ * did and the last background reflection, so a session starts where the previous one stopped and a
+ * rejected proposal is visible instead of silent. Prints one line; nothing when none of the files exists.
  *
  * Usage: installed as a SessionStart hook. No arguments.
  */
@@ -30,8 +30,17 @@ export function readReportPointer(cwd = process.cwd()) {
   }
 }
 
-export function renderLine({ summary, report } = {}) {
+export function readBriefPointer(cwd = process.cwd()) {
+  try {
+    return JSON.parse(fs.readFileSync(path.resolve(cwd, ".o-skills", "runs", "last-brief.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+export function renderLine({ summary, report, brief } = {}) {
   const parts = [];
+  if (brief?.brief) parts.push(`last brief: ${brief.brief} — read it before starting`);
   if (summary) {
     parts.push(`last heal: landed ${summary.landed?.length ?? 0}, rejected ${summary.rejected?.length ?? 0}`);
   }
@@ -42,7 +51,7 @@ export function renderLine({ summary, report } = {}) {
 }
 
 function main() {
-  const line = renderLine({ summary: readSummary(), report: readReportPointer() });
+  const line = renderLine({ summary: readSummary(), report: readReportPointer(), brief: readBriefPointer() });
   if (line) process.stdout.write(`${line}\n`);
   process.exit(0);
 }

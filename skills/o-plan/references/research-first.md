@@ -9,18 +9,19 @@ Never ask the user something you can find yourself. Spend the first pass of ever
    by meaning when you know the behaviour but not the file that owns it, `find_symbols` or `search_code` when
    you already have the identifier. It is the fastest way to find the file a question lives in, and it spans
    repositories a local grep cannot reach.
-2. **The project.** Read the files, symbols, tests, and git history that touch the problem. Cite the
-   exact location (`path/to/file.js:42`).
+2. **The project.** Read the files, symbols, tests, and git history that touch the problem, and the
+   repo's `GLOSSARY.md` when it has one. Cite the exact location (`path/to/file.js:42`).
 3. **The web.** Fetch official docs and prior art. Cite the URL. Prefer primary sources.
 4. **For code tasks, GitHub.** Use the GitHub tools to search for reference repositories and real
    implementations of the same pattern; cite the repo and file.
 5. **Record it.** Write each finding as a bullet in `memory.md` with its `file:line` or URL.
 6. **Then ask.** Turn only the still-open items into panels (`references/questions.md`).
 
-## Propose three solutions
+## Weigh the solutions
 
-Before you ask the user to choose, propose **three** distinct solutions (not three phrasings of one).
-Record each with `--event option`, each with its trade-off. Then ask which one to take with a `single` panel.
+Before you ask the user to choose, weigh **two or more** distinct solutions (not two phrasings of one), or one
+with the recorded reason no alternative is real. Record each with `--event option`, each with its trade-off.
+Then ask which one to take with a `single` panel.
 
 ## When a capability is missing
 

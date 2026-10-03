@@ -5,7 +5,8 @@
     "A script that imports another skill's script is reported, because every skill must work on its own.",
     "A CommonJS script under a package that declares type module is reported before anyone installs it.",
     "Files that several skills share must stay byte-identical, and a copy that drifts is reported.",
-    "trigger-rate.mjs reports rank-1 per skill and flags pairs of descriptions too similar to tell apart."
+    "trigger-rate.mjs reports rank-1 per skill and flags pairs of descriptions too similar to tell apart.",
+    "A command that runs a skill script by a path only this checkout has, or a placeholder no agent can expand, is reported with its file and line."
   ],
   "source": [
     "o-skill-lint",

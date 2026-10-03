@@ -1,0 +1,15 @@
+{
+  "skill": "o-tune",
+  "expected_behavior": [
+    "Each experiment changes exactly one path, recorded with --changed; a change touching more than one path is reverted by the atomicity gate.",
+    "A snapshot is taken before each experiment, and a revert decision restores the snapshotted files instead of leaving the experiment in the working tree.",
+    "A candidate is kept only when the evaluator passes, the guard passes, and the score beats the best by at least min-delta under the score_improvement policy.",
+    "Reaching the cap without the target ends the run as an escalation that names the remaining gap, never as a success.",
+    "The final report gives the baseline, the best value, the kept changes and the commands that measured them."
+  ],
+  "source": [
+    "Rules",
+    "The contract",
+    "Procedure"
+  ]
+}

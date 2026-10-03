@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * The review-plan gate: refuses an o-review plan missing one of the five pass headings. o-review's prose already
- * says a plan without [Comments], [Bloat], [Architecture], [Floor] and [Spec] is incomplete, not clean; this makes
+ * The review-plan gate: refuses an o-review plan missing one of the six reported pass headings. o-review's prose
+ * says a plan without [Correctness], [Comments], [Bloat], [Architecture], [Floor] and [Spec] is incomplete, not clean; this makes
  * that enforced rather than remembered, with one actionable line per missing heading.
  *
  * Run by hand, it judges the text it is given — raw stdin or a file path argument — and exits 1 on a gap. Run as
@@ -15,6 +15,7 @@
 import { readFileSync } from "node:fs";
 
 const HEADINGS = [
+  ["[Correctness]", "correctness pass"],
   ["[Comments]", "comments pass (o-comments)"],
   ["[Bloat]", "bloat pass (o-unbloat)"],
   ["[Architecture]", "architecture pass (o-arch)"],

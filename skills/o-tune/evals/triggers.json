@@ -1,0 +1,45 @@
+{
+  "skill": "o-tune",
+  "queries": [
+    {
+      "query": "keep tuning the vite config until the report page loads under 200ms",
+      "should_trigger": true
+    },
+    {
+      "query": "run an experiment loop on the prompt until the judge stops failing it",
+      "should_trigger": true
+    },
+    {
+      "query": "optimize the Dockerfile one change at a time and keep only what measurably helps",
+      "should_trigger": true
+    },
+    {
+      "query": "drive the p95 latency of the search endpoint below 80ms",
+      "should_trigger": true
+    },
+    {
+      "query": "get the bundle size under 120kb, keeping only changes that measurably help",
+      "should_trigger": true
+    },
+    {
+      "query": "research the options for vector search with sources",
+      "should_trigger": false
+    },
+    {
+      "query": "compile the literature on prompt caching with citations",
+      "should_trigger": false
+    },
+    {
+      "query": "fix the flaky test in the nightly job",
+      "should_trigger": false
+    },
+    {
+      "query": "review this diff for me",
+      "should_trigger": false
+    },
+    {
+      "query": "plan the migration to postgres",
+      "should_trigger": false
+    }
+  ]
+}

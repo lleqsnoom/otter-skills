@@ -263,7 +263,14 @@ export function detectUrl(cwd = process.cwd()) {
   };
 }
 
+const USAGE = `Usage: node detect-url.mjs [--cwd <dir>]
+Prints the app URL found in .env files, package scripts, framework configs and the README, with every candidate, as JSON.`;
+
 function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(USAGE);
+    return;
+  }
   const args = process.argv.slice(2);
   let cwd = process.cwd();
   for (let i = 0; i < args.length; i++) {

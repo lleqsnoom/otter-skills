@@ -1,0 +1,16 @@
+{
+  "skill": "o-migrate",
+  "queries": [
+    { "query": "upgrade express from 4 to 5", "should_trigger": true },
+    { "query": "plan the react 18 to 19 migration", "should_trigger": true },
+    { "query": "bump django to the latest major version", "should_trigger": true },
+    { "query": "what breaks if we upgrade tokio?", "should_trigger": true },
+    { "query": "migrate us to the new major of the sdk", "should_trigger": true },
+    { "query": "which of our dependencies are behind and what does upgrading cost?", "should_trigger": true },
+    { "query": "migrate the database schema", "should_trigger": false },
+    { "query": "move the code into a new folder structure", "should_trigger": false },
+    { "query": "plan the new feature", "should_trigger": false },
+    { "query": "fix the deprecation warning in this file", "should_trigger": false },
+    { "query": "roll back the upgrade commit", "should_trigger": false }
+  ]
+}

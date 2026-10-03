@@ -1,7 +1,7 @@
 ---
 name: o-plan
-description: Plan before coding — research the project and the web first, ask short plain questions until the user is sure, propose three approaches with trade-offs, then write a layered spec (contract, invariant, test) as a graph-driven scenario with guards and a memory file; gate on user approval. Use when asked for a spec.
-version: 2.3.2
+description: Plan a feature before coding — turn an idea into a spec the user approves: research the project and the web first, ask short plain questions until the user is sure, weigh the approaches with their trade-offs, then write a layered spec (contract, invariant, test per layer) with guards and a memory file. Use when asked to plan, scope or spec a feature or a rework, or to turn a vague idea into a plan.
+version: 2.4.0
 author: Community
 tags: [plan, spec, requirements, architecture, clarification, testable, layers, prototype]
 user-invocable: true
@@ -17,7 +17,7 @@ Do not write any code until the spec is approved by the user. Pipeline order: `o
 
 - "Plan this", "write a spec", "design X before coding".
 - A vague goal you cannot yet name what to build for.
-- You need three approaches with trade-offs before committing.
+- You need the approaches and their trade-offs on the table before committing.
 
 Not for work a single file can hold, and not for a question the repository already answers — see
 `## Limits` before starting a run.
@@ -32,8 +32,8 @@ graph LR
   intake --> research
   research -->|research_recorded| clarify
   clarify --> clarify
-  clarify -->|no_open_questions,three_options| propose
-  propose -->|three_options| decide
+  clarify -->|no_open_questions,options_weighed| propose
+  propose -->|options_weighed| decide
   decide -->|decision_made| spec
   spec -->|spec_complete| layers
   layers -->|layers_complete| gate
@@ -51,6 +51,8 @@ node <skill>/scripts/scenario.mjs record --dir <dir> --event decide --data "<the
 node <skill>/scripts/scenario.mjs record --dir <dir> --event layer --data "L<n>: <the layer's objective>"
 node <skill>/scripts/scenario.mjs record --dir <dir> --event approve --data "yes"
 node <skill>/scripts/scenario.mjs record --dir <dir> --to <node>
+node <skill>/scripts/scenario.mjs record --dir <dir> --events round.jsonl   # a whole round in one call
+node <skill>/scripts/scenario.mjs amend  --dir <dir> --data "<what changed and why>"
 node <skill>/scripts/scenario.mjs guard  --dir <dir> --gate <name>
 node <skill>/scripts/scenario.mjs verify --dir <dir>   # exit 0 only at a stop, see below
 ```
@@ -64,7 +66,7 @@ guard each one satisfies:
 | `research` | one finding (or `--status not-run --reason "<why>"`) | `research_recorded` |
 | `question` | one open question, answered later as `Q<n>` | `no_open_questions` |
 | `answer --target Q<n>` | the answer to that question | `no_open_questions` |
-| `option` | one approach with its trade-off | `three_options` |
+| `option` | one approach with its trade-off (`--reason` when it is the only real one) | `options_weighed` |
 | `decide` | the approach the user picked | `decision_made` |
 | `layer --data "L<n>: <objective>"` | one layer of the roadmap, into `memory.md` | — the roadmap gate reads the plan text, not this |
 | `approve` | the user's approval of the spec | `gate_approved` |
@@ -73,11 +75,15 @@ guard each one satisfies:
 |------|-------------|
 | `research_recorded` | at least one research finding is recorded |
 | `no_open_questions` | every question in `state.json` is answered |
-| `three_options` | three distinct approaches are recorded |
+| `options_weighed` | two or more distinct approaches are recorded, or one with the reason no alternative is real |
 | `decision_made` | the user picked an approach |
 | `spec_complete` | the spec declares `contract:`, `invariant:` and `test:` at the start of a line, and carries a `## Layers` heading |
 | `layers_complete` | every `### L<n> — <name>` block carries `**Objective:**`, `**Scope in:**`, `**Scope out:**`, `**Prerequisite:**` and `**Definition of Done:**` — the five fields `o-decompose` reads. A roadmap with no layer block fails rather than passing on nothing |
 | `gate_approved` | an `approve` event is recorded |
+
+**Record a round at once.** A `--events` file holds one JSON object per line — `{"event": "question", "data": "…"}`,
+`{"event": "answer", "target": "Q1", "data": "…"}`, `{"to": "propose"}` — applied in order and saved once, so a
+clarify round is one call rather than one per question.
 
 A mid-run `verify` exits 1 even when every guard passes: it answers only whether the run is finished, and
 mid-run it is not. That is the normal state, not a failure. To ask about a single gate while the run is
@@ -91,8 +97,11 @@ Completion: `verify` exits 0, or the run moved to `abandon`.
    **Completion:** at least one `research` event is recorded, or the step is recorded `--status not-run --reason "<why>"`.
 2. **Clarify** — ask short plain questions as panels (`single` / `multi` / `open` / `confirm`) in frontier rounds until the open list is empty. See `references/questions.md`.
    **Completion:** every `question` event has an `answer`, and `guard --gate no_open_questions` exits 0. Run `scripts/check-questions.mjs --dir <dir>` before asking — it exits 1 on a question that is too long, two ideas, or missing its panel.
-3. **Propose three approaches** — record each with a trade-off; let the user pick.
-   **Completion:** three distinct `option` events, one `decide` event, and `guard --gate three_options` exits 0.
+3. **Propose the approaches** — usually two or three, each with its trade-off; let the user pick. When only one
+   approach is real, record it with `--reason` saying why — a third option invented for a count is filler.
+   **A small change** — one module, nothing a later layer would replace — takes the short path: one option with
+   `--reason "one-layer change"`, and a roadmap of L0 alone. `o-decompose` cuts it into a task or two.
+   **Completion:** the `option` events, one `decide` event, and `guard --gate options_weighed` exits 0.
 4. **Write the spec** — See Spec Format below. Always include a Layer Roadmap starting with L0 (prototype).
    **Completion:** `guard --gate spec_complete` exits 0.
 5. **Flesh out every layer** — record each one as a `layer` event, and give each `### L<n>` block its five fields. This is the pass that turns a roadmap into something `o-decompose` can cut.
@@ -139,28 +148,28 @@ Every spec **must** include a `## Layers` section. Define layers from prototype 
 ## Layers
 
 ### L0 — <name: skeleton / prototype / foundation>
-**Goal:** <what the prototype demonstrates — one sentence>
-**What works:** <concrete: which flow completes end-to-end>
-**What's mocked:** <which parts use stubs/mocks/fixed data and why>
+**Objective:** <what the prototype demonstrates, in one sentence: which flow completes end to end>
+**Scope in:** <what this layer builds — and which parts are stubs, mocks or fixed data, and why>
+**Scope out:** <what waits for a later layer>
+**Prerequisite:** none
+**Risk:** <optional: what could make this layer cost more than it looks, and how that would show>
 **Definition of Done:**
 - [ ] <automated check>: `<command>`
 - [ ] System starts without errors
 
 ### L1 — <name: real implementation / core logic>
-**Goal:** <what improves over L0>
-**What changes:** <mocks replaced, logic added>
+**Objective:** <what improves over L0>
+**Scope in:** <mocks replaced, logic added>
+**Scope out:** <what still waits>
 **Prerequisite:** Layer 0 complete and passing
 **Definition of Done:**
 - [ ] All L0 tests still pass (regression)
 - [ ] <new testable behavior>
-
-### L2 — <name: error handling / resilience>
-**Goal:** <what improves over L1>
-**What changes:** <new capabilities added>
-**Prerequisite:** Layer 1 complete and passing
-**Definition of Done:**
-- [ ] <testable behavior>
 ```
+
+The five fields `layers_complete` checks — **Objective**, **Scope in**, **Scope out**, **Prerequisite**,
+**Definition of Done** — are the ones `o-decompose` reads. **Risk** is for the person approving: it is not gated,
+so write it where a layer hides an unconfirmed fact, a contract with someone else, or work that may not fit.
 
 #### Layer Design Rules
 
@@ -190,7 +199,8 @@ node <skill>/scripts/scenario.mjs start --slug <topic> [--new-run | --run <nn>]
 
 - Run folder: `.o-skills/runs/YYYY-MM-DD-hhmm-R<nn>-<topic>/` — one folder per run, holding `state.json`, `memory.md`, and every artifact of the run.
 - Artifacts are numbered `E<nn>-<kind>.md` or `E<nn>-<kind>/` in execution order, so a plain name sort lists the run in the order it was built.
-- **Tag the run at `start`** with `--topics domain/<name>,area/<name>`. First list the tags the vault already has
+- **Tag the run at `start`** — only when the repo keeps a vault (`.o-skills/tags/` exists and
+  `.o-skills/config/vault.json` does not say `"enabled": false`; skip this bullet otherwise) — with `--topics domain/<name>,area/<name>`. First list the tags the vault already has
   (`ls .o-skills/tags/domain .o-skills/tags/area`) and reuse one that fits; create a new tag only when none does — a
   near-duplicate (`auth` beside `authentication`) splits the index in two. A **domain** tag says what the work is
   about (`payments`, `teacher-panel`), at most three per run; an **area** tag names a part of the code by the module
@@ -210,6 +220,17 @@ heading on its own line and closes at the end of its mermaid fence. A `## Scenar
 sentence* is not a match, and neither is any other section. Write the declarations and the layer roadmap
 anywhere outside that block — above it or below it both work, and a spec body is never touched.
 
+## Amend
+
+Plans change once work starts. Change an approved plan in place — edit the section, then record why:
+
+```bash
+node <skill>/scripts/scenario.mjs amend --dir <dir> --data "L2 drops the DLQ: the queue retries natively"
+```
+
+The line lands at the top of the plan's `## Changelog`, dated. A change to a layer o-decompose already cut is
+followed by re-running its triage for that layer; a change to the contract or an invariant is a new run instead.
+
 ## Abandon
 
 If user decides not to proceed after clarification, stop. Record reason in working notes. No spec, no layer roadmap.
@@ -224,7 +245,7 @@ Artifact must exist on disk with required declarations (contract, invariant, tes
 |--------|---------|
 | "The task is obvious — we can skip the spec." | Ten minutes of spec avoids the rework that starts the moment two people read one sentence differently. |
 | "I'll work out the invariant while I build it." | An invariant that arrives after the contract is a redesign, not a detail. `spec_complete` refuses to hand off without one. |
-| "Three approaches is overkill; I already know the one." | Two options decide; three force the trade-off into the open, which is the whole point of the step. |
+| "There is only one approach; I'll skip the step." | Then record it with `--reason` saying why no other is real. Usually a second one exists once you look, and the trade-off is what the user is approving. |
 | "The declarations are a formality — I'll write it as prose." | The gate reads `contract:`, `invariant:` and `test:` at the start of a line, so prose is a spec that cannot hand off. |
 | "I'll ask everything at once to save turns." | Every question renders as a panel and carries your guess. A paragraph of batched questions is the shape `check-questions.mjs` exists to refuse. |
 | "The layer has no definition of done yet — the checklist is boilerplate." | `layers_complete` refuses a layer without one, because a layer nobody can prove is a layer nobody can finish. |

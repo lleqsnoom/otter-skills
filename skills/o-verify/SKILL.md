@@ -1,7 +1,7 @@
 ---
 name: o-verify
 description: After o-fix or an implementation, attack the change instead of trusting it — property-based tests over the changed functions (fast-check, hypothesis, proptest) and a mutation pass over the diff (Stryker, mutmut, cargo-mutants), gated on survivors-equals-zero-or-explained. Use when asked to verify a fix beyond its tests, run a mutation pass, catch silent regressions before ship, or prove a change cannot break quietly.
-version: 1.1.2
+version: 1.2.0
 author: Community
 tags: [verification, property-based-testing, mutation-testing, survivors, gate, quality]
 user-invocable: true
@@ -20,7 +20,8 @@ apart from its mutation. It is exactly the silent regression this pass exists to
 honest way past the gate is to write the missing test or to name, with an owner and a reason, why
 none is worth writing.
 
-The pass never edits code, thresholds, or tests. It runs commands and reads reports.
+The script never edits code, thresholds, or tests: it runs commands and reads reports. The property tests are
+yours to write first — step 2 below — because a property nobody reasoned about verifies nothing.
 
 `<skill>` below is this skill's folder.
 
@@ -31,7 +32,7 @@ The pass never edits code, thresholds, or tests. It runs commands and reads repo
 - A suite that is green but thin — new behavior with old tests that pass on a broken version too.
 - Before a merge of a change whose failure would be silent: a clamp, a default, an off-by-one.
 
-Not for generating test scaffolding (`o-test-gen`), reproducing one reported bug (`o-reproduce`), or
+Not for generating test scaffolding (`o-test-gen`), reproducing one reported bug (`o-debug`), or
 reviewing style and structure (`o-review`). This pass asks a different question: would *any* test
 catch it if this code stopped working?
 
@@ -40,7 +41,8 @@ catch it if this code stopped working?
 ```bash
 node <skill>/scripts/verify.mjs --root .
 node <skill>/scripts/verify.mjs --root . --base HEAD       # uncommitted work only
-node <skill>/scripts/verify.mjs --root . --dry-run         # plan and gate, run nothing
+node <skill>/scripts/verify.mjs --root . --dry-run         # plan and gate, run nothing (works before the tools are installed)
+node <skill>/scripts/verify.mjs --root . --budget-min 20   # stop the mutation run after 20 minutes, as could-not-run
 node <skill>/scripts/verify.mjs --self-test
 ```
 
@@ -61,13 +63,13 @@ tool that is not installed.
 
 1. **Scope.** Every changed code file under the diff, grouped by language. Files no language claims
    are left alone — a renamed asset does not start a mutation run.
-2. **Property pass.** Write the properties first — for each changed function, the invariant that
-   must hold for *all* inputs, expressed in the language's property tool (`fast-check`, `hypothesis`,
-   `proptest` — see `references/tool-choice.md`). The pass then runs the test suite as configured; a
-   failing property is a `test-failed` violation. The pass runs the suite; it does not write the
-   properties, because a property no one reasoned about verifies nothing.
-3. **Mutation pass.** One mutation tool per language, run over the diff where the tool supports it,
-   survivors read from where the tool already writes them. Every `Survived` or `NoCoverage` mutant
+2. **Property tests — you write them, before the script runs.** For each changed function, the invariant
+   that must hold for *all* inputs, in the language's property tool (`fast-check`, `hypothesis`, `proptest`
+   — see `references/tool-choice.md`), committed beside its other tests. The script then runs the suite as
+   configured; a failing property is a `test-failed` violation.
+3. **Mutation pass.** One mutation tool per language, run on the changed files only (`stryker run --mutate`,
+   `mutmut run --paths-to-mutate`, `cargo mutants --in-diff`), survivors read from where the tool already
+   writes them. On a large diff, set `--budget-min`: a run past it is stopped and reported as could-not-run. Every `Survived` or `NoCoverage` mutant
    is a survivor; `Killed` and `Timeout` are not.
 4. **Gate.** Survivors are matched against the explanations in the config. Unexplained survivors are
    `survivor-unexplained` violations, each printed with its `file`, `line` and the mutator that
@@ -132,8 +134,9 @@ never read the survivors report is a much weaker statement than a green run over
   the gate asks for a name and a reason rather than a threshold.
 - **Scope is the diff.** Mutants that predate the branch are not this change's problem, and a merge
   base that cannot resolve stops the pass rather than widening it.
-- **`--dry-run` runs nothing.** It reports the plan and gates on whatever survivors report already
-  exists on disk. It is for review and planning; only a real run makes the gate a fact.
+- **`--dry-run` runs nothing.** It reports the plan — which files each tool would mutate, and with what
+  command — and gates on whatever survivors report already exists on disk. Without the mutation tools it
+  still prints the plan, then exits 2. It is for review and planning; only a real run makes the gate a fact.
 
 ## Completion
 

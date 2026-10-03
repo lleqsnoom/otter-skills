@@ -16,12 +16,14 @@
  *   <model> < <run dir>/E<nn>-issues-prompt-01.md > answers.md # any model; the host owns the choice
  *   node hunt-issues.mjs --read answers.md --dir <run dir>     # verifies, writes E<nn>-issues.json
  */
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { hostById } from "./hosts/index.mjs";
 import { hostContext, listHostSessions, normalizeSession, parseArgs, selectedHosts } from "./read-session.mjs";
 import { ownerAt, ownerTimeline, requestOf, userTurns } from "./reactions.mjs";
+import { redact } from "./redact.mjs";
 import { skillNamesOnDisk } from "./scan-session.mjs";
 
 export const SCHEMA = "o-autoreflection-issues/1";
@@ -93,17 +95,19 @@ export function digest(session) {
     .filter((turn) => turn.index > (request?.message ?? -1) && turn.text.split(/\s+/).filter(Boolean).length >= MIN_WORDS)
     .filter((turn) => !INJECTED.test(turn.text))
     .slice(0, MAX_TURNS_PER_SESSION)
+    // Redacted here, once: the prompts, the index on disk and the quote check all read these strings, so a model
+    // never sees a pasted secret and a quote of the redacted text still verifies.
     .map((turn) => ({
       message: turn.index,
-      user: turn.text.slice(0, TURN_CHARS),
-      before: replyBefore(messages, turn.index),
+      user: redact(turn.text.slice(0, TURN_CHARS)),
+      before: redact(replyBefore(messages, turn.index)),
       owner: ownerAt(timeline, turn.index, fallback),
     }));
   return {
     key: `${session.source?.host ?? "?"}:${session.source?.id ?? session.source?.uuid ?? "?"}`,
     model: session.model ?? null,
     skills: loaded,
-    request: request?.text ?? null,
+    request: request ? redact(request.text) : null,
     turns,
   };
 }
@@ -416,15 +420,54 @@ function runRead(args) {
   };
 }
 
+/** One prompt through the model command, prompt on stdin, answer from stdout, bounded in time. */
+function askModel(command, promptFile, answerFile) {
+  const result = spawnSync(command, {
+    shell: true,
+    input: fs.readFileSync(promptFile, "utf8"),
+    encoding: "utf8",
+    timeout: MODEL_TIMEOUT_MS,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.error) throw new Error(`model command failed on ${path.basename(promptFile)}: ${result.error.message}`);
+  if (result.status !== 0) throw new Error(`model command exited ${result.status} on ${path.basename(promptFile)}: ${String(result.stderr).slice(0, 300)}`);
+  fs.writeFileSync(answerFile, result.stdout);
+  return answerFile;
+}
+
+const MODEL_TIMEOUT_MS = 15 * 60 * 1000;
+
+/** The model pass end to end: build, ask the model once per prompt, verify both kinds of answer. */
+function runAll(args) {
+  const command = args["model-cmd"];
+  if (typeof command !== "string" || !command.trim()) throw new Error("--run needs --model-cmd \"<command that reads a prompt on stdin>\"");
+  const built = runBuild(args);
+  const dir = path.dirname(built.index);
+  const ask = (files, name) => {
+    const answers = files.map((file) => askModel(command, file, file.replace(/-prompt(-\d+)?\.md$/, "-answers$1.md")));
+    const combined = path.join(dir, name);
+    fs.writeFileSync(combined, answers.map((file) => fs.readFileSync(file, "utf8")).join("\n\n"));
+    return combined;
+  };
+  const session = built.prompts.length ? runRead({ ...args, dir, read: ask(built.prompts, "E00-issues-answers.md"), "by-skill": false }) : null;
+  const skill = built.skillPrompts.length
+    ? runRead({ ...args, dir, read: ask(built.skillPrompts.map((entry) => entry.file), "E00-skill-answers.md"), "by-skill": true })
+    : null;
+  return { build: built, session, skill, issues: [session?.out, skill?.out].filter(Boolean) };
+}
+
 function usage() {
   return [
     "o-autoreflection hunt-issues — assemble the window's turns, then verify what a model made of them.",
     "",
     "Usage:",
+    "  node hunt-issues.mjs --run --model-cmd \"claude -p\" [--hours 240] [--out <run dir>]   # build, ask, verify",
     "  node hunt-issues.mjs --build [--hours 240] [--max 60] [--out <run dir>]",
     "  node hunt-issues.mjs --read <answers.md> [--dir <run dir>] [--index <file>] [--by-skill]",
     "",
     "Flags:",
+    "  --run            --build, then send every prompt to --model-cmd and verify the answers (both passes)",
+    "  --model-cmd <c>  A shell command that reads a prompt on stdin and prints the answer: claude -p, codex exec -",
     "  --build          Walk the window's sessions and write the prompt(s), the per-skill prompts and the index",
     "  --read <file>    Verify a model's answers against the index and write E00-issues.json (E00-skill-issues.json with --by-skill)",
     "  --by-skill       Read answers to the per-skill prompts: the SKILL.md pass, where a fix must quote the line it changes",
@@ -438,11 +481,14 @@ function usage() {
 }
 
 function main() {
-  const args = parseArgs(process.argv.slice(2), { booleans: ["build", "help", "by-skill"], known: ["build", "read", "dir", "index", "out", "hours", "max", "skills-dir", "by-skill", "help"] });
+  const args = parseArgs(process.argv.slice(2), {
+    booleans: ["build", "run", "help", "by-skill"],
+    known: ["build", "run", "model-cmd", "read", "dir", "index", "out", "hours", "max", "host", "skills-dir", "by-skill", "help"],
+  });
   try {
     if (args.unknown.length) throw new Error(`Unknown argument "${args.unknown[0]}"`);
-    if (args.help || (!args.build && typeof args.read !== "string")) return process.stdout.write(usage());
-    const result = args.build ? runBuild(args) : runRead(args);
+    if (args.help || (!args.build && !args.run && typeof args.read !== "string")) return process.stdout.write(usage());
+    const result = args.run ? runAll(args) : args.build ? runBuild(args) : runRead(args);
     return process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } catch (err) {
     process.stderr.write(`${JSON.stringify({ error: err.message })}\n`);
