@@ -53,6 +53,14 @@ describe("o-parallel dependencies", () => {
     assert.deepEqual(detectDependencies(tasks)["L1-T1-next"], ["L0-T1-setup"], "a mention in the body is context, not a dependency");
   });
 
+  it("skips a task status.mjs marked done, reading only its front matter", async () => {
+    const { isDone } = await load();
+    assert.equal(isDone("---\ntype: task\ndone: true\n---\n# Task\n"), true);
+    assert.equal(isDone("---\ntype: task\ndone: false\n---\n# Task\n"), false);
+    assert.equal(isDone("---\ntype: task\n---\n# Task\n\n---\ndone: true\n"), false, "a body line is not the front matter");
+    assert.equal(isDone("# no front matter\ndone: true\n"), false);
+  });
+
   it("defaults to the first worker CLI the machine has, so a Claude-only machine is not sent to crush", async () => {
     const { defaultAgent } = await load();
     assert.equal(defaultAgent((cmd) => cmd === "claude"), "claude");
