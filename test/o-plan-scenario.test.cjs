@@ -80,6 +80,20 @@ describe("o-plan scenario", () => {
     assert.ok(!JSON.parse(verified.stdout).checks.some((check) => check.name === "three_options"));
   });
 
+  it("keeps the graph out of a new plan, and current in a plan that already draws it", () => {
+    const fresh = start();
+    cmd(fresh.cwd, "record", "--dir", fresh.dir, "--to", "research");
+    assert.doesNotMatch(fs.readFileSync(path.join(fresh.cwd, fresh.dir, "E00-plan.md"), "utf8"), /## Scenario|mermaid/);
+
+    const old = start();
+    const plan = path.join(old.cwd, old.dir, "E00-plan.md");
+    fs.appendFileSync(plan, "\n## Scenario\n\n```mermaid\ngraph LR\n  class intake current\n```\n\ngoal: kept\n");
+    cmd(old.cwd, "record", "--dir", old.dir, "--to", "research");
+    const text = fs.readFileSync(plan, "utf8");
+    assert.match(text, /class research current/);
+    assert.match(text, /goal: kept/);
+  });
+
   it("amends a plan in place with a dated changelog line", () => {
     const { cwd, dir } = start();
     const out = cmd(cwd, "amend", "--dir", dir, "--data", "L2 drops the DLQ: the queue retries natively");

@@ -1,16 +1,17 @@
 {
   "skill": "o-plan",
   "expected_behavior": [
-    "A plan hands off to o-decompose only after scenario.mjs guard --gate layers_complete exits 0: every layer block carries its five fields, and a layer without a definition of done is refused.",
+    "A plan hands off to o-decompose only after scenario.mjs verify exits 0: the declarations contract, invariant and test exist, and every layer block carries its five fields.",
     "Two or more approaches with trade-offs are weighed before the spec is written; a single approach is accepted only with the recorded reason no alternative is real.",
-    "Every user-facing question renders as a panel, never as a paragraph of batched questions; check-questions.mjs is the gate that refuses the prose form.",
-    "Never write over work in progress: a run whose plan still has unchecked layers gets a --new-run, never a rewrite of the old folder, and when it is unclear whether the plan is live the skill asks before touching it.",
-    "A source the user named that could not be opened is reported at the top of the next message and asked for, never worked around in silence.",
-    "A change to an approved plan is made in place and recorded under its Changelog, dated, instead of forking a new run."
+    "Every user-facing question renders as a panel carrying a recommended answer, never as a paragraph of batched questions, and research answers every question a file or the web could.",
+    "The spec carries a mode line — lean by default, strict for auth, money, personal data, a migration or a public contract — and the user's word overrides it.",
+    "The run's events are recorded in one record --events call, not one script call per event.",
+    "Never write over work in progress: a run whose plan still has unchecked layers gets a --new-run, never a rewrite of the old folder.",
+    "A source the user named that could not be opened is reported at the gate, never worked around in silence."
   ],
   "source": [
-    "SKILL.md: Handoff Flow",
-    "SKILL.md: Common Rationalizations",
-    "SKILL.md: spec rules"
+    "SKILL.md: Workflow",
+    "SKILL.md: Mode",
+    "SKILL.md: Spec format"
   ]
 }

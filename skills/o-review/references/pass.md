@@ -1,12 +1,14 @@
 # o-review — pass card
 
-Read this when o-implement's VERIFY step reviews one task. A review the user asks for reads `SKILL.md`.
+Read this when o-implement reviews one task (VERIFY) or one layer (layer close). A review the user asks for reads
+`SKILL.md`.
 
 ## Per host
 
-- **o-implement** (VERIFY, report only): review the files the task changed. Write every finding into one plan;
-  `o-fix` applies them. An XS or S task gets a light review: steps 1, 2, 6 and 7 in full, and steps 3–5 each
-  write `skipped — light review`.
+- **o-implement** (report only): at VERIFY review the files the task changed; at a layer close review the layer's
+  change (`--base <the commit before its first task>`, `--reviews <the plan>`). Write every finding into one plan;
+  `o-fix` applies them. An XS or S task, or a change under about 50 lines, gets a light review: steps 1, 2, 6 and 7
+  in full, and steps 3–5 each write `skipped — light review`.
 
 ## Steps
 

@@ -1,5 +1,5 @@
 ---
-description: Plan before coding — research first, three approaches with trade-offs, a layered spec, gate on approval
+description: Plan before coding — research first, two or three approaches with trade-offs, a layered spec, gate on approval
 argument-hint: [what to build]
 ---
 

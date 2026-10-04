@@ -352,7 +352,9 @@ function persist(dir, state, { fromIndex, writeReport }) {
   if (writeReport) {
     const text = reportTextFor(dir, state);
     const head = `${propertyBlock("plan", `Plan · ${runSlug(dir)}`, dir, { input: state.input ? path.resolve(dir, state.input) : null }, state.topics)}# Plan — ${state.slug}\n`;
-    const body = upsertScenario(text || head, renderGraphMermaid(state));
+    // The graph lives in state.json. A plan written while the graph was drawn into it keeps that block current;
+    // a new plan holds only the spec, so the reader is not handed a state machine first.
+    const body = !text ? head : /^## Scenario[ \t]*\r?$/m.test(text) ? upsertScenario(text, renderGraphMermaid(state)) : text;
     fs.writeFileSync(path.join(dir, state.report), body);
   }
   writeMemory(dir, state, fromIndex);
