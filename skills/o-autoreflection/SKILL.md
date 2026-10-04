@@ -1,7 +1,7 @@
 ---
 name: o-autoreflection
 description: Turn agent session transcripts into approved fixes to the skills — `o-autoreflection <period>` (24h, 7d, 2w) reads every session of that window across every CLI, extracts the friction, writes a skill-health report and a fix plan, and applies only the fixes picked from a multi-select, with a revert-on-failure ledger; without a period it reflects on the current session. Use for "reflect on this session", "what went wrong above", "retro", "what has been failing across my skills", "heal the skills from that report".
-version: 1.6.1
+version: 1.6.2
 author: Community
 tags: [reflection, retrospective, self-improvement, transcript, session, analysis, batch, healing, skills]
 user-invocable: true
@@ -257,7 +257,9 @@ options from the artifacts — the report's rankings and the plan's items — no
 5. **Mechanical classes only, and reversible.** `auto` is four classes; everything else is a proposal.
 6. **The human triggers healing.** The script applies only the ids picked in the panel — and the
    auto-heal question comes before any plan work, so a user who wants only the report gets only the report.
-7. **Deltas, not rewrites.** Every edit is the smallest `find`/`replace` that answers the finding.
+7. **Deltas, not rewrites.** Every edit is the smallest `find`/`replace` that answers the finding. In a skill
+   whose frontmatter sets a `budget`, the edit replaces or removes a line rather than adding one, and its check
+   runs `<skills>/o-skill-lint/scripts/lint.mjs`, which fails a body over budget.
 8. **The measure is not edited with the measured.** Detectors, gates, taxonomies and a skill's own
    checks change only on their own, reviewed, never in a plan that also edits the skills they grade.
 9. **Never silence the failure.** A reverted item stays reverted and named, not wrapped so the check passes.

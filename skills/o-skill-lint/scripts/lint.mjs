@@ -365,6 +365,15 @@ export function passCardProblems(skillsDir, names) {
   return [...overBudget, ...bodyRefs];
 }
 
+// A skill grows one fix at a time, and each fix is a line nobody removes. A `budget: <words>` in the frontmatter
+// caps the body, so the next rule has to replace one rather than join it.
+export function budgetProblem(text, budget) {
+  if (budget === undefined) return null;
+  if (!/^[1-9]\d*$/.test(budget)) return `budget "${budget}" is not a positive word count`;
+  const words = wordCount(text.replace(/^---\r?\n[\s\S]*?\r?\n---/, ""));
+  return words > Number(budget) ? `SKILL.md body has ${words} words; its budget is ${budget}` : null;
+}
+
 export function readmeSkills(readmeText) {
   const set = new Set();
   const re = /^\|\s*`?(o-[a-z0-9-]+)`?\s*\|/gm;
@@ -403,6 +412,8 @@ export function lintRepo(root = REPO_ROOT) {
         violations.push({ skill: name, rule: "name-mismatch", detail: `frontmatter name "${fm.name}" != folder "${name}"` });
       }
       if (!fm.description) violations.push({ skill: name, rule: "description", detail: "missing description" });
+      const overBudget = budgetProblem(text, fm.budget);
+      if (overBudget) violations.push({ skill: name, rule: "skill-budget", detail: overBudget });
     }
     if (/<\/gate>/.test(text)) violations.push({ skill: name, rule: "stray-token", detail: "contains stray </gate>" });
     if (repoOnlyRef(text)) {
