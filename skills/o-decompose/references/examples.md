@@ -57,7 +57,7 @@ L2 — Switch over:
   L2-T1  task    the flag defaults on; the old pricing path and its flag are deleted
 ```
 
-Wide mechanical changes inside a brownfield plan follow rule 9 (expand–contract), not this shape.
+Wide mechanical changes inside a brownfield plan follow the expand–contract rule, not this shape.
 
 ## Platform Game (triaged, not component-sliced)
 ```

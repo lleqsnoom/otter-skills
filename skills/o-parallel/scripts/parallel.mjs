@@ -261,12 +261,19 @@ export function detectDependencies(tasks) {
   return deps;
 }
 
+/**
+ * A task o-implement's status.mjs already marked `done: true` is not dispatched again. A tasks folder keeps every
+ * layer's files, so without this a second batch re-ran the finished ones; a dependency on one counts as met.
+ */
+export const isDone = (content) => /^done:[ \t]*true[ \t]*$/m.test(content.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "");
+
 async function loadTasks() {
   const paths = await collectMarkdown(TASK_DIR);
   paths.sort();
   const tasks = [];
   for (const p of paths) {
     const content = await readFile(p, "utf8");
+    if (isDone(content)) continue;
     const id = basename(p, ".md");
     const title = content.match(/^#\s*.{0,80}/m)?.[0].slice(2).trim() || id;
     tasks.push({ id, title, path: p, content, files: parseFiles(content), deps: [], wave: -1, status: "pending" });

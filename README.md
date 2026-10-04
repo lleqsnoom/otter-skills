@@ -96,7 +96,7 @@ checkout's `hooks/` (see [docs/install.md](docs/install.md)).
 | Skill | What it does | Say when |
 |---|---|---|
 | `o-plan` | The approaches weighed → a layered spec, gated on your approval | "plan this feature", "what's the spec" |
-| `o-decompose` | Cut an approved plan into triaged task files | "break this down into tasks" |
+| `o-decompose` | Cut an approved plan into task files, one layer at a time | "break this down into tasks" |
 | `o-implement` | Build tasks test-first, review-clean, one commit each | "implement the tasks" |
 | `o-fix` | Resolve a review's fix plan | "fix these findings" |
 | `o-review` | Review code against principles and spec, running every pass | "review this diff" |

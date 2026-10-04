@@ -177,10 +177,14 @@ export function transition(state, to, { reportText = "" } = {}) {
   return { ok: true, state: { ...state, node: to, guards, updatedAt: new Date().toISOString() } };
 }
 
+/**
+ * A handoff is checked against the gates its own graph uses. Requiring every gate `computeGuards` knows failed
+ * each new run on `three_options`, a gate kept only for runs whose stored graph still names it.
+ */
 export function verifyState(state, { reportText = "" } = {}) {
   const guards = computeGuards(state, { reportText });
   const isStop = STOPS.includes(state.node);
-  const required = state.node === "handoff" ? Object.keys(guards) : [];
+  const required = state.node === "handoff" ? [...new Set(state.graph.edges.flatMap((edge) => edge.guards))] : [];
   const checks = required.map((name) => ({ name, ...guards[name] }));
   return {
     ok: isStop && checks.every((check) => check.pass),
@@ -348,7 +352,9 @@ function persist(dir, state, { fromIndex, writeReport }) {
   if (writeReport) {
     const text = reportTextFor(dir, state);
     const head = `${propertyBlock("plan", `Plan · ${runSlug(dir)}`, dir, { input: state.input ? path.resolve(dir, state.input) : null }, state.topics)}# Plan — ${state.slug}\n`;
-    const body = upsertScenario(text || head, renderGraphMermaid(state));
+    // The graph lives in state.json. A plan written while the graph was drawn into it keeps that block current;
+    // a new plan holds only the spec, so the reader is not handed a state machine first.
+    const body = !text ? head : /^## Scenario[ \t]*\r?$/m.test(text) ? upsertScenario(text, renderGraphMermaid(state)) : text;
     fs.writeFileSync(path.join(dir, state.report), body);
   }
   writeMemory(dir, state, fromIndex);

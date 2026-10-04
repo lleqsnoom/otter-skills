@@ -1,7 +1,7 @@
 ---
 name: o-skill-lint
 description: Validate the repo's own skills — frontmatter, referenced scripts and references, stray template tokens, symlink-safe main guards, evals and the README skills table — and measure trigger rank-1 and description collisions. Use when adding or editing a skill, before shipping the repo, or when a skill is not triggering.
-version: 1.2.1
+version: 1.3.0
 author: Community
 tags: [lint, validation, skills, frontmatter, repo-hygiene, discovery]
 user-invocable: true
@@ -48,6 +48,7 @@ violation is found, **2** on a usage error. Each violation names the `skill` and
 | `cross-skill-import` | A skill's script imports another skill's script — skills must stay standalone. |
 | `copy-drift` | A file shared across skills differs byte-for-byte between copies. |
 | `card-budget` | A pass card (the `pass.md` in a skill's references folder) is over 600 words. A card is what a host reads instead of the skill's whole body, so its length is the cost of every pass. |
+| `skill-budget` | A `SKILL.md` whose frontmatter sets `budget: <words>` has a body longer than that, or a budget that is not a positive whole number. A skill without the field is not checked. A fix to a budgeted skill replaces or removes a line rather than adding one. |
 | `pass-ref` | A skill's `SKILL.md` or reference files name another skill's `SKILL.md` while that skill ships a pass card. The violation gives the `file:line` and the card path to name instead. |
 | `repo-relative-path` | A skill's text runs a script as `node skills/o-x/…`, a path that only exists in this checkout; use `<skill>/scripts/…` or `<skills>/o-x/scripts/…`. A heal plan's `check` line is exempt — it runs inside this repo. |
 | `stale-placeholder` | A `<path-to-…>`, `<o-x skill>` or `<… skill root>` placeholder no agent can expand; the convention is `<skill>` and `<skills>`. |

@@ -1,7 +1,7 @@
 ---
 name: o-parallel
 description: Run several coding tasks at the same time — each in its own git worktree with its own background agent (Claude Code, Codex, Crush or any CLI) holding the parent's project rights, then merge the committed results back or leave them on branches for review. Use when asked to run tasks in parallel, fan out a task folder to workers, or parallelize independent tasks.
-version: 1.3.1
+version: 1.3.2
 author: Community
 tags: [parallel, agents, background, worktree, concurrency, dispatch]
 user-invocable: true
