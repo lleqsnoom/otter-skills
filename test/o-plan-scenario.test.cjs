@@ -60,6 +60,26 @@ describe("o-plan scenario", () => {
     assert.equal(reasoned.status, 0, reasoned.stderr);
   });
 
+  it("verifies a handoff that weighed two approaches, against the gates its own graph uses", () => {
+    const { cwd, dir } = start();
+    const plan = path.join(cwd, dir, "E00-plan.md");
+    fs.appendFileSync(plan, [
+      "", "contract: get(key) -> value", "invariant: a miss is never cached", "test: given a miss when read then the source is asked",
+      "", "## Layers", "", "### L0 — skeleton", "**Objective:** o", "**Scope in:** i", "**Scope out:** o", "**Prerequisite:** none",
+      "**Definition of Done:**", "- [ ] `npm test`", "",
+    ].join("\n"));
+    const file = batch(cwd, [
+      { event: "research", data: "src/cache.mjs:12" }, { to: "research" }, { to: "clarify" },
+      { event: "option", data: "read-through" }, { event: "option", data: "write-behind" }, { to: "propose" },
+      { event: "decide", data: "read-through" }, { to: "decide" }, { to: "spec" }, { to: "layers" }, { to: "gate" },
+      { event: "approve", data: "yes" }, { to: "handoff" },
+    ]);
+    assert.equal(cmd(cwd, "record", "--dir", dir, "--events", file).status, 0);
+    const verified = cmd(cwd, "verify", "--dir", dir);
+    assert.equal(verified.status, 0, verified.stdout);
+    assert.ok(!JSON.parse(verified.stdout).checks.some((check) => check.name === "three_options"));
+  });
+
   it("amends a plan in place with a dated changelog line", () => {
     const { cwd, dir } = start();
     const out = cmd(cwd, "amend", "--dir", dir, "--data", "L2 drops the DLQ: the queue retries natively");

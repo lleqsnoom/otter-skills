@@ -177,10 +177,14 @@ export function transition(state, to, { reportText = "" } = {}) {
   return { ok: true, state: { ...state, node: to, guards, updatedAt: new Date().toISOString() } };
 }
 
+/**
+ * A handoff is checked against the gates its own graph uses. Requiring every gate `computeGuards` knows failed
+ * each new run on `three_options`, a gate kept only for runs whose stored graph still names it.
+ */
 export function verifyState(state, { reportText = "" } = {}) {
   const guards = computeGuards(state, { reportText });
   const isStop = STOPS.includes(state.node);
-  const required = state.node === "handoff" ? Object.keys(guards) : [];
+  const required = state.node === "handoff" ? [...new Set(state.graph.edges.flatMap((edge) => edge.guards))] : [];
   const checks = required.map((name) => ({ name, ...guards[name] }));
   return {
     ok: isStop && checks.every((check) => check.pass),
