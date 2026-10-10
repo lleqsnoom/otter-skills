@@ -25,7 +25,14 @@ export const DEFAULT_CONFIG_PATH = ".o-skills/config/arch.json";
 export const DEFAULT_BANNED_NAMES = ["utils", "helpers", "common", "shared", "misc", "tools", "other"];
 
 // Vendored, generated and tool-owned trees are not the repo's design, so they are not its violations.
-export const DEFAULT_EXCLUDE = ["node_modules", ".git", "dist", ".astro", "vendor", ".venv", ".o-skills"];
+export const DEFAULT_EXCLUDE = ["node_modules", ".git", "dist", ".astro", "vendor", ".venv", ".o-skills", ".godot"];
+
+/**
+ * Files a tool writes beside a source file and names after it -- Godot's `model.obj.import` and `script.gd.uid` --
+ * repeat the source's name rather than choose one, so a naming finding on them only says the source's again.
+ */
+const GENERATED_SIDECAR = /\.\w+\.(?:import|uid)$/;
+export const isGeneratedSidecar = (rel) => GENERATED_SIDECAR.test(rel);
 
 // Naming needs no declaration, so it is rated on every run; the other two depend on what was declared.
 const ALWAYS_RATED = ["naming"];
@@ -201,7 +208,7 @@ export function checkDeclaration(root, config, configPath = null) {
 export const CODE_EXTENSIONS = new Set([
   ".astro", ".c", ".clj", ".cpp", ".cs", ".cxx", ".dart", ".ex", ".exs", ".go", ".h", ".hpp", ".hs",
   ".java", ".js", ".jsx", ".kt", ".kts", ".lua", ".mjs", ".cjs", ".mts", ".cts", ".php", ".pl", ".py", ".rb", ".rs",
-  ".scala", ".sh", ".swift", ".ts", ".tsx", ".vue", ".svelte", ".zig",
+  ".scala", ".sh", ".swift", ".ts", ".tsx", ".vue", ".svelte", ".zig", ".gd", ".gdshader", ".gdshaderinc",
 ]);
 
 const isCodeFile = (rel, config) => CODE_EXTENSIONS.has(path.extname(rel)) || asArray(config?.code_extensions).includes(path.extname(rel));
@@ -345,7 +352,7 @@ const report = ({ rootAbs, usedConfig, coverage, unplaced, violations, explainCo
 export function runCheck({ root, configPath, explainCoverage = false } = {}) {
   const rootAbs = assertRoot(root);
   const { config, usedConfig } = loadDeclaration(rootAbs, configPath);
-  const files = walk(rootAbs, [...DEFAULT_EXCLUDE, ...asArray(config?.exclude)]);
+  const files = walk(rootAbs, [...DEFAULT_EXCLUDE, ...asArray(config?.exclude)]).filter((rel) => !isGeneratedSidecar(rel));
   const coverage = groupCoverage(config);
   const layerOf = classifyLayers(files, config?.layers);
   const violations = [

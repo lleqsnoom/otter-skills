@@ -1,7 +1,7 @@
 ---
 name: o-review
 description: Review a change before it merges — is it correct (edge cases, error paths, untrusted input, security), is it simple (small functions, SOLID, KISS, DRY), does it match its spec — with AST complexity counts for the code the change touched. Runs the comments, bloat, architecture and quality-floor passes inside every review and writes one fix plan for o-fix. Use when asked to review code, a diff, a branch, a module or the changes before a PR.
-version: 2.6.2
+version: 2.7.0
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
 user-invocable: true
@@ -112,14 +112,16 @@ check-duplication.mjs    { totalFiles, duplicatedBlocks, duplicates: [ { file, l
 analyze-patterns.mjs     { results, totalFiles, message }
 ```
 
-`summary.language` says which engine ran: `tree-sitter (AST-based)` or `regex fallback`. Regex metrics have no parameter counts and approximate line numbers, so say which engine you reviewed with when it is not the AST one.
+`summary.language` names the engines that ran: `tree-sitter (AST-based)`, `regex fallback`, and for Godot
+projects `gdscript (indentation-based)` and `godot shader (brace-based)`; each file carries its own `engine`. Regex metrics have no parameter counts and approximate line numbers, so say which engine you reviewed with when it is not the AST one.
 
 A count in the plan is a measurement, and an unmeasured count is not a zero. When an analysis script fails, `save-plan.mjs` writes `unknown — <script> failed, so this was not measured` and an "Analysis incomplete" note naming the reason. Carry that into the review: never report a failed analysis as a clean result.
 
 For engineering principles definitions and violation patterns, see `references/principles.md`.
 For language-specific review criteria, see `references/lang-typescript.md` (TypeScript),
-`references/lang-python.md` (Python), `references/lang-go.md` (Go) and `references/lang-rust.md`
-(Rust) — when the change is one of those languages, read its pack and apply it under
+`references/lang-python.md` (Python), `references/lang-go.md` (Go), `references/lang-rust.md`
+(Rust) and `references/lang-gdscript.md` (GDScript and Godot shaders) — when the change is one of those languages,
+read its pack and apply it under
 `[PRINCIPLE]`; for a language with no pack, say so rather than inventing criteria.
 
 **After running the scripts:** The plan file path is printed by `save-plan.mjs`. Open that file with your file tools, then write your review content directly into it using the format below. **Do not use MCP resources to read/write plan files — they don't exist.**

@@ -21,6 +21,7 @@ import cp from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { findSourceFiles, findTrackedSourceFiles } from "./file-discovery.mjs";
+import { godotExtractorFor } from "./godot-extractors.mjs";
 
 /** The directory this script sits in: ESM has no __dirname, and config and assets are resolved from here. */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -537,9 +538,10 @@ function extractParams(paramNode) {
 /**
  * Extract functions from source using tree-sitter AST.
  */
+/** The functions tree-sitter finds, or null when the language's grammar could not be loaded. */
 async function extractFunctionsTS(source, langName) {
   const parser = await setupParser(langName);
-  if (!parser) return [];
+  if (!parser) return null;
 
   const FUNCTION_NODE_TYPES = [
     "function_declaration",   // JS, TS, Go, Java, PHP, C-family, Haxe
@@ -784,7 +786,9 @@ async function collectReport(files, useTS) {
       highComplexity: 0,
       longFunctions: 0,
       tooManyParams: 0,
+      // Replaced below by the engines that actually measured the files; this is only the answer for no files.
       language: useTS ? "tree-sitter (AST-based)" : "regex fallback",
+      engines: {},
       // Reported so a consumer counts with the same numbers this analysis used, instead of
       // hardcoding its own copy of them and drifting when assets/config.json changes.
       thresholds: {
@@ -803,17 +807,36 @@ async function collectReport(files, useTS) {
       continue;
     }
 
-    const ext = path.extname(file).toLowerCase();
-    const langName = EXTENSION_MAP[ext];
-    const functions = useTS && langName ? await extractFunctionsTS(source, langName) : extractFunctionsRegex(source);
+    const { engine, functions } = await measureFile(file, source, useTS);
+    report.summary.engines[engine] = (report.summary.engines[engine] ?? 0) + 1;
 
     const fileReport = analyzeFile(path.relative(process.cwd(), file), functions, report.summary);
+    fileReport.engine = engine;
     if (fileReport.functions.length > 0) {
       report.files.push(fileReport);
     }
   }
 
+  const engines = Object.keys(report.summary.engines).sort();
+  if (engines.length > 0) report.summary.language = engines.join(" + ");
   return report;
+}
+
+/**
+ * One file's functions and the engine that found them. Godot's languages have extractors of their own; a language
+ * whose tree-sitter grammar is not installed falls back to the regex engine rather than reporting no functions,
+ * because an unmeasured file is not an empty one.
+ */
+async function measureFile(file, source, useTS) {
+  const ext = path.extname(file).toLowerCase();
+  const godot = godotExtractorFor(ext);
+  if (godot) return { engine: godot.engine, functions: godot.extract(source) };
+  const langName = EXTENSION_MAP[ext];
+  if (useTS && langName) {
+    const functions = await extractFunctionsTS(source, langName);
+    if (functions) return { engine: "tree-sitter (AST-based)", functions };
+  }
+  return { engine: "regex fallback", functions: extractFunctionsRegex(source) };
 }
 
 /**
@@ -862,7 +885,7 @@ function analyzeFile(relativePath, functions, summary) {
 }
 
 function warnAboutMissingTreeSitter(files) {
-  const nonJsTs = files.filter((f) => !/\.(js|ts|jsx|tsx|mjs|cjs)$/.test(f));
+  const nonJsTs = files.filter((f) => !/\.(js|ts|jsx|tsx|mjs|cjs)$/.test(f) && !godotExtractorFor(path.extname(f).toLowerCase()));
   if (nonJsTs.length > 0) {
     console.error(
       "Warning: tree-sitter not available. Non-JS/TS files will use regex-based analysis."
@@ -882,7 +905,9 @@ async function main() {
     process.exit(1);
   }
 
-  warnAboutMissingTreeSitter(files);
+  // Only an engine that did not start leaves files to the regex fallback; warning on every run told users the AST
+  // analysis they were getting was not running.
+  if (!useTS) warnAboutMissingTreeSitter(files);
   const report = await collectReport(files, useTS);
 
   console.log(JSON.stringify(report, null, 2));
