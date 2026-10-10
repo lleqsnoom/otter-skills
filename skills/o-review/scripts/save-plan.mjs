@@ -221,6 +221,7 @@ function aggregateStats(complexity, duplication, patterns, ranges = null) {
   // an older analyzer did not report them.
   const C = { maxComplexity: 5, maxLength: 20, maxParams: 3, ...(complexity?.summary?.thresholds || {}) };
   stats.thresholds = C;
+  stats.engine = complexity?.summary?.language ?? null;
   if (complexity) {
     for (const f of complexity.files || []) {
       stats.totalFilesAnalyzed.add(f.file);
@@ -330,6 +331,8 @@ function generatePlanHeader(stats, branch, failed = [], scope = { kind: "all" })
     lines.push(metric("Pre-existing functions over the bar, untouched", `${stats.preExisting} — not findings of this review; \`--all\` lists them`, "analyze-complexity.mjs"));
   }
   lines.push(metric("Duplicated blocks found", stats.duplicatedBlocks, "check-duplication.mjs"));
+  // The skill asks the reviewer to say which engine measured the files; a regex-measured count reads differently.
+  if (stats.engine) lines.push(`**Measured by:** ${stats.engine}`);
   lines.push("");
 
   if (stats.touched.length) {

@@ -6,8 +6,10 @@ import cp from "node:child_process";
  * Shared file discovery utilities for o-review scripts.
  */
 
-const SOURCE_EXTENSIONS = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|php|sh|bash|zsh)$/;
-const SKIP_DIRS = [".git", "node_modules", "dist", "build", ".agents"];
+// GDScript and the Godot shading language are measured by godot-extractors.mjs, not by tree-sitter.
+const SOURCE_EXTENSIONS = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|php|sh|bash|zsh|gd|gdshader|gdshaderinc)$/;
+// `.godot` is the Godot editor's generated cache, which a walk of a directory would otherwise read as source.
+const SKIP_DIRS = [".git", "node_modules", "dist", "build", ".agents", ".godot"];
 
 /**
  * Recursively walk a directory, collecting files matching the source extensions.
