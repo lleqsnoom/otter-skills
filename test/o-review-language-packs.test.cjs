@@ -42,6 +42,19 @@ describe("o-review Go and Rust packs", () => {
   });
 });
 
+describe("o-review GDScript pack", () => {
+  it("routes to the GDScript pack from SKILL.md", () => {
+    assert.ok(fs.readFileSync(SKILL, "utf8").includes("lang-gdscript.md"), "SKILL.md routes to the GDScript pack");
+  });
+
+  it("ships a GDScript pack with Godot-specific criteria", () => {
+    const text = fs.readFileSync(path.join(REFS, "lang-gdscript.md"), "utf8").toLowerCase();
+    for (const cue of ["_process", "await", "signal", "packedfloat32array", "duplicate()", "workerthreadpool", "shader", "@warning_ignore"]) {
+      assert.ok(text.includes(cue), `GDScript pack mentions ${cue}`);
+    }
+  });
+});
+
 describe("o-implement pipeline table", () => {
   it("names only skills that exist", () => {
     const text = fs.readFileSync(PIPELINES, "utf8");
