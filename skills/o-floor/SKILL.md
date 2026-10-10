@@ -1,7 +1,7 @@
 ---
 name: o-floor
 description: "Set and enforce a repository's quality floor — declare the numbers that must hold (coverage, file size, dependency risk, accessibility) with a reason each in .o-skills/config/floor.json, then let floor-guard.mjs report every move that lowers the bar on the current diff: a weakened threshold, a silenced checker (@ts-ignore, eslint-disable, noqa), unfinished work, a test made easier, a deleted test, or a removed assertion. Detection only. Use when asked to set a quality bar, stop a test being weakened to go green, check coverage or complexity budgets, or prove a diff did not lower the standard."
-version: 1.1.2
+version: 1.2.0
 author: Community
 tags: [quality, floor, constraints, guard, thresholds, suppression, coverage, enforcement, ratchet]
 user-invocable: true
@@ -82,11 +82,11 @@ in a README or stored in a fixture is prose or data, not a checker someone silen
 
 | `rule` | Fires when |
 |--------|-----------|
-| `silenced-checker` | An added line carries a suppression: `@ts-ignore` / `@ts-nocheck` / `@ts-expect-error`, `eslint-disable`, `biome-ignore`, `# noqa`, `# type: ignore`, `istanbul ignore`, `nosemgrep`, `gitleaks:allow`, `Stryker disable` |
-| `unfinished-work` | An added line is a stub (`NotImplementedError`, a "not implemented" throw), an empty `catch`, or a bare `TODO` — one carrying `#123` or a URL is tracked work and passes. A repo that uses TODOs as working notes sets `"unfinishedWork": { "bareTodo": false }`; stubs and empty catches still count |
-| `test-made-easier` | An added line skips a test: `it.skip` / `test.todo` / `xit` / `xdescribe`, `@pytest.mark.skip`, `t.Skip(`, `#[ignore]` |
+| `silenced-checker` | An added line carries a suppression: `@ts-ignore` / `@ts-nocheck` / `@ts-expect-error`, `eslint-disable`, `biome-ignore`, `# noqa`, `# type: ignore`, `istanbul ignore`, `nosemgrep`, `gitleaks:allow`, `Stryker disable`, GDScript's `@warning_ignore(…)` |
+| `unfinished-work` | An added line is a stub (`NotImplementedError`, a "not implemented" throw, `push_error` or `assert`), an empty `catch`, or a bare `TODO` — one carrying `#123` or a URL is tracked work and passes. A repo that uses TODOs as working notes sets `"unfinishedWork": { "bareTodo": false }`; stubs and empty catches still count |
+| `test-made-easier` | An added line skips a test: `it.skip` / `test.todo` / `xit` / `xdescribe`, `@pytest.mark.skip`, `t.Skip(`, `#[ignore]`, GUT's `pending(` / `skip_script`, gdUnit4's `do_skip` |
 | `test-deleted` | The diff deletes a test file |
-| `assertion-removed` | A test file that still exists lost more `expect` / `assert` / `should` lines than it gained — the net loss is reported, so a test rewritten with as many assertions passes |
+| `assertion-removed` | A test file that still exists lost more `expect` / `assert` / `should` lines (and names that start with them: `assert_eq`, `expect_near`, `assertEqual`) than it gained — the net loss is reported, so a test rewritten with as many assertions passes |
 
 The declaration rules are rated once a floor file exists, on either side of the diff.
 
@@ -165,7 +165,8 @@ who trips over it.
     { "rule": "coverage-changed-lines", "owner": "tkwiatek", "expires": "2026-12-31", "reason": "generated client" }
   ],
   "ignore": ["skills/o-floor/**", "**/evals/fixtures/**"],
-  "codeExtensions": ["heex"]
+  "codeExtensions": ["heex"],
+  "testFiles": ["world/probes/**/*_unit.gd"]
 }
 ```
 
@@ -176,8 +177,12 @@ who trips over it.
   measured.
 - `exceptions[]` — a `rule`, an `owner`, an `expires` date and a `reason`. An exception is a tracked decision;
   an untracked one is a loosened rule, which is why adding or extending one is reported.
-- `ignore` — globs, matched against the repo-relative path. `*` stays inside a path segment, `**` crosses one.
-- `codeExtensions` — added to the built-in code list, for a stack the guard does not know.
+- `ignore` — globs, matched against the repo-relative path. `*` stays inside a path segment, `**` crosses any
+  number of them, and `**/` none as well.
+- `codeExtensions` — added to the built-in code list, for a stack the guard does not know. GDScript and Godot
+  shaders (`gd`, `gdshader`, `gdshaderinc`) are built in.
+- `testFiles` — globs added to the common test conventions (`*.test.*`, `*_test.*`, `test_*`, `tests/`), for tests
+  that follow none of them, such as a Godot project's `SceneTree` probes.
 - `unfinishedWork.bareTodo` — `false` stops reporting untracked `TODO` lines; everything else in the rule stays.
 
 ### Sane defaults

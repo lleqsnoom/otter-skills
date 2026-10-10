@@ -32,6 +32,7 @@ const CODE_EXTENSIONS = new Set([
   "js", "mjs", "cjs", "jsx", "ts", "tsx", "py", "rb", "go", "rs", "java", "kt", "kts", "swift", "c", "h",
   "cc", "cpp", "hpp", "cs", "php", "scala", "hs", "ex", "exs", "erl", "clj", "fs", "zig", "jl", "pl", "r",
   "lua", "dart", "adb", "sh", "bash", "zsh", "fish", "ps1", "sql", "vue", "svelte", "astro",
+  "gd", "gdshader", "gdshaderinc",
 ]);
 
 /** Every rule this guard can report. `rated` in the output names the ones actually checked. */
@@ -52,11 +53,13 @@ const SUPPRESSIONS = [
   ["nosemgrep", /nosemgrep/],
   ["gitleaks-allow", /gitleaks:allow/],
   ["stryker-disable", /Stryker disable/],
+  // GDScript: `@warning_ignore_restore` turns the warning back on, so it is not one.
+  ["gdscript-warning-ignore", /@warning_ignore(?:_start)?\s*\(/],
 ];
 
 /** A line that admits the work is not finished. A bare `TODO` counts; one carrying a tracker reference does not. */
 const STUBS = [
-  ["not-implemented", /throw new (?:Error|NotImplemented)[^\n]*[Nn]ot implemented|NotImplementedError/],
+  ["not-implemented", /throw new (?:Error|NotImplemented)[^\n]*[Nn]ot implemented|NotImplementedError|\b(?:push_error|assert)\s*\([^\n]*[Nn]ot implemented/],
   ["empty-catch", /catch\s*\(?[\w\s]*\)?\s*\{\s*\}/],
   ["todo", /\bTODO\b/],
 ];
@@ -67,11 +70,18 @@ const SKIPS = [
   ["python-skip", /@pytest\.mark\.skip|pytest\.skip\(/],
   ["go-skip", /t\.Skip\(/],
   ["rust-ignore", /#\[ignore\]/],
+  // GUT's pending() and skip_script, gdUnit4's do_skip argument.
+  ["gdscript-skip", /\bpending\s*\(|\bskip_script\s*=|\bdo_skip\s*(?::=|=|:)/],
 ];
 
 const TODO_WITH_REFERENCE = /#\d+|https?:\/\//;
 
-export const isTestFile = (file) => /\.(?:test|spec)\.|_test\.|(?:^|\/)test_|(?:^|\/)tests?\//.test(file);
+/**
+ * A test file by the common conventions, or by a repo's own `testFiles` globs -- a Godot project's `SceneTree`
+ * probes (`world/probes/**\/*_unit.gd`) follow none of the common ones.
+ */
+export const isTestFile = (file, testGlobs = []) =>
+  /\.(?:test|spec)\.|_test\.|(?:^|\/)test_|(?:^|\/)tests?\//.test(file) || testGlobs.some((glob) => globToRegExp(glob).test(file));
 
 const extensionOf = (file) => {
   const name = String(file ?? "");
@@ -79,12 +89,17 @@ const extensionOf = (file) => {
   return dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
 };
 
-/** `*` stays inside a path segment; `**` crosses one. Enough for the ignore lists a floor needs. */
+/**
+ * `*` stays inside a path segment; `**` crosses any number of them, and `**\/` also none, so
+ * `probes/**\/*_unit.gd` holds `probes/walker_unit.gd` as well as `probes/body/walker_unit.gd`.
+ */
 export function globToRegExp(glob) {
   const escaped = String(glob)
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*\*\//g, "\u0001")
     .replace(/\*\*/g, "\u0000")
     .replace(/\*/g, "[^/]*")
+    .replace(/\u0001/g, "(?:.*/)?")
     .replace(/\u0000/g, ".*");
   return new RegExp(`^${escaped}$`);
 }
@@ -109,17 +124,22 @@ export function classifyAddedLine({ file, line, text }) {
   return out;
 }
 
-const ASSERTION = /\b(?:expect|assert|should)\b/;
+/**
+ * An assertion line: `expect`, `assert` or `should`, alone or as the head of a name -- `assert_eq` and `expect_near`
+ * (GUT, gdUnit4), `assertEqual` (unittest). A word boundary right after the head missed all three, so a test that
+ * lost them lost nothing to this guard.
+ */
+const ASSERTION = /\b(?:expect|assert|should)(?:[_A-Z]\w*)?\b/;
 
 /**
  * Removed assertions, net of the ones added to the same test file. A test rewritten with as many assertions as
  * it lost — or more — lowered nothing; counting removed lines alone reported every test refactor as a violation.
  * What is left is the net loss, reported on the last removed lines of that file.
  */
-export function netAssertions(removedFindings, addedLines) {
+export function netAssertions(removedFindings, addedLines, testGlobs = []) {
   const added = new Map();
   for (const entry of addedLines) {
-    if (isTestFile(entry.file) && ASSERTION.test(entry.text)) added.set(entry.file, (added.get(entry.file) ?? 0) + 1);
+    if (isTestFile(entry.file, testGlobs) && ASSERTION.test(entry.text)) added.set(entry.file, (added.get(entry.file) ?? 0) + 1);
   }
   const byFile = new Map();
   for (const finding of removedFindings) byFile.set(finding.file, [...(byFile.get(finding.file) ?? []), finding]);
@@ -130,8 +150,8 @@ export function netAssertions(removedFindings, addedLines) {
 }
 
 /** The findings a removed line carries: an assertion taken out of a test that still exists. */
-export function classifyRemovedLine({ file, line, text, deletedFiles = [] }) {
-  if (!isTestFile(file) || deletedFiles.includes(file)) return [];
+export function classifyRemovedLine({ file, line, text, deletedFiles = [], testGlobs = [] }) {
+  if (!isTestFile(file, testGlobs) || deletedFiles.includes(file)) return [];
   return ASSERTION.test(text) ? [{ rule: "assertion-removed", file, line, detail: "assertion" }] : [];
 }
 
@@ -322,6 +342,7 @@ export function guard({ root, base, configRel = DEFAULT_CONFIG, ignore: extraIgn
   const ignore = [...(working.config?.ignore ?? []), ...extraIgnore, ...(selfRel && !selfRel.startsWith("..") ? [`${selfRel}/**`] : [])];
   const extensions = new Set([...CODE_EXTENSIONS, ...(working.config?.codeExtensions ?? [])]);
   const scannable = (file) => isScannable(file, { extensions, ignore });
+  const testGlobs = working.config?.testFiles ?? [];
 
   const violations = [];
   for (const entry of parsed.added) {
@@ -330,10 +351,10 @@ export function guard({ root, base, configRel = DEFAULT_CONFIG, ignore: extraIgn
   }
   const removedAssertions = parsed.removed
     .filter((entry) => scannable(entry.file))
-    .flatMap((entry) => classifyRemovedLine({ ...entry, deletedFiles: parsed.deletedFiles }));
-  violations.push(...netAssertions(removedAssertions, parsed.added.filter((entry) => scannable(entry.file))));
+    .flatMap((entry) => classifyRemovedLine({ ...entry, deletedFiles: parsed.deletedFiles, testGlobs }));
+  violations.push(...netAssertions(removedAssertions, parsed.added.filter((entry) => scannable(entry.file)), testGlobs));
   for (const file of parsed.deletedFiles) {
-    if (isTestFile(file) && scannable(file)) violations.push({ rule: "test-deleted", file, line: null, detail: "test file deleted" });
+    if (isTestFile(file, testGlobs) && scannable(file)) violations.push({ rule: "test-deleted", file, line: null, detail: "test file deleted" });
   }
 
   const baseText = git(["show", `${mergeBase}:${configRel}`], root);
