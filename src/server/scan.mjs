@@ -20,7 +20,12 @@ import {
 
 const MAX_READ_BYTES = 1024 * 1024;
 /** The extensions the server reads as text. */
-export const TEXT_EXTENSIONS = new Set(['.md', '.markdown', '.json', '.txt', '.yml', '.yaml', '.sh', '.py', '.js', '.mjs', '.ts', '.tsx', '.mmd', '.csv', '.toml']);
+/**
+ * The extensions the server reads as text -- and so the files the code tools search and the semantic index embeds.
+ * GDScript and Godot shaders are code; a Godot scene or resource (`.tscn`, `.tres`) is left out, because it can carry
+ * a whole serialized mesh.
+ */
+export const TEXT_EXTENSIONS = new Set(['.md', '.markdown', '.json', '.txt', '.yml', '.yaml', '.sh', '.py', '.js', '.mjs', '.ts', '.tsx', '.mmd', '.csv', '.toml', '.gd', '.gdshader', '.gdshaderinc']);
 const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown']);
 
 /**

@@ -132,6 +132,8 @@ const escapePattern = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const DECLARATION_TOKENS = [
   'function', 'class', 'const', 'let', 'var', 'def', 'fn', 'func', 'type', 'interface', 'struct', 'enum', 'trait',
   'impl', 'module', 'namespace', 'export', 'public', 'private', 'static', 'async',
+  // GDScript's `class_name Name` and `signal name`; `class` alone does not reach past the underscore.
+  'class_name', 'signal',
 ];
 
 const declarationPatterns = (name) =>
