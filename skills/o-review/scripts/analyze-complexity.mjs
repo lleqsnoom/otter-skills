@@ -882,7 +882,9 @@ async function main() {
     process.exit(1);
   }
 
-  warnAboutMissingTreeSitter(files);
+  // Only an engine that did not start leaves files to the regex fallback; warning on every run told users the AST
+  // analysis they were getting was not running.
+  if (!useTS) warnAboutMissingTreeSitter(files);
   const report = await collectReport(files, useTS);
 
   console.log(JSON.stringify(report, null, 2));
