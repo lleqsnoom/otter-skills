@@ -4,9 +4,8 @@
  * Detect duplicated code blocks in source files.
  * Uses a simple line-hashing approach to find repeated sequences.
  *
- * Known limitations: comment stripping is regex-based (misses heredocs and strings containing //),
- * so duplicated comments or string literals with embedded slashes may not be detected. For production
- * use prefer tree-sitter-based extraction when available.
+ * Comments are stripped by a scan that skips strings, by the file's language (text-normalization.mjs); heredocs
+ * and raw strings are not recognised. Each occurrence is reported at its line in the file.
  *
  * Usage: node scripts/check-duplication.mjs <file1> [file2] ...
  *        node scripts/check-duplication.mjs --all [--root ./src]
@@ -39,7 +38,7 @@ const CONFIG = { minDupLines: 5, ...loadConfig() };
 // ── Deduplication checker ──────────────────────────────────────────
 
 function findDuplicates(source, filePath) {
-  const lines = normalizeLines(source);
+  const lines = normalizeLines(source, path.extname(filePath));
   const duplicates = [];
 
   if (lines.length < CONFIG.minDupLines) return duplicates;
@@ -49,11 +48,11 @@ function findDuplicates(source, filePath) {
   const hashes = new Map();
 
   for (let i = 0; i <= lines.length - windowSize; i++) {
-    const block = lines.slice(i, i + windowSize).join("\n");
+    const block = lines.slice(i, i + windowSize).map((line) => line.text).join("\n");
     if (!hashes.has(block)) {
       hashes.set(block, []);
     }
-    hashes.get(block).push({ startLine: i + 1, block });
+    hashes.get(block).push({ startLine: lines[i].line, block });
   }
 
   // Collect blocks that appear more than once
