@@ -1,7 +1,7 @@
 ---
 name: o-arch-lint
 description: Check a code tree against the architecture it declares — reads .o-skills/config/arch.json and reports every banned directory and file name, every wrong-way import across a declared layer boundary, and every place the declaration and the tree disagree, as file:line with a rule name. Detection only, never writes code, exit 1 on a violation. Use when asked to check layer boundaries, verify dependency direction, find utils/helpers/common sprawl, or prove a repo still matches its declared structure; o-review runs it on every review.
-version: 1.1.1
+version: 1.2.0
 author: Community
 tags: [architecture, lint, boundaries, dependency-direction, naming, enforcement, parity]
 user-invocable: true
@@ -39,7 +39,8 @@ node <skill>/scripts/scaffold.mjs --root . --force   # replace an existing decla
 It prints a declaration to stdout and writes it only where nothing would be replaced, or with `--force`. One
 layer per top-level code directory, with the directions the static imports already take — relative ones, and the
 path aliases `tsconfig.json` or `jsconfig.json` declares (`"@domain/*": ["src/domain/*"]`), each alias added as a
-marker too — so a deeper model (a `src/` that holds six layers) is then split by hand. **Read the note it prints before ratifying**: an
+marker too, and in a Godot project (a `project.godot` at the root) the `res://` paths that `preload`, `load`,
+`extends` and a shader's `#include` name, each layer marked by `res://<layer>/` — so a deeper model (a `src/` that holds six layers) is then split by hand. **Read the note it prints before ratifying**: an
 import built at run time, an absolute specifier and a re-export are invisible to it, so an empty list means
 nothing was observed rather than nothing is imported. Widen each entry to what the layer may do, then commit it.
 
@@ -180,8 +181,9 @@ keys can follow when the boundaries are agreed.
   stated purpose and an owner is a published boundary, and writing the exemption down keeps that a visible
   decision. Every other rule still applies inside it.
 - `code_extensions` — extensions added to the built-in code list the direction check reads.
-- `exclude` adds to the built-in list (`node_modules`, `.git`, `dist`, `.astro`, `vendor`, `.venv`, `.o-skills`). A path
-  is skipped when it contains any fragment.
+- `exclude` adds to the built-in list (`node_modules`, `.git`, `dist`, `.astro`, `vendor`, `.venv`, `.o-skills`,
+  `.godot`). A path is skipped when it contains any fragment. A sidecar a tool names after its source -- Godot's
+  `model.obj.import` and `script.gd.uid` -- is skipped too: its name is the source's, already checked.
 
 **Already using dependency-cruiser or eslint-plugin-boundaries?** Keep it: it parses imports properly, which this
 checker deliberately does not. Declare only `naming` here (and `naming_exempt`), so `dependency-direction` stays

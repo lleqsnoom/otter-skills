@@ -22,10 +22,14 @@ import { DEFAULT_CONFIG_PATH, DEFAULT_EXCLUDE, runCheck, walk } from "./arch-che
 const CODE_EXTENSIONS = new Set([
   ".astro", ".c", ".clj", ".cpp", ".cs", ".cxx", ".dart", ".ex", ".exs", ".go", ".h", ".hpp", ".hs",
   ".java", ".js", ".jsx", ".kt", ".kts", ".lua", ".mjs", ".cjs", ".php", ".pl", ".py", ".rb", ".rs",
-  ".scala", ".sh", ".swift", ".ts", ".tsx", ".zig",
+  ".scala", ".sh", ".swift", ".ts", ".tsx", ".zig", ".gd", ".gdshader", ".gdshaderinc",
 ]);
 
-const IMPORT_SPECIFIERS = [/from\s+['"]([^'"]+)['"]/g, /import\(\s*['"]([^'"]+)['"]/g, /require\(\s*['"]([^'"]+)['"]/g];
+// GDScript loads by `preload("res://…")`, `load("res://…")` and `extends "res://…"`, a shader by `#include "res://…"`.
+const IMPORT_SPECIFIERS = [
+  /from\s+['"]([^'"]+)['"]/g, /import\(\s*['"]([^'"]+)['"]/g, /require\(\s*['"]([^'"]+)['"]/g,
+  /\b(?:pre)?load\(\s*['"]([^'"]+)['"]/g, /\bextends\s+['"]([^'"]+)['"]/g, /#include\s+['"]([^'"]+)['"]/g,
+];
 
 const isCode = (rel) => CODE_EXTENSIONS.has(path.extname(rel));
 
@@ -78,6 +82,8 @@ function readLenientJson(file) {
  * directions a TypeScript project actually takes.
  */
 export function readAliases(root) {
+  // A Godot project names every file from its root as `res://`, which a project.godot beside it marks.
+  if (fs.existsSync(path.join(root, "project.godot"))) return [{ prefix: "res://", target: "." }];
   for (const name of ["tsconfig.json", "jsconfig.json"]) {
     const config = readLenientJson(path.join(root, name));
     const paths = config?.compilerOptions?.paths;
@@ -130,7 +136,8 @@ export function outgoingLayers(root, rel, aliases = []) {
  * `import("../src/a")`, `require("../src/a")` or a bare `import "../src/a"`. A quoted path in a fixture or a log
  * line is data, and reading it as an import reported every test that names a file.
  */
-export const importMarker = (pathPattern) => `(?:\\bfrom\\s+|\\bimport\\s*\\(\\s*|\\brequire\\s*\\(\\s*|^\\s*import\\s+)['"]${pathPattern}`;
+export const importMarker = (pathPattern) =>
+  `(?:\\bfrom\\s+|\\bimport\\s*\\(\\s*|\\brequire\\s*\\(\\s*|^\\s*import\\s+|\\b(?:pre)?load\\s*\\(\\s*|\\bextends\\s+|#include\\s+)['"]${pathPattern}`;
 
 /**
  * The declaration the tree already keeps: one layer per code directory, each allowed the directions its
@@ -198,7 +205,11 @@ export function proposeDeclaration({ root, exclude = [] }) {
   const layers = {};
   const allowed = {};
   for (const layer of [...byLayer.keys()].sort()) {
-    const aliasMarkers = aliases.filter((alias) => layerOf(`${alias.target}x`) === layer).map((alias) => importMarker(escape(alias.prefix)));
+    // An alias into a layer marks that layer; one onto the root (Godot's res://) marks every layer by its folder.
+    const aliasMarkers = [
+      ...aliases.filter((alias) => layerOf(`${alias.target}x`) === layer).map((alias) => importMarker(escape(alias.prefix))),
+      ...aliases.filter((alias) => alias.target === ".").map((alias) => importMarker(`${escape(alias.prefix)}${escape(layer)}/`)),
+    ];
     layers[layer] = { roots: [layer], import_markers: [importMarker(`(?:\\.\\.?/)+${layer}/`), ...aliasMarkers] };
     allowed[layer] = [...new Set(byLayer.get(layer).flatMap((rel) => outgoingLayers(rootAbs, rel, aliases)))].sort();
   }
