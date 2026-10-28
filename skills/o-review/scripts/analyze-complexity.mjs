@@ -21,7 +21,7 @@ import cp from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { findSourceFiles, findTrackedSourceFiles } from "./file-discovery.mjs";
-import { godotExtractorFor } from "./godot-extractors.mjs";
+import { extractorFor } from "./godot-extractors.mjs";
 
 /** The directory this script sits in: ESM has no __dirname, and config and assets are resolved from here. */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -284,14 +284,25 @@ const EXTENSION_MAP = {
   // Python (TIOBE #1)
   ".py": "python",
   
-  // C family (TIOBE #2, #3, #5)
+  // C family (TIOBE #2, #3, #5). A `.h` is read as C++: that grammar parses a C header, while the C one breaks on
+  // the classes and templates of an engine's headers.
   ".c": "c",
-  ".h": "c",
+  ".h": "cpp",
   ".cpp": "cpp",
   ".cc": "cpp",
   ".cxx": "cpp",
+  ".c++": "cpp",
+  ".hh": "cpp",
   ".hpp": "cpp",
-  ".cs": "c_sharp",
+  ".hxx": "cpp",
+  ".h++": "cpp",
+  ".inl": "cpp",
+  ".ipp": "cpp",
+  ".tpp": "cpp",
+  ".cppm": "cpp",
+  ".ixx": "cpp",
+  // The npm package is tree-sitter-c-sharp; its wasm is tree-sitter-c_sharp.wasm.
+  ".cs": "c-sharp",
   
   // Java (TIOBE #4)
   ".java": "java",
@@ -469,6 +480,8 @@ const LANGUAGE_DECISION_TYPES = {
   rust: new Set(["if_expression", "loop_expression", "for_expression",
                   "while_expression", "match_expression"]),
   bash: new Set(["case_statement", "select_statement"]),
+  cpp: new Set(["for_range_loop"]),
+  "c-sharp": new Set(["foreach_statement", "switch_expression"]),
 };
 
 function countDecisionNodes(node, langName) {
@@ -496,15 +509,23 @@ function countDecisionNodes(node, langName) {
 const PARAM_EXTRACTORS = {
   identifier: (child) => child.text && !child.text.startsWith("(") ? child.text : null,
   formal_parameter: (child) => child.text && !child.text.startsWith("(") ? child.text : null,
+  // Go names the parameter; C and C++ bury it in a declarator (`char **argv`, `void (*cb)(int)`), and an unnamed
+  // one (`int f(int)`) is still a parameter — only `f(void)` declares none.
   parameter_declaration: (child) => {
     const nameNode = child.childForFieldName("name");
-    return nameNode ? nameNode.text : null;
+    if (nameNode) return nameNode.text;
+    const declarator = child.childForFieldName("declarator");
+    if (declarator) return (declarator.type === "identifier" ? declarator : declarator.descendantsOfType("identifier")[0] ?? declarator).text;
+    return child.text === "void" ? null : child.text;
   },
   optional_parameter: (child) => {
     const nameNode = child.childForFieldName("name");
     return nameNode ? nameNode.text : null;
   },
+  // C# names it (`int a`, whose first child is the type) and Rust patterns it (`a: i32`).
   parameter: (child) => {
+    const named = child.childForFieldName("name") ?? child.childForFieldName("pattern");
+    if (named) return named.text;
     if (child.childCount > 0) {
       const first = child.children[0];
       if (first.type === "identifier") return first.text;
@@ -549,6 +570,9 @@ async function extractFunctionsTS(source, langName) {
     "method_declaration",      // Java, C-family, Haxe
     "method_definition",       // JS, TS
     "arrow_function",          // JS, TS
+    "function_item",           // Rust
+    "constructor_declaration", // C#, Java
+    "local_function_statement", // C#
   ];
 
   const functions = [];
@@ -590,6 +614,16 @@ async function setupParser(langName) {
 }
 
 /**
+ * C and C++ keep a function's name and parameters on the function_declarator inside its declarator chain, which a
+ * pointer or reference return type nests one level deeper (`int *f(int a)`).
+ */
+function functionDeclarator(node) {
+  let declarator = node.childForFieldName("declarator");
+  while (declarator && declarator.type !== "function_declarator") declarator = declarator.childForFieldName("declarator");
+  return declarator;
+}
+
+/**
  * Extract name and parameters node from a function AST node.
  */
 function findFunctionNodeInfo(node) {
@@ -599,6 +633,12 @@ function findFunctionNodeInfo(node) {
   // Extract name based on field names
   const nameNode = node.childForFieldName("name");
   if (nameNode) name = nameNode.text;
+
+  const cDeclarator = nameNode ? null : functionDeclarator(node);
+  if (cDeclarator) {
+    name = cDeclarator.childForFieldName("declarator")?.text ?? name;
+    return { name, paramsNode: cDeclarator.childForFieldName("parameters") };
+  }
 
   // Find the parameters node — try field first, then scan children
   const paramsField = node.childForFieldName("parameters");
@@ -823,14 +863,14 @@ async function collectReport(files, useTS) {
 }
 
 /**
- * One file's functions and the engine that found them. Godot's languages have extractors of their own; a language
- * whose tree-sitter grammar is not installed falls back to the regex engine rather than reporting no functions,
- * because an unmeasured file is not an empty one.
+ * One file's functions and the engine that found them. GDScript and the shading languages have extractors of their
+ * own; a language whose tree-sitter grammar is not installed falls back to the regex engine rather than reporting no
+ * functions, because an unmeasured file is not an empty one.
  */
 async function measureFile(file, source, useTS) {
   const ext = path.extname(file).toLowerCase();
-  const godot = godotExtractorFor(ext);
-  if (godot) return { engine: godot.engine, functions: godot.extract(source) };
+  const own = extractorFor(ext);
+  if (own) return { engine: own.engine, functions: own.extract(source) };
   const langName = EXTENSION_MAP[ext];
   if (useTS && langName) {
     const functions = await extractFunctionsTS(source, langName);
@@ -885,7 +925,7 @@ function analyzeFile(relativePath, functions, summary) {
 }
 
 function warnAboutMissingTreeSitter(files) {
-  const nonJsTs = files.filter((f) => !/\.(js|ts|jsx|tsx|mjs|cjs)$/.test(f) && !godotExtractorFor(path.extname(f).toLowerCase()));
+  const nonJsTs = files.filter((f) => !/\.(js|ts|jsx|tsx|mjs|cjs)$/.test(f) && !extractorFor(path.extname(f).toLowerCase()));
   if (nonJsTs.length > 0) {
     console.error(
       "Warning: tree-sitter not available. Non-JS/TS files will use regex-based analysis."

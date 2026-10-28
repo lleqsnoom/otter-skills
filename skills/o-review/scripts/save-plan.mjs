@@ -16,6 +16,7 @@ import path from "node:path";
 import { execFileSync, execSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { changeScope, changedRanges, touches } from "./change-scope.mjs";
+import { SHADER_FILE, findSourceFiles } from "./file-discovery.mjs";
 
 /** The directory this script sits in: ESM has no __dirname, and the siblings are spawned from here. */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -482,7 +483,7 @@ function main() {
   const failed = runs.filter((run) => !run.ok);
   const header = generatePlanHeader(stats, branch, failed, scope);
 
-  fs.writeFileSync(fullPath, propertyBlock(dir, args.reviews) + header + "\n\n---\n\n" + passSkeleton());
+  fs.writeFileSync(fullPath, propertyBlock(dir, args.reviews) + header + "\n\n---\n\n" + passSkeleton(shaderFilesIn(scope)));
   console.log(fullPath);
 }
 
@@ -501,12 +502,31 @@ const PASSES = [
   ["[Spec]", "pass 8"],
 ];
 
-function passSkeleton() {
-  const sections = PASSES.map(([heading, pass]) => `## ${heading} — ${pass} of the review\n\n_pending — replace with this pass's findings, or \`none\`_\n`);
+/**
+ * A shader file in scope adds a ninth pass, o-shader-review's; a review with none has no heading to fill. The
+ * heading names the card, so a review reads it only when it has a shader to apply it to.
+ */
+const SHADER_PASS = ["[Shaders]", "pass 9"];
+const SHADER_CARD = "<skills>/o-shader-review/references/pass.md";
+const LISTED_SHADERS = 10;
+
+function shaderFilesIn(scope) {
+  const files = isWholeTree(scope) ? findSourceFiles(["--all"]) : scope.files;
+  return files.filter((file) => SHADER_FILE.test(file)).map((file) => path.relative(process.cwd(), file));
+}
+
+function passSkeleton(shaderFiles = []) {
+  const section = ([heading, pass], pending) => `## ${heading} — ${pass} of the review\n\n${pending}\n`;
+  const sections = PASSES.map((pass) => section(pass, "_pending — replace with this pass's findings, or `none`_"));
+  if (shaderFiles.length) {
+    const listed = shaderFiles.slice(0, LISTED_SHADERS).map((file) => `\`${file}\``).join(", ");
+    const more = shaderFiles.length > LISTED_SHADERS ? ` and ${shaderFiles.length - LISTED_SHADERS} more` : "";
+    sections.push(section(SHADER_PASS, `_pending — read \`${SHADER_CARD}\` and apply it to ${listed}${more}_`));
+  }
   return `${sections.join("\n---\n\n")}\n---\n\n## Summary\n\n_pending_\n`;
 }
 
-export { aggregateStats, generatePlanHeader, passSkeleton };
+export { aggregateStats, generatePlanHeader, passSkeleton, shaderFilesIn };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   main();

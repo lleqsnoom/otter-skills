@@ -28,6 +28,8 @@ Read this when o-implement's VERIFY step reviews one task. A review the user ask
    `unrated`. Exit 2 means it could not run, which is not clean.
 7. **Spec** under `[Spec]`: does the diff implement the task, no more and no less? On no source, write
    `no spec available`.
+8. **Shaders** under `[Shaders]`, only when the plan carries that heading: it names the card to read and the shader
+   files to run it over. It runs in a light review too.
 
 `<skills>` is the folder that holds every o-* skill, this one included.
 

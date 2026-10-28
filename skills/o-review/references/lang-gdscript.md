@@ -52,6 +52,9 @@ these files come from `godot-extractors.mjs` (GDScript by indentation, shaders b
 
 ## Shaders
 
+The full shader review — validators, undefined math, Godot 3 names, `ALPHA` and the transparent pipeline — is
+o-shader-review's `[Shaders]` pass. These are the Godot-design findings that sit beside it:
+
 - A branch every fragment runs for a case few pixels hit is a MAJOR cost finding: code size and branches cost even
   where they do not run. Move the work to the pass or the material that needs it.
 - A constant the CPU and the shader must agree on, written in both, is a DRY finding: make it a uniform the CPU sets.

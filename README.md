@@ -107,6 +107,7 @@ checkout's `hooks/` (see [docs/install.md](docs/install.md)).
 | `o-debug` | Reproduce, fix the root cause, verify | "debug this" |
 | `o-verify` | Mutation and property tests after a fix | "verify the fix" |
 | `o-differential` | Review the diff hunk-by-hunk for regression risk | "what could this break" |
+| `o-shader-review` | Review shaders: undefined math, ports, precision, per-pixel cost | "review this shader" |
 | `o-second-opinion` | Fresh-context re-review of a change | "second opinion before shipping" |
 | `o-arch` | Placement, naming, responsibility, dependency direction | "where does this live" |
 | `o-arch-lint` | Check the tree against the declared architecture | "prove the boundaries hold" |
