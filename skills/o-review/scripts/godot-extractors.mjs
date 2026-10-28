@@ -1,15 +1,19 @@
 /**
- * Function extraction for Godot's two source languages, GDScript (`.gd`) and the Godot shading language
- * (`.gdshader`, `.gdshaderinc`), for analyze-complexity.mjs.
+ * Function extraction for the languages tree-sitter cannot measure here, for analyze-complexity.mjs: Godot's
+ * GDScript (`.gd`) and every shading language — Godot's (`.gdshader`, `.gdshaderinc`), GLSL, HLSL with Unity's and
+ * Unreal's wrappers, Metal, Slang and WGSL.
  *
- * Neither has a tree-sitter grammar that ships WebAssembly (`tree-sitter-gdscript` 6.1.0 on npm carries only its
+ * None has a tree-sitter grammar that ships WebAssembly (`tree-sitter-gdscript` 6.1.0 on npm carries only its
  * grammar sources), and the generic regex fallback finds JavaScript's `function` and ends a body at its closing
  * brace — so before this module every GDScript file measured zero functions. GDScript is indentation-scoped and
- * regular enough to read line by line; the shading language is C-shaped and reads by braces.
+ * regular enough to read line by line; the shading languages are C-shaped (WGSL only names its functions with `fn`)
+ * and read by braces.
  *
  * Both return the regex fallback's shape: { name, params, paramCount, startLine, endLine, length, complexity },
  * lines counted from 1.
  */
+
+import { SHADER_FILE } from "./file-discovery.mjs";
 
 // ── Shared: strings and comments out, so a keyword inside either is not a decision ─────────────
 
@@ -193,19 +197,33 @@ export function extractFunctionsGDScript(source) {
   return functions;
 }
 
-// ── The Godot shading language ─────────────────────────────────────────────────────────────
+// ── The shading languages ─────────────────────────────────────────────────────────────────
 
 const SHADER_NOT_A_FUNCTION = new Set(["if", "for", "while", "switch", "return", "else", "do"]);
-/** `vec3 name(`, `float name(`, with qualifiers such as `highp` or `const` before the type. */
-const SHADER_FUNC = /^\s*(?:(?:highp|mediump|lowp|const|flat|smooth)\s+)*([A-Za-z_]\w*)(?:\[\d*\])?\s+([A-Za-z_]\w*)\s*\(/;
+/**
+ * `vec3 name(`, `float4 name(`, with qualifiers such as `highp`, `static` or Metal's `fragment` before the type, and
+ * HLSL or Slang attributes (`[numthreads(8, 8, 1)]`, `[[vk::binding(0)]]`) before those.
+ */
+const SHADER_FUNC = /^\s*(?:\[\[?[^\]]*\]\]?\s*)*(?:(?:highp|mediump|lowp|const|flat|smooth|static|inline|precise|fragment|vertex|kernel)\s+)*([A-Za-z_]\w*)(?:\[\d*\])?\s+([A-Za-z_]\w*)\s*\(/;
+/** WGSL's `fn name(`, after attributes such as `@fragment` or `@compute @workgroup_size(64)`. */
+const WGSL_FUNC = /^\s*(?:@\w+(?:\([^)]*\))?\s*)*fn\s+([A-Za-z_]\w*)\s*\(/;
+
+/** The function a line opens, or null for a statement, a control-flow keyword or a declaration. */
+function shaderFunctionName(line) {
+  const wgsl = line.match(WGSL_FUNC);
+  if (wgsl) return wgsl[1];
+  const header = line.match(SHADER_FUNC);
+  if (!header || SHADER_NOT_A_FUNCTION.has(header[1]) || SHADER_NOT_A_FUNCTION.has(header[2])) return null;
+  return header[2];
+}
 
 export function extractFunctionsShader(source) {
   const code = shaderCodeLines(source);
   const functions = [];
   for (let start = 0; start < code.length; start++) {
     if (/^\s*#/.test(code[start])) continue;
-    const header = code[start].match(SHADER_FUNC);
-    if (!header || SHADER_NOT_A_FUNCTION.has(header[1]) || SHADER_NOT_A_FUNCTION.has(header[2])) continue;
+    const name = shaderFunctionName(code[start]);
+    if (!name) continue;
     // The body opens at the first `{` after the parameters and closes where its braces balance; a declaration
     // that reaches `;` first is a prototype, not a function.
     let text = "";
@@ -237,7 +255,7 @@ export function extractFunctionsShader(source) {
       .map((param) => param.trim().split(/\s+/).pop());
     const decisions = count(body, /\b(?:if|for|while|case)\b/g) + count(body, /&&|\|\|/g) + count(body, /\?/g);
     functions.push({
-      name: header[2], params, paramCount: params.length, startLine: start + 1, endLine: end + 1,
+      name, params, paramCount: params.length, startLine: start + 1, endLine: end + 1,
       length: end - start + 1, complexity: 1 + decisions,
     });
     start = end;
@@ -245,9 +263,10 @@ export function extractFunctionsShader(source) {
   return functions;
 }
 
-/** The extractor for a Godot source file by its extension, or null for any other file. */
-export function godotExtractorFor(ext) {
+/** The extractor this module owns for a file's extension, or null for a language tree-sitter or the regex reads. */
+export function extractorFor(ext) {
   if (ext === ".gd") return { engine: "gdscript (indentation-based)", extract: extractFunctionsGDScript };
   if (ext === ".gdshader" || ext === ".gdshaderinc") return { engine: "godot shader (brace-based)", extract: extractFunctionsShader };
+  if (SHADER_FILE.test(ext)) return { engine: "shader (brace-based)", extract: extractFunctionsShader };
   return null;
 }

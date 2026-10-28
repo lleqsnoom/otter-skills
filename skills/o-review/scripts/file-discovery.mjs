@@ -6,10 +6,36 @@ import cp from "node:child_process";
  * Shared file discovery utilities for o-review scripts.
  */
 
-// GDScript and the Godot shading language are measured by godot-extractors.mjs, not by tree-sitter.
-const SOURCE_EXTENSIONS = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|php|sh|bash|zsh|gd|gdshader|gdshaderinc)$/;
-// `.godot` is the Godot editor's generated cache, which a walk of a directory would otherwise read as source.
-const SKIP_DIRS = [".git", "node_modules", "dist", "build", ".agents", ".godot"];
+const GENERAL_EXTENSIONS = ["js", "ts", "jsx", "tsx", "mjs", "cjs", "py", "go", "java", "rb", "php", "sh", "bash", "zsh"];
+
+/** The languages games are written in: engines and native code, engine scripting, and the game-only languages. */
+const GAME_EXTENSIONS = [
+  "c", "h", "cc", "cpp", "cxx", "c++", "hh", "hpp", "hxx", "h++", "inl", "ipp", "tpp", "cppm", "ixx",
+  "cs", "rs", "m", "mm", "swift", "kt", "kts", "zig", "odin", "nim", "dart",
+  "lua", "luau", "hx", "gd", "gml", "as", "nut", "rpy",
+];
+
+/**
+ * Shader sources: GLSL by stage, HLSL with Unity's and Unreal's wrappers, WGSL, Metal, Slang and Godot's shading
+ * language. o-shader-review reads these; godot-extractors.mjs measures them by braces, as tree-sitter cannot here.
+ */
+const SHADER_EXTENSIONS = [
+  "glsl", "vert", "frag", "geom", "comp", "tesc", "tese", "vsh", "fsh", "rgen", "rint", "rahit", "rchit", "rmiss", "rcall",
+  "hlsl", "hlsli", "fx", "fxh", "cginc", "compute", "shader", "usf", "ush",
+  "wgsl", "metal", "slang", "gdshader", "gdshaderinc",
+];
+
+const extensionPattern = (exts) => new RegExp(`\\.(${exts.map((ext) => ext.replace(/\+/g, "\\+")).join("|")})$`, "i");
+
+const SOURCE_EXTENSIONS = extensionPattern([...GENERAL_EXTENSIONS, ...GAME_EXTENSIONS, ...SHADER_EXTENSIONS]);
+const SHADER_FILE = extensionPattern(SHADER_EXTENSIONS);
+
+/**
+ * Generated trees a walk would otherwise read as source: Godot's `.godot` cache, Unity's `Library` (its package
+ * cache holds thousands of `.cs` files), Unreal's `Intermediate` (generated headers), Cargo's `target` and MSBuild's
+ * `obj`.
+ */
+const SKIP_DIRS = [".git", "node_modules", "dist", "build", ".agents", ".godot", "Library", "Intermediate", "target", "obj"];
 
 /**
  * Recursively walk a directory, collecting files matching the source extensions.
@@ -99,4 +125,4 @@ function findSourceFiles(fileArgs, rootDir) {
   return [...new Set(files)];
 }
 
-export { SOURCE_EXTENSIONS, findSourceFiles, findTrackedSourceFiles, walkDir };
+export { SHADER_EXTENSIONS, SHADER_FILE, SOURCE_EXTENSIONS, findSourceFiles, findTrackedSourceFiles, walkDir };

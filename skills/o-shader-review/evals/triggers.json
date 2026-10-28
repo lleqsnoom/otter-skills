@@ -1,0 +1,19 @@
+{
+  "skill": "o-shader-review",
+  "queries": [
+    { "query": "review this fragment shader before I merge it", "should_trigger": true },
+    { "query": "check my .gdshader for problems", "should_trigger": true },
+    { "query": "is this HLSL compute shader correct?", "should_trigger": true },
+    { "query": "why does my water shader look different on mobile", "should_trigger": true },
+    { "query": "port this GLSL shader to WGSL for Bevy and check nothing breaks", "should_trigger": true },
+    { "query": "audit the Unity shader for variant explosion", "should_trigger": true },
+    { "query": "look over the Metal shader for precision issues", "should_trigger": true },
+    { "query": "is this smoothstep and pow usage safe in the shader", "should_trigger": true },
+    { "query": "review my changes", "should_trigger": false },
+    { "query": "write a dissolve shader for my sprite", "should_trigger": false },
+    { "query": "review this GDScript player controller", "should_trigger": false },
+    { "query": "fix the failing test", "should_trigger": false },
+    { "query": "make the game run faster on the CPU side", "should_trigger": false },
+    { "query": "retopologize the character mesh", "should_trigger": false }
+  ]
+}

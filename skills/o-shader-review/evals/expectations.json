@@ -1,0 +1,14 @@
+{
+  "skill": "o-shader-review",
+  "expected_behavior": [
+    "Runs scripts/shader-check.mjs over the shader files in scope before reading them, and copies its rule findings with their rule names, severities and file:line.",
+    "Reads every file against references/checklist.md in the order correctness, portability, precision, cost, and names the stage and target of every cost or precision finding.",
+    "Copies the check's rated and unrated lists verbatim and never calls a file with no validator clean.",
+    "Inside o-review it writes every finding under the plan's [Shaders] heading, or none, and edits no code; o-fix applies the fixes."
+  ],
+  "source": [
+    "SKILL.md: Procedure",
+    "references/pass.md: Steps",
+    "references/pass.md: Rules"
+  ]
+}

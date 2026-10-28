@@ -1,7 +1,7 @@
 ---
 name: o-review
 description: Review a change before it merges — is it correct (edge cases, error paths, untrusted input, security), is it simple (small functions, SOLID, KISS, DRY), does it match its spec — with AST complexity counts for the code the change touched. Runs the comments, bloat, architecture and quality-floor passes inside every review and writes one fix plan for o-fix. Use when asked to review code, a diff, a branch, a module or the changes before a PR.
-version: 2.7.0
+version: 2.8.0
 author: Community
 tags: [code-review, solid, kiss, dry, single-responsibility, cyclomatic-complexity, code-quality]
 user-invocable: true
@@ -11,7 +11,8 @@ user-invocable: true
 
 A review is eight passes over the same scope, and all eight write their findings into one plan file. Passes 4–7
 are child skills run **inside** this review — they are not follow-ups to recommend afterwards. Correctness comes
-second, right after the numbers: a wrong result outranks every finding about how the code is shaped.
+second, right after the numbers: a wrong result outranks every finding about how the code is shaped. A scope that
+holds a shader file adds a ninth pass, o-shader-review's, under `[Shaders]`.
 
 `<skills>` below is the folder that holds every o-* skill, this one included. Every script answers `--help` with its commands and flags.
 
@@ -27,6 +28,7 @@ second, right after the numbers: a wrong result outranks every finding about how
 | 6 | **Architecture** | **o-arch**, run as a pass, plus **o-arch-lint**'s `arch-check.mjs` | `[Architecture]` |
 | 7 | **Floor** | **o-floor**'s `floor-guard.mjs` on the diff | `[Floor]` |
 | 8 | **Spec** | this skill's spec-resolution rules below | `[Spec]` |
+| 9 | **Shaders** | **o-shader-review**, run as a pass — only when the scope holds a shader file | `[Shaders]` |
 
 A plan missing `[Correctness]`, `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]` or `[Spec]` is **incomplete,
 not clean**: every pass writes its heading on every review, including a re-run, and says plainly when it found
@@ -35,7 +37,7 @@ nothing. Every pass reports; applying the fixes is `o-fix`'s job.
 ## Light Review
 
 A change of at most about 50 changed lines, with no new interface, schema or public contract — or a task sized XS
-or S — gets a **light review**: Metrics, Correctness, Floor and Spec run in full, and the Principles, Comments,
+or S — gets a **light review**: Metrics, Correctness, Floor, Spec and Shaders run in full, and the Principles, Comments,
 Bloat and Architecture headings each say `skipped — light review (<n> changed lines)`. Say at the top of the plan
 that it is a light review and why. Anything a light review notices that looks structural earns the full one.
 
@@ -101,7 +103,13 @@ after the metrics.
    it states is met, nothing is built that the spec does not ask for, and nothing the spec requires is silently
    deferred. A requirement the diff does not meet is MAJOR; an unrequested behavior change is MAJOR; a deferred
    item with no record in the plan is MAJOR. Report findings under `[Spec]` in the finding format below.
-9. **Unmeasured analyses** — an analysis script that failed is not a zero; carry `save-plan.mjs`'s "Analysis incomplete" note into the plan rather than reporting a clean result.
+9. **Shaders pass (only when the scope holds a shader file, using o-shader-review)** — the plan's `[Shaders]`
+   heading names the GLSL, HLSL, WGSL, Metal, Slang and Godot shader files in scope. Apply o-shader-review's pass
+   card (`<skills>/o-shader-review/references/pass.md`) to them: it runs its `shader-check.mjs`, which validates
+   each file with the compiler installed for its language, then reads them for correctness, portability, precision
+   and cost. Copy its `rated` and `unrated` lists in: a shader no validator could compile is unrated, not clean.
+   Report only.
+10. **Unmeasured analyses** — an analysis script that failed is not a zero; carry `save-plan.mjs`'s "Analysis incomplete" note into the plan rather than reporting a clean result.
 
 The complexity script never installs anything on its own: when a grammar it needs is missing it prints the `npm install -g …` command and falls back to the regex engine for those files. Ask the user before running that command, or before rerunning with `--install-grammars`. Each script prints JSON, and the keys mislead on first read — `functions` is nested inside a file, and `duplicatedBlocks` is a **count**, not the list:
 
@@ -112,8 +120,11 @@ check-duplication.mjs    { totalFiles, duplicatedBlocks, duplicates: [ { file, l
 analyze-patterns.mjs     { results, totalFiles, message }
 ```
 
-`summary.language` names the engines that ran: `tree-sitter (AST-based)`, `regex fallback`, and for Godot
-projects `gdscript (indentation-based)` and `godot shader (brace-based)`; each file carries its own `engine`. Regex metrics have no parameter counts and approximate line numbers, so say which engine you reviewed with when it is not the AST one.
+`summary.language` names the engines that ran: `tree-sitter (AST-based)`, `regex fallback`, for Godot
+projects `gdscript (indentation-based)` and `godot shader (brace-based)`, and for every other shading language
+`shader (brace-based)`; each file carries its own `engine`. C, C++, C#, Rust and the other compiled languages are
+measured by tree-sitter once their grammar is installed (`tree-sitter-cpp`, `tree-sitter-c-sharp`,
+`tree-sitter-rust`, …), and fall back to the regex engine until then. Regex metrics have no parameter counts and approximate line numbers, so say which engine you reviewed with when it is not the AST one.
 
 A count in the plan is a measurement, and an unmeasured count is not a zero. When an analysis script fails, `save-plan.mjs` writes `unknown — <script> failed, so this was not measured` and an "Analysis incomplete" note naming the reason. Carry that into the review: never report a failed analysis as a clean result.
 
@@ -122,7 +133,8 @@ For language-specific review criteria, see `references/lang-typescript.md` (Type
 `references/lang-python.md` (Python), `references/lang-go.md` (Go), `references/lang-rust.md`
 (Rust) and `references/lang-gdscript.md` (GDScript and Godot shaders) — when the change is one of those languages,
 read its pack and apply it under
-`[PRINCIPLE]`; for a language with no pack, say so rather than inventing criteria.
+`[PRINCIPLE]`; for a language with no pack, say so rather than inventing criteria. Shader files of every language
+are o-shader-review's, under `[Shaders]`.
 
 **After running the scripts:** The plan file path is printed by `save-plan.mjs`. Open that file with your file tools, then write your review content directly into it using the format below. **Do not use MCP resources to read/write plan files — they don't exist.**
 
@@ -136,6 +148,7 @@ Each pass's rules live in its own skill's pass card; this skill never restates t
 | o-unbloat | 5 | `[Bloat]` | o-fix, by its *Keep it if* and *Never Cut* rules |
 | o-arch + o-arch-lint | 6 | `[Architecture]` | o-fix |
 | o-floor | 7 | `[Floor]` | o-fix |
+| o-shader-review | 9, when a shader is in scope | `[Shaders]` | o-fix |
 
 - **o-fix** reads this plan and resolves every finding, from every pass.
 - **o-differential** is the narrow second pass over a risky diff; **o-second-opinion** is a review from a fresh context.
@@ -282,6 +295,21 @@ Write `none` when the pass found nothing, and `no spec available` when no spec s
 
 ---
 
+## [Shaders] — pass 9 of the review
+
+Only in a plan whose scope holds a shader file. Write `none` when the pass found nothing.
+
+- [ ] **Severity:** CRITICAL / MAJOR / MINOR
+  - **File:** `shaders/water.frag:42`
+  - **Category:** correctness / portability / precision / cost
+  - **Issue:** What breaks, and on which input, stage or target
+  - **Suggestion:** The fix, and the spec or doc it rests on (applied by `o-fix`)
+
+**shader-check:** `rated: [...]`, `unrated: [...]` — copy both lists verbatim; a shader no validator compiled is
+unrated, not clean.
+
+---
+
 ## Summary
 
 **Total issues:** N (**critical:** N, **major:** N, **minor:** N)
@@ -290,9 +318,9 @@ Write `none` when the pass found nothing, and `no spec available` when no spec s
 
 Apply fixes manually based on review findings. Track progress by updating checkboxes `[ ]` → `[x]`.
 
-A plan without a `[Correctness]`, `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]` or `[Spec]` section is
-**incomplete, not clean**: every pass writes its heading on every review, including a re-run and a light review,
-and says plainly when it found nothing or was skipped. On a re-run, carry each earlier finding forward as
+A plan without a `[Correctness]`, `[Comments]`, `[Bloat]`, `[Architecture]`, `[Floor]` or `[Spec]` section — or
+without `[Shaders]` when a shader file is in scope — is **incomplete, not clean**: every pass writes its heading on
+every review, including a re-run and a light review, and says plainly when it found nothing or was skipped. On a re-run, carry each earlier finding forward as
 resolved or still open, and list pre-existing findings apart from the ones this branch introduced, so the counts
 describe the change under review.
 

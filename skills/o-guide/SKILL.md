@@ -1,7 +1,7 @@
 ---
 name: o-guide
 description: Route the user to the right skill or flow for their situation — name where they sit on the map (an idea, a bug, an incoming issue, a foggy effort, cleaning up the codebase) and which skill starts it, so the process for any goal has a first command. Use when asked which skill fits, where to start, what the workflow or process is, or when the user is unsure which skill to run; user-invoked, so it never fires on its own.
-version: 1.3.0
+version: 1.4.0
 author: Community
 tags: [router, workflow, skills, navigation, onboarding]
 user-invocable: true
@@ -61,6 +61,7 @@ A starting situation that generates work, then merges onto the main flow:
 - **o-verify** — attack a fixed change with property and mutation passes, gate on survivors.
 - **o-second-opinion** — a fresh-context reviewer re-checks a change before it ships.
 - **o-differential** — review just the diff, rating each hunk's regression risk to its callers.
+- **o-shader-review** — review a shader (GLSL, HLSL, WGSL, Metal, Godot): undefined math, ports, precision, per-pixel cost.
 - **o-unbloat** — cut code to what the task needs.
 - **o-refactor** — "what should I refactor?": measures, then routes each candidate to o-unbloat, o-arch or o-comments.
 - **o-comments** — comment hygiene.
@@ -83,6 +84,7 @@ A starting situation that generates work, then merges onto the main flow:
 | A new report that needs its facts first | **o-triage** | o-debug — it starts from the brief |
 | Review the code of a change | **o-review** | o-roast (prose), o-second-opinion (fresh eyes) |
 | How risky is this diff to its callers | **o-differential** | a full o-review |
+| Review a shader, or a port between shading languages | **o-shader-review** | o-review alone — it runs this pass only for shader files in a change |
 | A reviewer who never saw the session | **o-second-opinion** | re-running o-review yourself |
 | Score a spec, article, plan or skill | **o-roast** | o-review (code only) |
 | Write an article that defends a claim | **o-essay** | o-humanize alone |
