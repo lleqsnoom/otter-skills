@@ -78,7 +78,9 @@ with the remaining gap and stops. That is a reported outcome, not a failure to h
 
 ## Reading the audit trail
 
-- `research.md` — the config and the human-readable history table.
+- `research.md` — the config and the human-readable history table, rewritten by every `record`; below the
+  findings marker, the agent's findings, which every `record` keeps.
+- `memory.md` — started by `start` with the candidates; append to it, never rewrite it.
 - `research_log.md` — append-only, one line per event.
 - `results.tsv` — machine-readable rows: `iteration, kind, score, pass, guard_pass,
   delta, decision, change`.

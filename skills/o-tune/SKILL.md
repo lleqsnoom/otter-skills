@@ -1,7 +1,7 @@
 ---
 name: o-tune
 description: Tune a measurable number toward a target — bundle size, page load time, latency, a test's pass rate, a prompt's judge score — one atomic change per experiment to code, config or a prompt, each scored by a command and kept only when the numbers improve; reverted changes are restored from a snapshot, and a hard cap stops the loop. Use when asked to optimize, tune, or drive a metric (latency, size, load time) down or up until it reaches a target.
-version: 1.0.2
+version: 1.0.3
 author: Community
 tags: [optimize, tune, metric, experiment-loop, benchmark, performance]
 user-invocable: true
