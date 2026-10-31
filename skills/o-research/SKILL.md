@@ -1,7 +1,7 @@
 ---
 name: o-research
 description: Research a topic toward cited coverage — name the sub-questions it must answer, read real sources for each, and count a question answered only when an opened source answers it; a bounded loop with a memory file and a report, critiqued by a fresh reviewer before it is called done. Use for "research X", "compile/summarise sources on Y", the options for Z with citations, or filling the gaps in what we know; to tune a number, use o-tune.
-version: 2.0.2
+version: 2.0.3
 author: Community
 tags: [research, sources, citations, coverage, literature, comparison]
 user-invocable: true
@@ -46,8 +46,10 @@ named. To move a number one change at a time, use `o-tune`.
    rewrite its paths by hand. `--root` names the folder that holds run folders, not the project root.
    `node <skill>/scripts/state.mjs --help` lists every command and flag.
 3. **Baseline:** what is already answered — `record --dir <dir> --baseline --coverage <k/n>`.
-4. **Each iteration:** read one more source, add what it answers to `research.md`, and record the coverage with
-   its evidence — one line per met criterion, `C2: <URL or path:line> — what it says`:
+4. **Each iteration:** read one more source, add what it answers under `## Findings` in `research.md`, and record
+   the coverage with its evidence — one line per met criterion, `C2: <URL or path:line> — what it says`. Every
+   `record` rewrites the header and history above the findings marker and keeps each line below it, so write
+   findings only below the marker; `memory.md` is started by `start`, so append to it:
 
    ```bash
    node <skill>/scripts/state.mjs record --dir <dir> --candidate --coverage 3/5 --evidence evidence.md \

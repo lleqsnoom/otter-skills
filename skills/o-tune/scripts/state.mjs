@@ -590,7 +590,26 @@ function researchBlock(runDir, kind) {
   return run ? propertyBlock("research", `${kind} · ${runSlug(run)}`, run) : "";
 }
 
-export function renderResearchMd(state, runDir = null) {
+/** research.md is shared: `record` rewrites everything above this line from state.json and keeps every line below it. */
+export const FINDINGS_MARKER = "<!-- findings: written by the agent; every record keeps the lines below -->";
+
+/**
+ * The agent's part of an existing research.md. A file written before the marker existed keeps what follows its
+ * history table; a file with no history table is not the generated one, so all of it is kept.
+ */
+export function findingsOf(text) {
+  const at = text.indexOf(FINDINGS_MARKER);
+  if (at !== -1) return text.slice(at + FINDINGS_MARKER.length).replace(/^\n+/, "");
+  const lines = text.split("\n");
+  const history = lines.indexOf("## History");
+  if (history === -1) return text;
+  let end = history + 1;
+  if (lines[end] === "") end++;
+  while (end < lines.length && lines[end].startsWith("|")) end++;
+  return lines.slice(end).join("\n").replace(/^\n+/, "");
+}
+
+export function renderResearchMd(state, runDir = null, findings = "") {
   const dir = state.direction === "minimize" ? "<=" : ">=";
   const lines = [
     `${researchBlock(runDir, "Research")}# Research — ${state.slug}`,
@@ -617,8 +636,8 @@ export function renderResearchMd(state, runDir = null) {
       } | ${h.delta === null ? "—" : h.delta} | ${h.decision} | ${cell(h.change)} |`
     );
   }
-  lines.push("");
-  return `${lines.join("\n")}\n`;
+  lines.push("", FINDINGS_MARKER, "");
+  return `${lines.join("\n")}\n${findings.trim() ? findings : "## Findings\n\n"}`;
 }
 
 export function renderResultsTsv(state) {  const header = ["iteration", "kind", "score", "pass", "guard_pass", "delta", "decision", "change"].join("\t");
@@ -787,7 +806,9 @@ function loadState(dir) {
 function persist(dir, state) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "state.json"), `${JSON.stringify(state, null, 2)}\n`);
-  fs.writeFileSync(path.join(dir, "research.md"), renderResearchMd(state, dir));
+  const report = path.join(dir, "research.md");
+  const findings = fs.existsSync(report) ? findingsOf(fs.readFileSync(report, "utf8")) : "";
+  fs.writeFileSync(report, renderResearchMd(state, dir, findings));
   fs.writeFileSync(path.join(dir, "results.tsv"), renderResultsTsv(state));
   if (STOP_PHASES.has(state.phase)) {
     fs.writeFileSync(path.join(dir, "final_report.md"), renderFinalReportMd(state, dir));
