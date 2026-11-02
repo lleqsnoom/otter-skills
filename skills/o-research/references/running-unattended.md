@@ -6,8 +6,9 @@ outside the skill must re-invoke it. That cadence is **host-owned**, and the hos
 permission and approval gates always win — if the host pauses for approval, the loop
 waits rather than working around it.
 
-The re-entry rule is the same everywhere: read `state.json`, run **one** iteration,
-record it, then stop. Re-enter only while the phase is not a stop phase, and finish
+The re-entry rule is the same everywhere: read `state.json` and `ledger.mjs status`,
+run **one** round, record it (`ledger.mjs score --dir <dir> | state.mjs record --dir <dir> --candidate -`),
+then stop. Re-enter only while the phase is not a stop phase, and finish
 when `node <skill>/scripts/state.mjs verify --dir <dir>` exits 0 (or the state reads
 `escalate`).
 

@@ -121,7 +121,7 @@ checkout's `hooks/` (see [docs/install.md](docs/install.md)).
 | `o-browser` | Open the app in a real browser with devtools MCP | "open the app" |
 | `o-parallel` | Run independent tasks in isolated worktrees | "parallelize these tasks" |
 | `o-analyze` | Interactive analysis → thesis and the options weighed | "analyze this" |
-| `o-research` | Research a topic toward cited coverage of its questions | "research X with sources" |
+| `o-research` | Deep research on an unfamiliar topic: map the field, answer each question to a scored depth bar | "deep dive into X" |
 | `o-tune` | Move a number toward a target, one measured change at a time | "optimize X until Y" |
 | `o-roast` | Critique a non-code artifact, scored by a script | "roast this" |
 | `o-humanize` | Simplify text to a B2 reading level | "simplify this text" |
