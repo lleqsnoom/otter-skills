@@ -22,6 +22,18 @@
       "should_trigger": true
     },
     {
+      "query": "do a deep research on shader optimization methods, I am not an expert in GPUs",
+      "should_trigger": true
+    },
+    {
+      "query": "research secure database patterns for a multi-tenant app and tell me the best options",
+      "should_trigger": true
+    },
+    {
+      "query": "deep dive into generative artificial life algorithms like Lenia and what the state of the art is",
+      "should_trigger": true
+    },
+    {
       "query": "fix the flaky test in the nightly job",
       "should_trigger": false
     },

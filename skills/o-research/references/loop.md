@@ -26,12 +26,16 @@ produced either by a command or by the agent's own judgment.
 | command | `"<cmd>"` | the command's JSON | the command's `score` | the command's `pass` |
 | agent | `agent` (+ `--criteria <n\|file>`) | `--coverage <k/n>` | `k/n` | `k === n` (all met) |
 
-- **command** is o-tune's mode — a number a command prints, tuned one change at a time; o-tune's
-  `scripts/evaluate.mjs` runs it with a hard timeout. o-research uses the agent mode.
-- **agent** is for goals with no scoreable command — a topic to research, sources
-  to compile, gaps to close. You define N criteria and judge coverage each
-  iteration. The recorded evaluator string is
-  `agent (coverage of N criteria)`, and `--target` defaults to `1`.
+- **command** is the mode o-research uses: `ledger.mjs score` prints the JSON, and you pipe it in
+  (`ledger.mjs score --dir <dir> | state.mjs record --dir <dir> --candidate -`). Start the run with
+  `--policy pass_only --target 1`. `pass` is the ledger's integrity, and `score` is answered questions
+  plus passed gates over their total, reaching 1 only when every question clears the depth bar and every
+  gate holds (`references/depth.md`). `state.mjs` records whatever JSON it is piped, so a run is finished only
+  when `ledger.mjs verify` also exits 0: it re-scores the ledger and checks that the loop stopped in `done`.
+  o-tune uses the same mode for a number a command prints.
+- **agent** is the older mode, where the agent judges `k/n` coverage of fixed criteria. It cannot grow
+  its questions, and it stops at one citation per criterion, so a deep run does not use it. It stays in
+  the shared machine for o-tune and older runs.
 
 Both kinds feed the identical gates below; nothing downstream distinguishes them.
 
@@ -68,6 +72,10 @@ The held state (`state.best`) only moves forward:
   coverage: such a candidate is reverted and can never stop the run. A run started
   with `--no-evidence` skips this gate and records that it did.
 
+- **o-research** runs `pass_only`: a round is kept whenever the ledger is intact, even when it lowered
+  the score by adding questions, because a bigger tree is progress. A round is reverted only when the
+  ledger is broken (a hand edit, an unknown id); fix the ledger rather than restoring files.
+
 A reverted experiment is still recorded — full history, kept and reverted alike.
 
 ## Why a cap and an escalation
@@ -85,3 +93,5 @@ with the remaining gap and stops. That is a reported outcome, not a failure to h
 - `results.tsv` — machine-readable rows: `iteration, kind, score, pass, guard_pass,
   delta, decision, change`.
 - `final_report.md` — written at stop only.
+- `ledger.jsonl` — the research evidence, one event per line (`ledger.mjs`), safe for parallel writers.
+- `ledger.md` — the evidence appendix `ledger.mjs render` writes from it, which the report links.

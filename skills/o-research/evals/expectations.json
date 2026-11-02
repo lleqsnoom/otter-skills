@@ -1,11 +1,13 @@
 {
   "skill": "o-research",
   "expected_behavior": [
-    "A criterion counts as met only when the evidence file cites a source that was actually opened for it — a URL, a file:line or a command — and record refuses uncited coverage.",
+    "The user is asked about their goal, context and constraints, never asked to judge the domain, and the questions come from a field map drawn from surveys, textbooks, courses or talks before any branch is researched.",
+    "Every claim enters the ledger with a verbatim quote from a source opened in full, check-quotes is run, and a quote shown missing is re-cited with the source's real words or the claim is retracted.",
+    "A question is called answered only when ledger.mjs says it clears the depth bar (independent sources, a primary one, a mechanism and a limit claim), never on the agent's own judgment, and a round that deepens an answered question is kept.",
+    "Conflicting sources are recorded as a dispute and settled with stronger evidence or an experiment, or reported as an open debate with both sides cited.",
+    "Once most of the tree is answered, a reader who wrote none of it reviews it against the field, and every gap it names becomes a question, a dispute or a parked item with a reason.",
     "Every input the user named that could not be opened is reported at the top of the next message, not worked around or buried in a closing caveat.",
-    "Before the run is called done, a reviewer who did not write the report critiques it, and the report says who that was.",
-    "Reaching the cap with criteria unmet ends as an escalation that lists those criteria, never as success.",
-    "The final message lists the sources read, the inputs not read, how coverage was judged, and what is still open."
+    "The report teaches the field (the answer for the user's context, a glossary, the map, a decision guide, debates, next steps, a reading path) with claim ids on its facts, and a run that reaches the cap escalates with its open questions named."
   ],
   "source": [
     "Rules",
